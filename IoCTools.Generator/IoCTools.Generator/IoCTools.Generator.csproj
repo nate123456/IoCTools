@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <TargetFramework>netstandard2.0</TargetFramework>
-        <IsPackable>false</IsPackable>
+        <IsPackable>true</IsPackable>
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
 
@@ -11,6 +11,14 @@
 
         <RootNamespace>IoCTools.Generator</RootNamespace>
         <PackageId>IoCTools.Generator</PackageId>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <Version>0.1.0</Version>
+        <Title>IoC Tools Generator Package</Title>
+        <Description>Source generator for IoC Tools</Description>
+        <Copyright>MIT</Copyright>
+        <PackageProjectUrl>https://github.com/nate123456/IoCTools/</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/nate123456/IoCTools/</RepositoryUrl>
+        <RepositoryType>public</RepositoryType>
     </PropertyGroup>
 
     <ItemGroup>
