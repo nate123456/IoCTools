@@ -3,7 +3,7 @@
   "profiles": {
     "DebugRoslynSourceGenerator": {
       "commandName": "DebugRoslynComponent",
-      "targetProject": "../IoCTools.Generator.Sample/IoCTools.Generator.Sample.csproj"
+      "targetProject": "../IoCTools.Sample/IoCTools.Sample.csproj"
     }
   }
 }

@@ -1,4 +1,4 @@
-﻿namespace IoCTools.Generator.Sample.Interfaces;
+﻿namespace IoCTools.Sample.Interfaces;
 
 public interface ISomeOtherService
 {

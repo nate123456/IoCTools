@@ -1,9 +1,12 @@
-﻿using IoCTools.Abstractions.Annotations;
-using IoCTools.Generator.Sample.Interfaces;
+﻿using IoCTools.Generator.Annotations;
+using IoCTools.Generator.Enumerations;
+using IoCTools.Sample.Interfaces;
 
-namespace IoCTools.Generator.Sample.Services;
+namespace IoCTools.Sample.Services;
 
-public class TestService
+[Service(Lifetime.Singleton)]
+public partial class TestService : ISomeService
 {
+    [Inject] private readonly ISomeOtherService _someOtherService;
     [Inject] private readonly ISomeService _someService;
 }
