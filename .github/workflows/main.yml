@@ -1,4 +1,4 @@
-name: publish to nuget
+name: IoC Tools NuGet Push
 on:
   push:
     branches:
@@ -17,11 +17,22 @@ jobs:
 
       # Publish
       - name: IoC Abstractions push on version change
-        id: publish_nuget
+        id: publish_abstractions_nuget
         uses: brandedoutcast/publish-nuget@v2
         with:
           # Filepath of the project to be packaged, relative to root of repository
           PROJECT_FILE_PATH: IoCTools.Abstractions/IoCTools.Abstractions.csproj
+
+          # API key to authenticate with NuGet server
+          NUGET_KEY: ${{secrets.NUGET_API_KEY}}
+
+      # Publish
+      - name: IoC Abstractions push on version change
+        id: publish_generator_nuget
+        uses: brandedoutcast/publish-nuget@v2
+        with:
+          # Filepath of the project to be packaged, relative to root of repository
+          PROJECT_FILE_PATH: IoCTools.Generator/IoCTools.Generator.csproj
 
           # API key to authenticate with NuGet server
           NUGET_KEY: ${{secrets.NUGET_API_KEY}}
