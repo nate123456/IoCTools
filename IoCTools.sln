@@ -4,6 +4,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IoCTools.Generator", "IoCTo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IoCTools.Sample", "IoCTools.Generator\IoCTools.Sample\IoCTools.Sample.csproj", "{4D13B04F-8C2C-4D3D-9DC1-32BF369FE646}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IoCTools.Abstractions", "IoCTools.Abstractions\IoCTools.Abstractions.csproj", "{5DEFFA6E-2356-4CF1-8744-B00018DCDBD2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +20,9 @@ Global
 		{4D13B04F-8C2C-4D3D-9DC1-32BF369FE646}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4D13B04F-8C2C-4D3D-9DC1-32BF369FE646}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4D13B04F-8C2C-4D3D-9DC1-32BF369FE646}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5DEFFA6E-2356-4CF1-8744-B00018DCDBD2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5DEFFA6E-2356-4CF1-8744-B00018DCDBD2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5DEFFA6E-2356-4CF1-8744-B00018DCDBD2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5DEFFA6E-2356-4CF1-8744-B00018DCDBD2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

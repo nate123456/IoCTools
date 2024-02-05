@@ -1,7 +1,7 @@
 ﻿using System;
-using IoCTools.Generator.Enumerations;
+using IoCTools.Abstractions.Enumerations;
 
-namespace IoCTools.Generator.Annotations;
+namespace IoCTools.Abstractions.Annotations;
 
 [AttributeUsage(AttributeTargets.Class)]
 public sealed class ServiceAttribute(Lifetime lifetime = Lifetime.Scoped, bool register = true)

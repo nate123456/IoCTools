@@ -2,8 +2,8 @@
 using System.IO;
 using System.Linq;
 using System.Text;
-using IoCTools.Generator.Annotations;
-using IoCTools.Generator.Enumerations;
+using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;

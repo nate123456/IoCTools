@@ -1,4 +1,4 @@
-﻿namespace IoCTools.Generator.Enumerations;
+﻿namespace IoCTools.Abstractions.Enumerations;
 
 public enum Lifetime
 {
