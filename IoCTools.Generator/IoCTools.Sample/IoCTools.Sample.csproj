@@ -6,8 +6,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="IoCTools.Abstractions" Version="0.1.0" />
-        <PackageReference Include="IoCTools.Generator" Version="0.1.0" />
+        <PackageReference Include="IoCTools.Abstractions" Version="0.2.3" />
+        <PackageReference Include="IoCTools.Generator" Version="0.2.3" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0"/>
     </ItemGroup>
 
