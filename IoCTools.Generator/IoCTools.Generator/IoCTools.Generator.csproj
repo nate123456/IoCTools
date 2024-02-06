@@ -26,7 +26,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="IoCTools.Abstractions" Version="0.2.5" PrivateAssets="all" GeneratePathProperty="true"/>
         <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -36,9 +35,13 @@
     </ItemGroup>
 
     <ItemGroup>
-        <None Include="$(PkgIoCTools_Abstractions)\lib\netstandard2.0\*.dll" Pack="true" PackagePath="analyzers/dotnet/cs/netstandard2.0" Visible="true" />
+        <None Include="..\..\IoCTools.Abstractions\bin\Release\netstandard2.0\IoCTools.Abstractions.dll" Pack="true" PackagePath="analyzers/dotnet/cs/netstandard2.0" Visible="true" />
         <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs/netstandard2.0" />
         <None Include="../../README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\IoCTools.Abstractions\IoCTools.Abstractions.csproj" />
     </ItemGroup>
 
 </Project>
