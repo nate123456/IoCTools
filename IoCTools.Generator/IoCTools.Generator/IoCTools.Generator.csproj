@@ -5,6 +5,7 @@
         <IsPackable>true</IsPackable>
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
+        <NoPackageAnalysis>true</NoPackageAnalysis>
 
         <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
         <IsRoslynComponent>true</IsRoslynComponent>
@@ -13,7 +14,7 @@
         <PackageId>IoCTools.Generator</PackageId>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <IncludeBuildOutput>false</IncludeBuildOutput>
-        <Version>0.2.2</Version>
+        <Version>0.2.3</Version>
         <Title>IoC Tools Generator Package</Title>
         <Description>Source generator for IoC Tools</Description>
         <Copyright>MIT</Copyright>
@@ -21,7 +22,7 @@
         <RepositoryUrl>https://github.com/nate123456/IoCTools/</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
-        <PackageReadmeFile>../../README.md</PackageReadmeFile>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
     <ItemGroup>
@@ -36,8 +37,8 @@
 
     <ItemGroup>
         <!-- Package the generator in the analyzer directory of the nuget package -->
-        <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
-        <None Include="../../README.md" Pack="true" PackagePath="" />
+        <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs/netstandard2.0" />
+        <None Include="../../README.md" Pack="true" PackagePath="" Visible="false" />
     </ItemGroup>
 
 </Project>

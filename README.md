@@ -6,6 +6,9 @@ mainly focusing on working with ASP.NET's Services. This project provides
 a source generator which eliminates much of the boilerplate that normally
 comes with working with services in .NET.
 
+[![IoC Tools](https://img.shields.io/nuget/v/IoCTools.Abstractions?label=IoCTools.Abstractions)](https://www.nuget.org/packages/IoCTools.Abstractions)
+[![IoC Abstractions](https://img.shields.io/nuget/v/IoCTools.Generator?label=IoCTools.Generator)](https://www.nuget.org/packages/IoCTools.Generator)
+
 ## Features
 
 Although the project is in alpha and under active development,
