@@ -13,13 +13,14 @@
         <PackageId>IoCTools.Generator</PackageId>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <IncludeBuildOutput>false</IncludeBuildOutput>
-        <Version>0.2.0</Version>
+        <Version>0.2.1</Version>
         <Title>IoC Tools Generator Package</Title>
         <Description>Source generator for IoC Tools</Description>
         <Copyright>MIT</Copyright>
         <PackageProjectUrl>https://github.com/nate123456/IoCTools/</PackageProjectUrl>
         <RepositoryUrl>https://github.com/nate123456/IoCTools/</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
     </PropertyGroup>
 
     <ItemGroup>
