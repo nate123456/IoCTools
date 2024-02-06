@@ -6,11 +6,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\IoCTools.Generator\IoCTools.Generator.csproj" OutputItemType="Analyzer"/>
-    </ItemGroup>
-
-    <ItemGroup>
         <PackageReference Include="IoCTools.Abstractions" Version="0.1.0" />
+        <PackageReference Include="IoCTools.Generator" Version="0.1.0" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0"/>
     </ItemGroup>
 
