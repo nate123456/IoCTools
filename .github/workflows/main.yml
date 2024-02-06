@@ -16,7 +16,7 @@ jobs:
       #     dotnet-version: 3.1.200
 
       # Publish
-      - name: IoC Abstractions push on version change
+      - name: IoC Abstractions publish on version change
         id: publish_abstractions_nuget
         uses: brandedoutcast/publish-nuget@v2
         with:
@@ -27,7 +27,7 @@ jobs:
           NUGET_KEY: ${{secrets.NUGET_API_KEY}}
 
       # Publish
-      - name: IoC Abstractions push on version change
+      - name: IoC Generator publish on version change
         id: publish_generator_nuget
         uses: brandedoutcast/publish-nuget@v2
         with:
