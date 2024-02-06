@@ -6,9 +6,12 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="IoCTools.Abstractions" Version="0.2.3" />
-        <PackageReference Include="IoCTools.Generator" Version="0.2.3" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0"/>
+        <PackageReference Include="IoCTools.Abstractions" Version="0.2.5" />
+        <PackageReference Include="IoCTools.Generator" Version="0.2.5">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
     </ItemGroup>
 
 </Project>

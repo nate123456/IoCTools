@@ -14,7 +14,7 @@
         <PackageId>IoCTools.Generator</PackageId>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <IncludeBuildOutput>false</IncludeBuildOutput>
-        <Version>0.2.4</Version>
+        <Version>0.2.5</Version>
         <Title>IoC Tools Generator Package</Title>
         <Description>Source generator for IoC Tools</Description>
         <Copyright>MIT</Copyright>
@@ -26,7 +26,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="IoCTools.Abstractions" Version="0.1.0" />
+        <PackageReference Include="IoCTools.Abstractions" Version="0.2.5" PrivateAssets="all" GeneratePathProperty="true"/>
         <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -36,9 +36,8 @@
     </ItemGroup>
 
     <ItemGroup>
-        <!-- Package the generator in the analyzer directory of the nuget package -->
+        <None Include="$(PkgIoCTools_Abstractions)\lib\netstandard2.0\*.dll" Pack="true" PackagePath="analyzers/dotnet/cs/netstandard2.0" Visible="true" />
         <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs/netstandard2.0" />
-        <None Include="$(PkgIoCTools_Abstractions)\lib\netstandard2.0\*.dll" Pack="true" PackagePath="analyzers/dotnet/cs/netstandard2.0" Visible="false" />
         <None Include="../../README.md" Pack="true" PackagePath="\" />
     </ItemGroup>
 
