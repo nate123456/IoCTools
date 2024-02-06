@@ -1,9 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using IoCTools.Abstractions.Annotations;
-using IoCTools.Abstractions.Enumerations;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -42,7 +41,8 @@ public class DependencyInjectionGenerator : ISourceGenerator
 
                 var hasServiceAttribute = classDeclaration.AttributeLists
                     .SelectMany(a => a.Attributes)
-                    .Any(attr => IsAttributeOfType(attr, semanticModel, typeof(ServiceAttribute).FullName));
+                    .Any(attr =>
+                        IsAttributeOfType(attr, semanticModel, "IoCTools.Abstractions.Annotations.ServiceAttribute"));
 
                 var implementsInterface = classDeclaration.BaseList?.Types
                     .Any(baseType =>
@@ -143,7 +143,7 @@ public class DependencyInjectionGenerator : ISourceGenerator
             if (classSymbol == null || !classSymbol.Interfaces.Any()) continue;
 
             var serviceAttribute = classSymbol.GetAttributes().FirstOrDefault(attr =>
-                attr.AttributeClass?.ToDisplayString() == typeof(ServiceAttribute).FullName);
+                attr.AttributeClass?.ToDisplayString() == "IoCTools.Abstractions.Annotations.ServiceAttribute");
 
             if (serviceAttribute == null || classSymbol.Interfaces.Any() != true) continue;
 
@@ -160,17 +160,44 @@ public class DependencyInjectionGenerator : ISourceGenerator
         return serviceRegistrations;
     }
 
-    private static Lifetime ExtractLifetime(AttributeData serviceAttribute)
+    private static string ExtractLifetime(AttributeData serviceAttribute)
     {
-        var lifetimeArg =
-            serviceAttribute.NamedArguments.FirstOrDefault(arg => arg.Key == nameof(ServiceAttribute.Lifetime));
-        return lifetimeArg.Key != null ? (Lifetime)lifetimeArg.Value.Value! : Lifetime.Scoped;
+        // Check constructor arguments first
+        var constructorArgLifetime = serviceAttribute.ConstructorArguments.FirstOrDefault().Value;
+        if (constructorArgLifetime != null)
+        {
+            // Assuming constructorArgLifetime is an enum represented as an int, map it to the string.
+            // This example uses a switch expression for mapping.
+            var lifetimeStr = constructorArgLifetime switch
+            {
+                0 => "Scoped",
+                1 => "Transient",
+                2 => "Singleton",
+                _ => throw new Exception(
+                    $"Couldn't parse lifetime value from constructor arguments: {constructorArgLifetime}")
+            };
+            return lifetimeStr;
+        }
+
+        // Then check named arguments if constructor argument wasn't used or didn't provide a valid value
+        var lifetimeArg = serviceAttribute.NamedArguments.FirstOrDefault(arg => arg.Key == "Lifetime");
+        if (lifetimeArg.Key != null)
+        {
+            var lifetimeValue = lifetimeArg.Value.Value?.ToString();
+            if (lifetimeValue is "Scoped" or "Transient" or "Singleton")
+                return lifetimeValue;
+            if (lifetimeValue != null)
+                throw new Exception("Couldn't parse lifetime value from named arguments: " + lifetimeValue);
+        }
+
+        // Default to "Scoped" if neither constructor nor named arguments specified a lifetime
+        return "Scoped";
     }
 
     private static bool ExtractShouldRegister(AttributeData serviceAttribute)
     {
         var shouldRegisterArg =
-            serviceAttribute.NamedArguments.FirstOrDefault(arg => arg.Key == nameof(ServiceAttribute.Register));
+            serviceAttribute.NamedArguments.FirstOrDefault(arg => arg.Key == "Register");
         return shouldRegisterArg.Key == null || (bool)shouldRegisterArg.Value.Value!;
     }
 
@@ -201,7 +228,7 @@ public class DependencyInjectionGenerator : ISourceGenerator
         {
             var interfaceType = service.ClassSymbol.Interfaces.FirstOrDefault()?.Name ?? service.ClassSymbol.Name;
             var classType = service.ClassSymbol.Name;
-            var lifetime = service.Lifetime.ToString();
+            var lifetime = service.Lifetime;
 
             registrations.AppendLine($"         services.Add{lifetime}<{interfaceType}, {classType}>();");
         }
@@ -236,7 +263,8 @@ public class DependencyInjectionGenerator : ISourceGenerator
         {
             var hasInjectAttribute = fieldDeclaration.AttributeLists
                 .SelectMany(a => a.Attributes)
-                .Any(attr => IsInjectAttribute(attr, semanticModel, typeof(InjectAttribute).FullName));
+                .Any(attr =>
+                    IsInjectAttribute(attr, semanticModel, "IoCTools.Abstractions.Annotations.InjectAttribute"));
 
             if (!hasInjectAttribute) continue;
             var fieldType = semanticModel.GetTypeInfo(fieldDeclaration.Declaration.Type).Type;
@@ -357,9 +385,9 @@ public class DependencyInjectionGenerator : ISourceGenerator
     }
 }
 
-internal class ServiceRegistration(INamedTypeSymbol classSymbol, INamedTypeSymbol interfaceSymbol, Lifetime lifetime)
+internal class ServiceRegistration(INamedTypeSymbol classSymbol, INamedTypeSymbol interfaceSymbol, string lifetime)
 {
     public INamedTypeSymbol ClassSymbol { get; } = classSymbol;
     public INamedTypeSymbol InterfaceSymbol { get; } = interfaceSymbol;
-    public Lifetime Lifetime { get; } = lifetime;
+    public string Lifetime { get; } = lifetime;
 }

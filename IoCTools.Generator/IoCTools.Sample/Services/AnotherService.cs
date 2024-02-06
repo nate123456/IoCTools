@@ -4,7 +4,7 @@ using IoCTools.Sample.Interfaces;
 namespace IoCTools.Sample.Services;
 
 [Service]
-public class AnotherService<T> : IAnotherService
+public partial class AnotherService<T> : IAnotherService
 {
     [Inject] private readonly ISomeService _someService;
 }
