@@ -5,8 +5,11 @@ using IoCTools.Sample.Interfaces;
 namespace IoCTools.Sample.Services;
 
 [Service(Lifetime.Singleton)]
+[DependsOn<ISomeService, ISomeOtherService>]
 public partial class TestService : ISomeService
 {
-    [Inject] private readonly ISomeOtherService _someOtherService;
-    [Inject] private readonly ISomeService _someService;
+    public void Test()
+    {
+        var thing = _someOtherService.ToString();
+    }
 }

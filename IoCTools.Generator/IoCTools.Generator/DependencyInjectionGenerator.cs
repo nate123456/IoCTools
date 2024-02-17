@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -51,7 +52,7 @@ public class DependencyInjectionGenerator : ISourceGenerator
                             TypeKind: TypeKind.Interface
                         }) ?? false;
 
-                var injectedFields = GetInjectedFields(classDeclaration, semanticModel);
+                var fieldsToAdd = GetInjectedFieldsToAdd(classDeclaration, semanticModel);
 
                 if (hasServiceAttribute && !implementsInterface)
                 {
@@ -69,7 +70,7 @@ public class DependencyInjectionGenerator : ISourceGenerator
                     context.ReportDiagnostic(diagnostic);
                 }
 
-                switch (injectedFields.Count)
+                switch (fieldsToAdd.Count)
                 {
                     case > 0 when !hasServiceAttribute:
                     {
@@ -105,10 +106,12 @@ public class DependencyInjectionGenerator : ISourceGenerator
                     }
                 }
 
-                if (!hasServiceAttribute) continue;
-                if (!injectedFields.Any()) continue;
+                var newDeps = GetDependsOnFieldsToAdd(classDeclaration, semanticModel);
 
-                var constructorCode = GenerateConstructorCode(classDeclaration, injectedFields);
+                if (!hasServiceAttribute) continue;
+                if (!fieldsToAdd.Any() && !newDeps.Any()) continue;
+
+                var constructorCode = GenerateConstructorCode(classDeclaration, fieldsToAdd, newDeps);
                 context.AddSource($"{classDeclaration.Identifier.Text}_DI_ctor.g.cs", constructorCode);
             }
 
@@ -118,6 +121,164 @@ public class DependencyInjectionGenerator : ISourceGenerator
         var registrationCode = GenerateRegistrationExtensionMethod(servicesToRegister, extNameSpace);
         context.AddSource("ServiceCollectionExtensions.g.cs", registrationCode);
     }
+
+    private static List<(ITypeSymbol ServiceType, string FieldName)> GetDependsOnFieldsToAdd(
+        MemberDeclarationSyntax classDeclaration, SemanticModel semanticModel)
+    {
+        var fieldsToAdd = new List<(ITypeSymbol ServiceType, string FieldName)>();
+
+        // Fetch all attributes named DependsOnAttribute
+        var attributes = classDeclaration.AttributeLists
+            .SelectMany(al => al.Attributes)
+            .Where(attr => semanticModel.GetSymbolInfo(attr).Symbol?.ContainingType?.Name == "DependsOnAttribute")
+            .ToList();
+
+        foreach (var attribute in attributes)
+        {
+            var attributeSymbol = semanticModel.GetSymbolInfo(attribute).Symbol as IMethodSymbol;
+            var attributeClassSymbol = attributeSymbol?.ContainingType;
+
+            var genericTypeArguments = attributeClassSymbol?.TypeArguments.ToList();
+
+            var (namingConvention, stripI, prefix) = GetNamingConventionOptions(attribute);
+
+            fieldsToAdd.AddRange(from genericTypeArgument in genericTypeArguments!
+                let fieldName = GenerateFieldName(genericTypeArgument.Name, namingConvention, stripI, prefix)
+                select (genericTypeArgument, fieldName));
+        }
+
+        return fieldsToAdd;
+    }
+
+    private static (string namingConvention, bool stripI, string prefix) GetNamingConventionOptions(
+        AttributeSyntax attribute)
+    {
+        // Default values
+        var namingConvention = "CamelCase"; // Assuming this is the string representation of the default enum value
+        var stripI = true;
+        var prefix = "_";
+
+        if (attribute.ArgumentList == null) return (namingConvention, stripI, prefix);
+
+        // Named arguments can override these defaults directly
+        var position = 0;
+        foreach (var arg in attribute.ArgumentList.Arguments)
+            // For named arguments
+            if (arg.NameEquals != null)
+            {
+                var argName = arg.NameEquals.Name.Identifier.Text;
+                switch (argName)
+                {
+                    case "namingConvention":
+                        namingConvention = ExtractEnumMemberName(arg);
+                        break;
+                    case "stripI":
+                        stripI = ExtractBooleanValue(arg);
+                        break;
+                    case "prefix":
+                        prefix = ExtractStringValue(arg);
+                        break;
+                }
+            }
+            else // Handle positional arguments based on their position
+            {
+                switch (position)
+                {
+                    case 0: // First position for namingConvention
+                        namingConvention = GetEnumMemberName(arg);
+                        break;
+                    case 1: // Second position for stripI
+                        stripI = GetBooleanValue(arg);
+                        break;
+                    case 2: // Third position for prefix
+                        prefix = GetStringValue(arg);
+                        break;
+                }
+
+                position++;
+            }
+
+        // Positional arguments are not expected due to the nature of default handling
+        return (namingConvention, stripI, prefix);
+    }
+
+    private static string ExtractEnumMemberName(AttributeArgumentSyntax arg)
+    {
+        if (arg.Expression is MemberAccessExpressionSyntax memberAccess)
+            return memberAccess.Name.Identifier.Text;
+        return "CamelCase"; // Return default if extraction fails
+    }
+
+    private static bool ExtractBooleanValue(AttributeArgumentSyntax arg)
+    {
+        if (arg.Expression is LiteralExpressionSyntax literal && literal.Token.Value is bool value)
+            return value;
+        return true; // Default to true if extraction fails
+    }
+
+    private static string ExtractStringValue(AttributeArgumentSyntax arg)
+    {
+        if (arg.Expression is LiteralExpressionSyntax literal && literal.Token.Value is string value)
+            return value.Trim('"');
+        return "_"; // Return default if extraction fails
+    }
+
+// Helper method to extract enum member name
+    private static string GetEnumMemberName(AttributeArgumentSyntax arg)
+    {
+        if (arg.Expression is MemberAccessExpressionSyntax memberAccess)
+            return memberAccess.Name.Identifier.Text;
+
+        throw new Exception($"Could not get member out of attribute. {arg}");
+    }
+
+// Helper method to extract boolean value
+    private static bool GetBooleanValue(AttributeArgumentSyntax arg)
+    {
+        if (arg.Expression is LiteralExpressionSyntax literal &&
+            (literal.Kind() == SyntaxKind.TrueLiteralExpression || literal.Kind() == SyntaxKind.FalseLiteralExpression))
+            return literal.Kind() == SyntaxKind.TrueLiteralExpression;
+        return false; // Default to false if not explicitly true
+    }
+
+// Helper method to extract string value
+    private static string GetStringValue(AttributeArgumentSyntax arg)
+    {
+        if (arg.Expression is LiteralExpressionSyntax literalPrefix &&
+            literalPrefix.Kind() == SyntaxKind.StringLiteralExpression)
+            return literalPrefix.Token.ValueText.Trim('"');
+
+        throw new Exception($"Could not get member out of attribute. {arg}");
+    }
+
+
+    private static string GenerateFieldName(string originalTypeName, string namingConvention, bool stripI,
+        string prefix)
+    {
+        // Optionally strip the leading 'I' for interface names
+        if (stripI && originalTypeName.StartsWith("I") && originalTypeName.Length > 1 &&
+            char.IsUpper(originalTypeName[1])) originalTypeName = originalTypeName.Substring(1);
+
+        // Apply the naming convention to the remainder of the type name
+        var fieldName = originalTypeName;
+        switch (namingConvention)
+        {
+            case "CamelCase":
+                fieldName = char.ToLowerInvariant(originalTypeName[0]) + originalTypeName.Substring(1);
+                break;
+            case "PascalCase":
+                break;
+            case "SnakeCase":
+                fieldName = Regex.Replace(originalTypeName, @"(?<!^)([A-Z])", "_$1").ToLower();
+                break;
+        }
+
+        // Prepend the specified prefix
+        fieldName = $"{prefix}{fieldName}";
+
+        return fieldName;
+    }
+
 
     private static bool IsInjectAttribute(SyntaxNode attribute, SemanticModel semanticModel, string? attributeName)
     {
@@ -181,14 +342,14 @@ public class DependencyInjectionGenerator : ISourceGenerator
 
         // Then check named arguments if constructor argument wasn't used or didn't provide a valid value
         var lifetimeArg = serviceAttribute.NamedArguments.FirstOrDefault(arg => arg.Key == "Lifetime");
-        if (lifetimeArg.Key != null)
-        {
-            var lifetimeValue = lifetimeArg.Value.Value?.ToString();
-            if (lifetimeValue is "Scoped" or "Transient" or "Singleton")
-                return lifetimeValue;
-            if (lifetimeValue != null)
-                throw new Exception("Couldn't parse lifetime value from named arguments: " + lifetimeValue);
-        }
+
+        if (lifetimeArg.Key == null) return "Scoped";
+
+        var lifetimeValue = lifetimeArg.Value.Value?.ToString();
+        if (lifetimeValue is "Scoped" or "Transient" or "Singleton")
+            return lifetimeValue;
+        if (lifetimeValue != null)
+            throw new Exception("Couldn't parse lifetime value from named arguments: " + lifetimeValue);
 
         // Default to "Scoped" if neither constructor nor named arguments specified a lifetime
         return "Scoped";
@@ -253,10 +414,10 @@ public class DependencyInjectionGenerator : ISourceGenerator
     }
 
 
-    private static List<(ITypeSymbol ServiceType, string FieldName)> GetInjectedFields(
+    private static List<(ITypeSymbol ServiceType, string FieldName)> GetInjectedFieldsToAdd(
         SyntaxNode classDeclaration, SemanticModel semanticModel)
     {
-        var injectedFields = new List<(ITypeSymbol ServiceType, string FieldName)>();
+        var fieldsToAdd = new List<(ITypeSymbol ServiceType, string FieldName)>();
 
         foreach (var fieldDeclaration in classDeclaration.DescendantNodes().OfType<FieldDeclarationSyntax>())
         foreach (var variable in fieldDeclaration.Declaration.Variables)
@@ -268,20 +429,27 @@ public class DependencyInjectionGenerator : ISourceGenerator
 
             if (!hasInjectAttribute) continue;
             var fieldType = semanticModel.GetTypeInfo(fieldDeclaration.Declaration.Type).Type;
-            if (fieldType != null) injectedFields.Add((fieldType, variable.Identifier.Text));
+            if (fieldType != null) fieldsToAdd.Add((fieldType, variable.Identifier.Text));
         }
 
-        return injectedFields;
+        return fieldsToAdd;
     }
 
     private static string GenerateConstructorCode(TypeDeclarationSyntax classDeclaration,
-        List<(ITypeSymbol ServiceType, string FieldName)> injectedFields)
+        IEnumerable<(ITypeSymbol ServiceType, string FieldName)> fieldsToAdd,
+        IReadOnlyCollection<(ITypeSymbol ServiceType, string FieldName)> newDeps)
     {
         var uniqueNamespaces = new HashSet<string>();
 
-        foreach (var (serviceType, _) in injectedFields) CollectNamespaces(serviceType, uniqueNamespaces);
+        var allFieldsToAddToCtr =
+#pragma warning disable RS1024
+            fieldsToAdd.Concat(newDeps).GroupBy(x => x.ServiceType).Select(x => x.First()).ToList();
+#pragma warning restore RS1024
+
+        foreach (var (serviceType, _) in allFieldsToAddToCtr) CollectNamespaces(serviceType, uniqueNamespaces);
 
         var usings = new StringBuilder();
+
         foreach (var ns in uniqueNamespaces) usings.AppendLine($"using {ns};");
 
         var namespaceName = GetClassNamespace(classDeclaration);
@@ -296,17 +464,18 @@ public class DependencyInjectionGenerator : ISourceGenerator
             fullClassName += $"<{string.Join(", ", typeParameters)}>";
         }
 
-        var fieldsStrings = injectedFields.Select((f, index) =>
-        {
-            var removedNsType = uniqueNamespaces.Aggregate(f.ServiceType.ToDisplayString(),
-                (current, ns) => current.Replace(ns, string.Empty));
+        var depsStrings = newDeps.Select(d =>
+            $"private readonly {RemoveNamespacesAndDots(d.ServiceType, uniqueNamespaces)} {d.FieldName};");
 
-            return $"{removedNsType.Replace(".", "")} d{index + 1}";
-        });
+        var depsStr = string.Join("\n    ", depsStrings);
 
-        var parameters = string.Join(",\n        ", fieldsStrings);
+        var ctrFieldsStr = allFieldsToAddToCtr.Select((f, index) =>
+            $"{RemoveNamespacesAndDots(f.ServiceType, uniqueNamespaces)} d{index + 1}");
+
+        var parameters = string.Join(",\n        ", ctrFieldsStr);
+
         var assignments = string.Join("\n        ",
-            injectedFields.Select((f, index) => $"this.{f.FieldName} = d{index + 1};"));
+            allFieldsToAddToCtr.Select((f, index) => $"this.{f.FieldName} = d{index + 1};"));
 
         var constructorCode = $$"""
                                 {{usings}}
@@ -314,6 +483,8 @@ public class DependencyInjectionGenerator : ISourceGenerator
 
                                 public partial class {{fullClassName}}
                                 {
+                                    {{depsStr}}
+                                    
                                     public {{classDeclaration.Identifier.Text}}({{parameters}})
                                     {
                                         {{assignments}}
@@ -323,6 +494,14 @@ public class DependencyInjectionGenerator : ISourceGenerator
 
         return constructorCode;
     }
+
+    private static string RemoveNamespacesAndDots(ISymbol serviceType, IEnumerable<string> uniqueNamespaces)
+    {
+        return uniqueNamespaces
+            .Aggregate(serviceType.ToDisplayString(), (current, ns) => current.Replace(ns, string.Empty))
+            .Replace(".", "");
+    }
+
 
     private static void CollectNamespaces(ISymbol typeSymbol, ISet<string> namespaces)
     {
