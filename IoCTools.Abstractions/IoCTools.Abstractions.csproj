@@ -6,7 +6,7 @@
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <Version>0.2.6</Version>
+        <Version>0.3.0</Version>
         <Title>IoC Tools Abstractions Package</Title>
         <Copyright>MIT</Copyright>
         <PackageProjectUrl>https://github.com/nate123456/IoCTools</PackageProjectUrl>

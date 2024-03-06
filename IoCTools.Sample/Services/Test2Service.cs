@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using IoCTools.Abstractions.Annotations;
+﻿using IoCTools.Abstractions.Annotations;
 using IoCTools.Sample.Interfaces;
 
 namespace IoCTools.Sample.Services;

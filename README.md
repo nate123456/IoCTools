@@ -214,6 +214,66 @@ This is due to the fact that there is no way to infer which generic type
 should be supplied for the generic argument(s) without a new way 
 to specify them manually.
 
+### DependsOn
+
+With the `Inject` approach, having to make private readonly fields are still verbose. 
+This is why `DependsOn` was added. For those who are ok with default naming
+conventions (with some customization), a more concise approach can be used.
+Using `DependsOn` is more concise and still linguistically meaningful.
+
+```c#
+// in the service class
+namespace SampleProject.Services;
+
+[Service]
+[DependsOn<IOtherService, IAnotherService, IYetAnotherService, ISomehowAnotherService>]
+public partial class SomeService : ISomeService
+{
+    private readonly int _someValue = 1;
+    
+    public void Test()
+    {
+        // use services 
+    }
+}
+```
+
+This code produces the same result as the previous snippet using `Inject`.
+
+The generator also supports multiple usages of `DependsOn` on the same service. 
+The following code is equivalent.
+
+```c#
+// in the service class
+namespace SampleProject.Services;
+
+[Service]
+[DependsOn<IOtherService, IAnotherService>]
+[DependsOn<IYetAnotherService, ISomehowAnotherService>]
+public partial class SomeService : ISomeService
+{
+    private readonly int _someValue = 1;
+    
+    public void Test()
+    {
+        // use services 
+    }
+}
+```
+
+Each use of DependsOn also allows the user to configure the following options: 
+
+- `namingConvention`- choose `CamelCase` (default), `PascalCase`, or `SnakeCase`
+- `stripI`: (defaults to true) whether or not the I preceding the name of the interface is removed when naming the field.
+- `prefix`: the character prefix used. Defaults to `_`.
+
+Using multiple `DependsOn` allows the user to customize those choices for a specific
+set of dependencies.
+
+Using `DependsOn` in combination with `Inject` can solve most combinations of naming
+requirements. If the options provided in `DependsOn` are not sufficient, `Inject` 
+can be used for that dependency.
+
 ### Development 
 
 Development is currently active, and while there are public NuGet packages,
@@ -223,6 +283,6 @@ As such, it should be expected that breaking API changes may occur.
 
 Feel free to suggest ideas or bugfixes in the issues!
 
-For more examples of the generator in action, clone down the repo and look 
-at the Sample project. 
+For more examples of the generator in action, the Sample project contains 
+an application of the concepts.
 

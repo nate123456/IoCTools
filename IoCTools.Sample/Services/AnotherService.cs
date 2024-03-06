@@ -12,3 +12,7 @@ public partial class AnotherService<T> : IAnotherService
 public interface IAnotherService
 {
 }
+
+public class AnotherService : IAnotherService
+{
+}

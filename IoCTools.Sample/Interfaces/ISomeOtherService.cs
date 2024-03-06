@@ -3,3 +3,7 @@
 public interface ISomeOtherService
 {
 }
+
+internal class SomeOtherService : ISomeOtherService
+{
+}
