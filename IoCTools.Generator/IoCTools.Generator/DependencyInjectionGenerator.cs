@@ -23,21 +23,17 @@ public class DependencyInjectionGenerator : ISourceGenerator
 
         context.AnalyzerConfigOptions.GlobalOptions.TryGetValue("build_property.projectdir", out var projectDir);
 
-        // turn Test.Api into TestApi as a useful name to differentiate between service registration methods
         var extNameSpace = GetLastFolderName(projectDir!).Replace(".", "");
 
-        // Process all syntax trees in the compilation.
         foreach (var syntaxTree in context.Compilation.SyntaxTrees)
         {
             var semanticModel = context.Compilation.GetSemanticModel(syntaxTree);
             var root = syntaxTree.GetRoot();
 
-            // Find all class declarations.
             var classDeclarations = root.DescendantNodes().OfType<ClassDeclarationSyntax>();
 
             foreach (var classDeclaration in classDeclarations)
             {
-                // Check if the class is marked as partial.
                 var isPartial = classDeclaration.Modifiers.Any(mod => mod.IsKind(SyntaxKind.PartialKeyword));
 
                 var hasServiceAttribute = classDeclaration.AttributeLists
@@ -45,82 +41,33 @@ public class DependencyInjectionGenerator : ISourceGenerator
                     .Any(attr =>
                         IsAttributeOfType(attr, semanticModel, "IoCTools.Abstractions.Annotations.ServiceAttribute"));
 
-                var implementsInterface = classDeclaration.BaseList?.Types
-                    .Any(baseType =>
-                        semanticModel.GetSymbolInfo(baseType.Type).Symbol is ITypeSymbol
-                        {
-                            TypeKind: TypeKind.Interface
-                        }) ?? false;
+                var hasUnregisteredServiceAttribute = classDeclaration.AttributeLists
+                    .SelectMany(a => a.Attributes)
+                    .Any(attr =>
+                        IsAttributeOfType(attr, semanticModel,
+                            "IoCTools.Abstractions.Annotations.UnregisteredServiceAttribute"));
 
                 var fieldsToAdd = GetInjectedFieldsToAdd(classDeclaration, semanticModel);
-
-                if (hasServiceAttribute && !implementsInterface)
-                {
-                    var diagnostic = Diagnostic.Create(
-                        new DiagnosticDescriptor(
-                            "DI004",
-                            "Service Attribute Present on Unlikely Class",
-                            "Class '{0}' is marked with the [Service] attribute but does not implement any interfaces",
-                            "DependencyInjection",
-                            DiagnosticSeverity.Warning,
-                            true),
-                        classDeclaration.GetLocation(),
-                        classDeclaration.Identifier.Text);
-
-                    context.ReportDiagnostic(diagnostic);
-                }
-
-                switch (fieldsToAdd.Count)
-                {
-                    case > 0 when !hasServiceAttribute:
-                    {
-                        var diagnostic = Diagnostic.Create(
-                            new DiagnosticDescriptor(
-                                "DI003",
-                                "Missing Service Attribute",
-                                "Class '{0}' uses dependency injection but is not marked with the [Service] attribute",
-                                "DependencyInjection",
-                                DiagnosticSeverity.Warning,
-                                true),
-                            classDeclaration.GetLocation(),
-                            classDeclaration.Identifier.Text);
-
-                        context.ReportDiagnostic(diagnostic);
-                        break;
-                    }
-                    case > 0 when !isPartial:
-                    {
-                        var diagnostic = Diagnostic.Create(
-                            new DiagnosticDescriptor(
-                                "DI001",
-                                "Non-partial class with [Inject]",
-                                "Class '{0}' contains fields with the [Inject] attribute but is not marked as partial",
-                                "DependencyInjection",
-                                DiagnosticSeverity.Error,
-                                true),
-                            classDeclaration.GetLocation(),
-                            classDeclaration.Identifier.Text);
-
-                        context.ReportDiagnostic(diagnostic);
-                        continue;
-                    }
-                }
-
                 var newDeps = GetDependsOnFieldsToAdd(classDeclaration, semanticModel);
 
-                if (!hasServiceAttribute) continue;
-                if (!fieldsToAdd.Any() && !newDeps.Any()) continue;
+                // Generate constructors if there are dependencies to inject
+                if (fieldsToAdd.Any() || newDeps.Any())
+                {
+                    var constructorCode = GenerateConstructorCode(classDeclaration, fieldsToAdd, newDeps);
+                    context.AddSource($"{classDeclaration.Identifier.Text}_DI_ctor.g.cs", constructorCode);
+                }
 
-                var constructorCode = GenerateConstructorCode(classDeclaration, fieldsToAdd, newDeps);
-                context.AddSource($"{classDeclaration.Identifier.Text}_DI_ctor.g.cs", constructorCode);
+                // Skip DI registration for [UnregisteredService] attributes
+                if (hasUnregisteredServiceAttribute || !hasServiceAttribute) continue;
+
+                servicesToRegister.AddRange(GetServicesToRegister(semanticModel, root));
             }
-
-            servicesToRegister.AddRange(GetServicesToRegister(semanticModel, root));
         }
 
         var registrationCode = GenerateRegistrationExtensionMethod(servicesToRegister, extNameSpace);
         context.AddSource("ServiceCollectionExtensions.g.cs", registrationCode);
     }
+
 
     private static List<(ITypeSymbol ServiceType, string FieldName)> GetDependsOnFieldsToAdd(
         MemberDeclarationSyntax classDeclaration, SemanticModel semanticModel)
@@ -297,7 +244,7 @@ public class DependencyInjectionGenerator : ISourceGenerator
             var classSymbol = semanticModel.GetDeclaredSymbol(classDeclaration);
             if (classSymbol == null) continue;
 
-            // Skip unregistered services
+            // Skip unregistered services for DI registration
             if (classSymbol.GetAttributes().Any(attr =>
                     attr.AttributeClass?.ToDisplayString() ==
                     "IoCTools.Abstractions.Annotations.UnregisteredServiceAttribute"))
@@ -319,10 +266,8 @@ public class DependencyInjectionGenerator : ISourceGenerator
                 new ServiceRegistration(classSymbol, interfaceSymbol, lifetime)));
         }
 
-
         return serviceRegistrations;
     }
-
 
     private static string ExtractLifetime(AttributeData serviceAttribute)
     {
