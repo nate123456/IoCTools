@@ -209,21 +209,15 @@ public class DependencyInjectionGenerator : ISourceGenerator
         return "CamelCase"; // Return default if extraction fails
     }
 
-    private static bool ExtractBooleanValue(AttributeArgumentSyntax arg)
-    {
-        if (arg.Expression is LiteralExpressionSyntax literal && literal.Token.Value is bool value)
-            return value;
-        return true; // Default to true if extraction fails
-    }
+    private static bool ExtractBooleanValue(AttributeArgumentSyntax arg) =>
+        arg.Expression is not LiteralExpressionSyntax { Token.Value: bool value } || value;
 
-    private static string ExtractStringValue(AttributeArgumentSyntax arg)
-    {
-        if (arg.Expression is LiteralExpressionSyntax literal && literal.Token.Value is string value)
-            return value.Trim('"');
-        return "_"; // Return default if extraction fails
-    }
+    private static string ExtractStringValue(AttributeArgumentSyntax arg) =>
+        arg.Expression is LiteralExpressionSyntax { Token.Value: string value }
+            ? value.Trim('"')
+            : "_";
 
-// Helper method to extract enum member name
+    // Helper method to extract enum member name
     private static string GetEnumMemberName(AttributeArgumentSyntax arg)
     {
         if (arg.Expression is MemberAccessExpressionSyntax memberAccess)
@@ -301,25 +295,34 @@ public class DependencyInjectionGenerator : ISourceGenerator
         foreach (var classDeclaration in root.DescendantNodes().OfType<ClassDeclarationSyntax>())
         {
             var classSymbol = semanticModel.GetDeclaredSymbol(classDeclaration);
-            if (classSymbol == null || !classSymbol.Interfaces.Any()) continue;
+            if (classSymbol == null) continue;
+
+            // Skip unregistered services
+            if (classSymbol.GetAttributes().Any(attr =>
+                    attr.AttributeClass?.ToDisplayString() ==
+                    "IoCTools.Abstractions.Annotations.UnregisteredServiceAttribute"))
+                continue;
 
             var serviceAttribute = classSymbol.GetAttributes().FirstOrDefault(attr =>
                 attr.AttributeClass?.ToDisplayString() == "IoCTools.Abstractions.Annotations.ServiceAttribute");
 
-            if (serviceAttribute == null || classSymbol.Interfaces.Any() != true) continue;
+            if (serviceAttribute == null) continue;
+
+            // Skip generic implementations with non-generic interfaces
+            if (classSymbol.TypeParameters.Length > 0 &&
+                !classSymbol.Interfaces.Any(i => i.TypeParameters.Length > 0))
+                continue;
 
             var lifetime = ExtractLifetime(serviceAttribute);
-            var shouldRegister = ExtractShouldRegister(serviceAttribute);
 
-            if (!shouldRegister) continue;
-
-            serviceRegistrations.AddRange(
-                classSymbol.Interfaces.Select(interfaceSymbol =>
-                    new ServiceRegistration(classSymbol, interfaceSymbol, lifetime)));
+            serviceRegistrations.AddRange(classSymbol.Interfaces.Select(interfaceSymbol =>
+                new ServiceRegistration(classSymbol, interfaceSymbol, lifetime)));
         }
+
 
         return serviceRegistrations;
     }
+
 
     private static string ExtractLifetime(AttributeData serviceAttribute)
     {
@@ -355,64 +358,57 @@ public class DependencyInjectionGenerator : ISourceGenerator
         return "Scoped";
     }
 
-    private static bool ExtractShouldRegister(AttributeData serviceAttribute)
-    {
-        var shouldRegisterArg =
-            serviceAttribute.NamedArguments.FirstOrDefault(arg => arg.Key == "Register");
-        return shouldRegisterArg.Key == null || (bool)shouldRegisterArg.Value.Value!;
-    }
-
-    private static string GenerateRegistrationExtensionMethod(IEnumerable<ServiceRegistration> services,
+    private static string GenerateRegistrationExtensionMethod(List<ServiceRegistration> services,
         string? extNameSpace)
     {
-        // support for services with generic args is not yet in
-        var finalServices = services.Where(s => s.ClassSymbol.TypeParameters.Length == 0).ToList();
-
         var uniqueNamespaces = new HashSet<string>();
 
-        foreach (var service in finalServices)
+        // Collect namespaces from both interfaces and implementations
+        foreach (var service in services)
         {
             uniqueNamespaces.Add(service.ClassSymbol.ContainingNamespace.ToDisplayString());
-
-            var interfaces = service.ClassSymbol.Interfaces;
-
-            foreach (var ns in interfaces.Select(i => i.ContainingNamespace.ToDisplayString()))
-                uniqueNamespaces.Add(ns);
+            uniqueNamespaces.Add(service.InterfaceSymbol.ContainingNamespace.ToDisplayString());
         }
 
+        // Generate `using` directives
         var usings = new StringBuilder();
         foreach (var ns in uniqueNamespaces) usings.AppendLine($"using {ns};");
 
         var registrations = new StringBuilder();
 
-        foreach (var service in finalServices)
+        // Generate registration code
+        foreach (var service in services)
         {
-            var interfaceType = service.ClassSymbol.Interfaces.FirstOrDefault()?.Name ?? service.ClassSymbol.Name;
-            var classType = service.ClassSymbol.Name;
+            var interfaceType = service.InterfaceSymbol.Name; // Simplified name
+            var classType = service.ClassSymbol.Name; // Simplified name
             var lifetime = service.Lifetime;
 
-            registrations.AppendLine($"         services.Add{lifetime}<{interfaceType}, {classType}>();");
+            if (service.ClassSymbol.TypeParameters.Length > 0)
+                // Open generics
+                registrations.AppendLine(
+                    $"         services.Add{lifetime}(typeof({interfaceType}<>), typeof({classType}<>));");
+            else
+                // Non-generic types
+                registrations.AppendLine(
+                    $"         services.Add{lifetime}<{interfaceType}, {classType}>();");
         }
 
-        var code = $$"""
-                     using Microsoft.Extensions.DependencyInjection;
-                     {{usings.ToString().Trim()}}
+        return $$"""
+                 using Microsoft.Extensions.DependencyInjection;
+                 {{usings.ToString().Trim()}}
 
-                     namespace IoCTools.Extensions;
+                 namespace IoCTools.Extensions;
 
-                     public static class ServiceCollectionExtensions
+                 public static class ServiceCollectionExtensions
+                 {
+                     public static IServiceCollection Add{{extNameSpace}}RegisteredServices(this IServiceCollection services)
                      {
-                         public static IServiceCollection Add{{extNameSpace}}RegisteredServices(this IServiceCollection services)
-                         {
-                              {{registrations.ToString().Trim()}}
-                              return services;
-                         }
+                          {{registrations.ToString().Trim()}}
+                          return services;
                      }
-
-                     """;
-        return code;
+                 }
+                 """;
     }
-
 
     private static List<(ITypeSymbol ServiceType, string FieldName)> GetInjectedFieldsToAdd(
         SyntaxNode classDeclaration, SemanticModel semanticModel)
@@ -456,7 +452,7 @@ public class DependencyInjectionGenerator : ISourceGenerator
 
         var fullClassName = classDeclaration.Identifier.Text;
 
-        // Check if the class is generic
+        // Handle generic classes
         if (classDeclaration.TypeParameterList != null)
         {
             var typeParameters = classDeclaration.TypeParameterList.Parameters
@@ -464,7 +460,18 @@ public class DependencyInjectionGenerator : ISourceGenerator
             fullClassName += $"<{string.Join(", ", typeParameters)}>";
         }
 
-        var depsStrings = newDeps.Select(d =>
+        var existingFieldNames = new HashSet<string>(
+            classDeclaration.DescendantNodes()
+                .OfType<FieldDeclarationSyntax>()
+                .SelectMany(fd => fd.Declaration.Variables)
+                .Select(v => v.Identifier.Text)
+        );
+
+        var filteredFields = allFieldsToAddToCtr
+            .Where(f => !existingFieldNames.Contains(f.FieldName))
+            .ToList();
+
+        var depsStrings = filteredFields.Select(d =>
             $"private readonly {RemoveNamespacesAndDots(d.ServiceType, uniqueNamespaces)} {d.FieldName};");
 
         var depsStr = string.Join("\n    ", depsStrings);
@@ -495,11 +502,22 @@ public class DependencyInjectionGenerator : ISourceGenerator
         return constructorCode;
     }
 
+
     private static string RemoveNamespacesAndDots(ISymbol serviceType, IEnumerable<string> uniqueNamespaces)
     {
-        return uniqueNamespaces
-            .Aggregate(serviceType.ToDisplayString(), (current, ns) => current.Replace(ns, string.Empty))
-            .Replace(".", "");
+        var fullTypeName = serviceType.ToDisplayString();
+
+        foreach (var ns in uniqueNamespaces)
+        {
+            if (!fullTypeName.StartsWith($"{ns}.")) continue;
+            fullTypeName = fullTypeName.Substring(ns.Length + 1);
+            break;
+        }
+
+        if (fullTypeName.StartsWith("I") && serviceType is INamedTypeSymbol { TypeKind: TypeKind.Interface })
+            return fullTypeName;
+
+        return fullTypeName;
     }
 
 
@@ -526,7 +544,7 @@ public class DependencyInjectionGenerator : ISourceGenerator
         // (could be a nested type, for example)
         var potentialNamespaceParent = classDecl.Parent;
 
-        // Keep moving "out" of nested classes etc until we get to a namespace
+        // Keep moving "out" of nested classes etc. until we get to a namespace
         // or until we run out of parents
         while (potentialNamespaceParent != null &&
                potentialNamespaceParent is not NamespaceDeclarationSyntax

@@ -1,32 +1,30 @@
 # IoCTools
 
-This repository provides various useful tools for simplifying and streamlining 
-the process of work with Inversion of Control in .NET; 
-mainly focusing on working with ASP.NET's Services. This project provides
-a source generator which eliminates much of the boilerplate that normally
-comes with working with services in .NET.
+This repository provides various useful tools for simplifying and streamlining the process of working with Inversion of
+Control (IoC) in .NET, focusing on ASP.NET services. This project includes a source generator that eliminates much of
+the boilerplate associated with service registration and dependency injection in .NET.
 
 [![IoC Tools](https://img.shields.io/nuget/v/IoCTools.Abstractions?label=IoCTools.Abstractions)](https://www.nuget.org/packages/IoCTools.Abstractions)
 [![IoC Abstractions](https://img.shields.io/nuget/v/IoCTools.Generator?label=IoCTools.Generator)](https://www.nuget.org/packages/IoCTools.Generator)
 
+---
+
 ## Features
 
-Although the project is in alpha and under active development,
-some features are already working. 
+While this project is in alpha and under active development, many features are already functional.
 
-### Self Describing Services
+---
 
-When it comes to service API design, it is often written with a
-specific service lifetime in mind. For example, services that persist values
-during the app session are aware implicitly by their design that they
-only support a singleton service lifetime.
+### Self-Describing Services
 
-It therefore makes the most sense to let the service define what lifetime
-it expects to be given. Given the following example service that must operate
-as a singleton, the before code demonstrates how registering the service
-without IoC Tools would go: 
+Services often have specific lifetimes in mind. For example, singleton services persist values during the app session.
+IoCTools lets the service itself define its lifetime, removing the need for explicit registration in `Program.cs`.
 
-``` c#
+#### Example:
+
+**Before (without IoCTools):**
+
+```csharp
 // in the service class
 namespace SampleProject.Services;
 
@@ -36,15 +34,12 @@ public class SomeService : ISomeService
 }
 
 // in Program.cs
-builder.Services.RegisterSingleton<ISomeService, SomeService>();
+builder.Services.AddSingleton<ISomeService, SomeService>();
 ```
 
-This example is not ideal as the service does not get to choose its lifetime,
-which is its concern as it is designed with one particular service in mind.
+**After (with IoCTools):**
 
-With IoC.Tools, you may refactor the above service as follows:
-
-```c#
+```csharp
 // in the service class
 namespace SampleProject.Services;
 
@@ -58,71 +53,37 @@ public partial class SomeService : ISomeService
 builder.Services.RegisterSampleProjectServices();
 ```
 
-This eliminates the need for the setup code in program.cs to have any 
-understanding of the designed lifetime of the service, and lets the service
-own its own design explicitly. 
+The service now defines its own lifetime, and registration is streamlined with a single method.
+
+---
 
 ### Intuitive Dependency Injection
 
-In the case where your service depends on other services, the following code
-is normally required to bring in those dependencies.
+Dependency injection no longer needs verbose constructors or repetitive field assignments.
 
-In the following code, we see the (recently improved with primary constructor)
-syntax required to bring in a non trivial amount of dependencies. 
+#### Example:
 
-```c#
-// in the service class
+**Before (traditional DI):**
+
+```csharp
 namespace SampleProject.Services;
 
 public class SomeService(IOtherService otherService, IAnotherService anotherService, 
     IYetAnotherService yetAnotherService, ISomehowAnotherService somehowAnotherService) 
     : ISomeService
 {
+    private readonly IOtherService _otherService = otherService;
+    private readonly IAnotherService _anotherService = anotherService;
+    private readonly IYetAnotherService _yetAnotherService = yetAnotherService;
+    private readonly ISomehowAnotherService _somehowAnotherService = somehowAnotherService;
+
     private readonly int _someValue = 1;
-    
-    public void Test()
-    {
-        // use services 
-    }
 }
 ```
 
-Let's not forget the 'olden days' where it was even worse: 
+**After (with IoCTools):**
 
-```c#
-// in the service class
-namespace SampleProject.Services;
-
-public class SomeService : ISomeService
-{
-    private readonly IOtherService _otherService;
-    private readonly IAnotherService _anotherService;
-    private readonly IYetAnotherService _yetAnotherService;
-    private readonly ISomehowAnotherService _somehowAnotherService);
-        
-    public SomeService(IOtherService otherService, IAnotherService anotherService, 
-    IYetAnotherService yetAnotherService, ISomehowAnotherService somehowAnotherService)
-    {
-        _otherService = otherService;
-        _anotherService = anotherService;
-        _yetAnotherService = yetAnotherService;
-        _somehowAnotherService = somehowAnotherService;
-    }
-    private readonly int _someValue = 1;
-    
-    public void Test()
-    {
-        // use services 
-    }
-}
-```
-
-That always seemed like an egregious amount of boilerplate. 
-
-With IoC Tools, you may refactor the above code to the following: 
-
-```c#
-// in the service class
+```csharp
 namespace SampleProject.Services;
 
 [Service]
@@ -131,98 +92,86 @@ public partial class SomeService : ISomeService
     [Inject] private readonly IOtherService _otherService;
     [Inject] private readonly IAnotherService _anotherService;
     [Inject] private readonly IYetAnotherService _yetAnotherService;
-    [Inject] private readonly ISomehowAnotherService _somehowAnotherService);
+    [Inject] private readonly ISomehowAnotherService _somehowAnotherService;
 
     private readonly int _someValue = 1;
-    
-    public void Test()
-    {
-        // use services 
-    }
 }
 ```
 
-A source generator creates the appropriate constructor behind the scenes,
-saving the developer from having to experience bloated constructors.
+IoCTools generates the constructor, simplifying DI management. It supports dependencies of any generic depth, such as
+`IEnumerable<T>`.
 
-This is still explicit enough that you can can clearly see even from a git diff
-that dependencies are coming in, but doesn't feel repetitive, and still allows 
-the user to customize the names of their dependency field as well.
-
-Although this project is still in development, IoC Tools already has support
-for injection of dependencies that have any generic depth. 
-
-```c#
-// in the service class
-namespace SampleProject.Services;
-
-[Service]
-public partial class SomeService : ISomeService
-{
-    [Inject] private readonly IEnumerable<IOtherService> _otherServices;
-
-    private readonly int _someValue = 1;
-    
-    public void Test()
-    {
-        // use services 
-    }
-}
-```
-
-This code would work just as well. 
+---
 
 ### Streamlined Service Registration
 
-Another major boilerplate concern is the need to individually register each
-service in the setup code, or in a separate file. 
+IoCTools eliminates repetitive service registration by generating an extension method to register all `[Service]`
+-annotated classes automatically.
 
-It doesn't feel like good code- it is bloated and repetitive.
+**Before:**
 
-With IoC Tools, any class decorated with `[Service]` will automatically be
-added a new extension method on `IServiceCollection` that enables the user
-to simply decorate their services once (which you'd want to do anyway for
-resolving dependencies) and have a single method call in the setup code which
-adds all the services from the project. 
+```csharp
+builder.Services.AddSingleton<ISomeService, SomeService>();
+builder.Services.AddScoped<IAnotherService, AnotherService>();
+builder.Services.AddTransient<IOtherService, OtherService>();
+```
 
-The method is named after the project folder name due to a potential clash
-that would arise from having one project using IoC Tools being referenced by
-another project which also uses IoC Tools. 
+**After:**
 
-The project folder name was chosen as source generators have
-limitations on determining the root namespace or actual project name.
-
-Given a project in a folder called `SampleProject`, the following would be 
-doable in Program.cs:
-
-```c#
-// in the service class
-// in Program.cs
+```csharp
 builder.Services.RegisterSampleProjectServices();
 ```
 
-As services are added or removed during development, IoC tools will 
-automatically generate the appropriate changes in its extension method.
+This method is project-specific, avoiding naming conflicts when multiple projects use IoCTools.
 
-This is also how services can indicate their desired lifetime- using
-[Service(Lifetime.Singleton)] or [Service(Lifetime.Transient)] or
-[Service(Lifetime.Scoped)]. IoC Tools will automatically use the correct 
-registration method.
+---
 
-Registration of generic services is not supported as this time. 
-This is due to the fact that there is no way to infer which generic type 
-should be supplied for the generic argument(s) without a new way 
-to specify them manually.
+### Generic Service Support
 
-### DependsOn
+IoCTools fully supports the registration of generic services.
 
-With the `Inject` approach, having to make private readonly fields are still verbose. 
-This is why `DependsOn` was added. For those who are ok with default naming
-conventions (with some customization), a more concise approach can be used.
-Using `DependsOn` is more concise and still linguistically meaningful.
+#### Example:
 
-```c#
-// in the service class
+```csharp
+namespace SampleProject.Services;
+
+[Service]
+public class GenericService<T> : IGenericService<T>
+{
+}
+```
+
+**Generated Code:**
+
+```csharp
+services.AddScoped(typeof(IGenericService<>), typeof(GenericService<>));
+```
+
+---
+
+### Excluding Services from Registration
+
+For cases where a service shouldn’t be registered (e.g., controllers or handlers), use `[UnregisteredService]` to
+exclude it explicitly.
+
+```csharp
+namespace SampleProject.Controllers;
+
+[UnregisteredService]
+public class MyController : ControllerBase
+{
+}
+```
+
+---
+
+### `DependsOn`: Declarative Dependency Injection
+
+`DependsOn` offers a concise way to define dependencies with default naming conventions.
+
+#### Example:
+
+```csharp
 namespace SampleProject.Services;
 
 [Service]
@@ -230,59 +179,34 @@ namespace SampleProject.Services;
 public partial class SomeService : ISomeService
 {
     private readonly int _someValue = 1;
-    
-    public void Test()
-    {
-        // use services 
-    }
 }
 ```
 
-This code produces the same result as the previous snippet using `Inject`.
+IoCTools generates fields for these dependencies, allowing the service to use them directly.
 
-The generator also supports multiple usages of `DependsOn` on the same service. 
-The following code is equivalent.
+You can customize field naming with the following options:
 
-```c#
-// in the service class
-namespace SampleProject.Services;
+- **`namingConvention`**: Use `CamelCase` (default), `PascalCase`, or `SnakeCase`.
+- **`stripI`**: Removes the leading `I` in interface names (default: `true`).
+- **`prefix`**: Adds a prefix to field names (default: `_`).
 
-[Service]
-[DependsOn<IOtherService, IAnotherService>]
+#### Example with Customization:
+
+```csharp
+[DependsOn<IOtherService, IAnotherService>(namingConvention: NamingConvention.PascalCase, prefix: "field_")]
 [DependsOn<IYetAnotherService, ISomehowAnotherService>]
 public partial class SomeService : ISomeService
 {
-    private readonly int _someValue = 1;
-    
-    public void Test()
-    {
-        // use services 
-    }
 }
 ```
 
-Each use of DependsOn also allows the user to configure the following options: 
+---
 
-- `namingConvention`- choose `CamelCase` (default), `PascalCase`, or `SnakeCase`
-- `stripI`: (defaults to true) whether or not the I preceding the name of the interface is removed when naming the field.
-- `prefix`: the character prefix used. Defaults to `_`.
+### Development Status
 
-Using multiple `DependsOn` allows the user to customize those choices for a specific
-set of dependencies.
+IoCTools is in active development, with public pre-release NuGet packages available. Expect breaking changes as the
+project evolves.
 
-Using `DependsOn` in combination with `Inject` can solve most combinations of naming
-requirements. If the options provided in `DependsOn` are not sufficient, `Inject` 
-can be used for that dependency.
+Feel free to contribute or report issues!
 
-### Development 
-
-Development is currently active, and while there are public NuGet packages,
-they are marked with pre v1 versioning to indicate their instability.
-
-As such, it should be expected that breaking API changes may occur.
-
-Feel free to suggest ideas or bugfixes in the issues!
-
-For more examples of the generator in action, the Sample project contains 
-an application of the concepts.
-
+---

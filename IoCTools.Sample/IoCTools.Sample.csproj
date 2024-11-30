@@ -1,18 +1,20 @@
 <Project Sdk="Microsoft.NET.Sdk.Worker">
 
     <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
+        <TargetFramework>net9.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <UserSecretsId>dotnet-IoCTools.Sample23-9C46F370-098A-49FE-B264-6E7434A9C3AD</UserSecretsId>
+        <LangVersion>default</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0"/>
+        <PackageReference Include="Mediator.Abstractions" Version="2.1.7"/>
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0"/>
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\IoCTools.Abstractions\IoCTools.Abstractions.csproj" />
-      <ProjectReference Include="..\IoCTools.Generator\IoCTools.Generator\IoCTools.Generator.csproj" OutputItemType="Analyzer" />
+        <ProjectReference Include="..\IoCTools.Abstractions\IoCTools.Abstractions.csproj"/>
+        <ProjectReference Include="..\IoCTools.Generator\IoCTools.Generator\IoCTools.Generator.csproj" OutputItemType="Analyzer"/>
     </ItemGroup>
 </Project>
