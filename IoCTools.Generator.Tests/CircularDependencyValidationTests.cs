@@ -1,0 +1,235 @@
+using Microsoft.CodeAnalysis;
+
+namespace IoCTools.Generator.Tests;
+
+/// <summary>
+///     Focused tests for validating circular dependency detection functionality.
+///     Each test is isolated to ensure build stability.
+/// </summary>
+public class CircularDependencyValidationTests
+{
+    [Fact]
+    public void BasicCircularDependency_DetectsIOC003()
+    {
+        // Arrange
+        var source = @"
+using IoCTools.Abstractions.Annotations;
+
+namespace Test;
+public interface IA { }
+public interface IB { }
+
+[Service]
+public partial class A : IA
+{
+    [Inject] private readonly IB _b;
+}
+
+[Service]
+public partial class B : IB
+{
+    [Inject] private readonly IA _a;
+}";
+
+        // Act
+        var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+
+        // Assert
+        var ioc003Diagnostics = result.GetDiagnosticsByCode("IOC003");
+        Assert.NotEmpty(ioc003Diagnostics);
+        Assert.All(ioc003Diagnostics, d => Assert.Equal(DiagnosticSeverity.Warning, d.Severity));
+    }
+
+    [Fact]
+    public void SelfReference_DetectsIOC003()
+    {
+        // Arrange
+        var source = @"
+using IoCTools.Abstractions.Annotations;
+
+namespace Test;
+public interface ISelf { }
+
+[Service]
+public partial class Self : ISelf
+{
+    [Inject] private readonly ISelf _self;
+}";
+
+        // Act
+        var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+
+        // Assert
+        var ioc003Diagnostics = result.GetDiagnosticsByCode("IOC003");
+        Assert.NotEmpty(ioc003Diagnostics);
+        Assert.All(ioc003Diagnostics, d => Assert.Equal(DiagnosticSeverity.Warning, d.Severity));
+    }
+
+    [Fact]
+    public void LinearDependency_NoCircularError()
+    {
+        // Arrange
+        var source = @"
+using IoCTools.Abstractions.Annotations;
+
+namespace Test;
+public interface IA { }
+public interface IB { }
+public interface IC { }
+
+[Service]
+public partial class A : IA
+{
+    [Inject] private readonly IB _b;
+}
+
+[Service]
+public partial class B : IB
+{
+    [Inject] private readonly IC _c;
+}
+
+[Service]
+public partial class C : IC { }";
+
+        // Act
+        var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+
+        // Assert
+        var ioc003Diagnostics = result.GetDiagnosticsByCode("IOC003");
+        Assert.Empty(ioc003Diagnostics);
+        Assert.False(result.HasErrors);
+    }
+
+    [Fact]
+    public void IEnumerable_DoesNotCreateCircularDependency()
+    {
+        // Arrange
+        var source = @"
+using IoCTools.Abstractions.Annotations;
+using System.Collections.Generic;
+
+namespace Test;
+public interface IService { }
+public interface IHandler { }
+
+[Service]
+public partial class Service : IService
+{
+    [Inject] private readonly IEnumerable<IHandler> _handlers;
+}
+
+[Service]
+public partial class Handler : IHandler
+{
+    [Inject] private readonly IService _service;
+}";
+
+        // Act
+        var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+
+        // Assert
+        var ioc003Diagnostics = result.GetDiagnosticsByCode("IOC003");
+        Assert.Empty(ioc003Diagnostics);
+        Assert.False(result.HasErrors);
+    }
+
+    [Fact]
+    public void DependsOnAttribute_CircularDependency_DetectsIOC003()
+    {
+        // Arrange
+        var source = @"
+using IoCTools.Abstractions.Annotations;
+
+namespace Test;
+public interface IX { }
+public interface IY { }
+
+[Service]
+[DependsOn<IY>]
+public partial class X : IX { }
+
+[Service]
+[DependsOn<IX>]
+public partial class Y : IY { }";
+
+        // Act
+        var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+
+        // Assert
+        var ioc003Diagnostics = result.GetDiagnosticsByCode("IOC003");
+        Assert.NotEmpty(ioc003Diagnostics);
+        Assert.All(ioc003Diagnostics, d => Assert.Equal(DiagnosticSeverity.Warning, d.Severity));
+    }
+
+    [Fact]
+    public void ExternalService_SkipsCircularCheck()
+    {
+        // Arrange
+        var source = @"
+using IoCTools.Abstractions.Annotations;
+
+namespace Test;
+public interface IA { }
+public interface IB { }
+
+[Service]
+public partial class A : IA
+{
+    [Inject] private readonly IB _b;
+}
+
+[Service]
+[ExternalService]
+public partial class B : IB
+{
+    [Inject] private readonly IA _a;
+}";
+
+        // Act
+        var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+
+        // Assert
+        var ioc003Diagnostics = result.GetDiagnosticsByCode("IOC003");
+        Assert.Empty(ioc003Diagnostics);
+    }
+
+    [Fact]
+    public void ThreeServiceCycle_DetectsIOC003()
+    {
+        // Arrange
+        var source = @"
+using IoCTools.Abstractions.Annotations;
+
+namespace Test;
+public interface IA { }
+public interface IB { }
+public interface IC { }
+
+[Service]
+public partial class A : IA
+{
+    [Inject] private readonly IB _b;
+}
+
+[Service]
+public partial class B : IB
+{
+    [Inject] private readonly IC _c;
+}
+
+[Service]
+public partial class C : IC
+{
+    [Inject] private readonly IA _a;
+}";
+
+        // Act
+        var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+
+        // Assert
+        var ioc003Diagnostics = result.GetDiagnosticsByCode("IOC003");
+        Assert.NotEmpty(ioc003Diagnostics);
+        Assert.All(ioc003Diagnostics, d => Assert.Equal(DiagnosticSeverity.Warning, d.Severity));
+    }
+}

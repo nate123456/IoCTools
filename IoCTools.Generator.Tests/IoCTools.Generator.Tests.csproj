@@ -1,0 +1,59 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>11.0</LangVersion>
+        <IsPackable>false</IsPackable>
+        <SuppressTfmSupportBuildErrors>true</SuppressTfmSupportBuildErrors>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="coverlet.collector" Version="6.0.4"/>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="4.5.0"/>
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="6.0.0"/>
+        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="6.0.0"/>
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0"/>
+        <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="6.0.0"/>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0"/>
+        <PackageReference Include="xunit" Version="2.9.3"/>
+        <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2"/>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.5.0"/>
+        <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="6.0.0"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0"/>
+        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="6.0.0"/>
+        <PackageReference Include="System.Collections.Immutable" Version="6.0.0"/>
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.4"/>
+        <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="6.0.0"/>
+        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="6.0.0"/>
+        <PackageReference Include="Microsoft.Extensions.Options" Version="6.0.0"/>
+        <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="6.0.2"/>
+        <PackageReference Include="Xunit.SkippableFact" Version="1.5.23"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Using Include="Xunit"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- Only reference the generator normally so we can instantiate it in tests -->
+        <!-- Do NOT reference as analyzer to avoid conflicts during test compilation -->
+        <ProjectReference Include="..\IoCTools.Generator\IoCTools.Generator\IoCTools.Generator.csproj"/>
+        <ProjectReference Include="..\IoCTools.Abstractions\IoCTools.Abstractions.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Remove="TestResults\**"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <EmbeddedResource Remove="TestResults\**"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Remove="TestResults\**"/>
+    </ItemGroup>
+
+</Project>

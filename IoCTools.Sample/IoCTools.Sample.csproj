@@ -1,20 +1,73 @@
-<Project Sdk="Microsoft.NET.Sdk.Worker">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net9.0</TargetFramework>
+        <TargetFramework>net6.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
+        <OutputType>Exe</OutputType>
         <UserSecretsId>dotnet-IoCTools.Sample23-9C46F370-098A-49FE-B264-6E7434A9C3AD</UserSecretsId>
         <LangVersion>default</LangVersion>
+        
+        <!-- IoCTools MSBuild Diagnostic Configuration Examples -->
+        <!-- These properties configure the severity of IoCTools source generator diagnostics -->
+        
+        <!-- Configure severity for missing implementations (default: Warning) -->
+        <IoCToolsNoImplementationSeverity>Warning</IoCToolsNoImplementationSeverity>
+        
+        <!-- Configure severity for unregistered implementations (default: Warning) -->
+        <IoCToolsUnregisteredSeverity>Info</IoCToolsUnregisteredSeverity>
+        
+        <!-- Configure lifetime validation severity (default: Warning) -->
+        <IoCToolsLifetimeValidationSeverity>Warning</IoCToolsLifetimeValidationSeverity>
+        
+        <!-- Configure educational diagnostic example severities to Warning for non-blocking builds -->
+        <IoCToolsConditionalServiceValidationSeverity>Warning</IoCToolsConditionalServiceValidationSeverity>
+        <IoCToolsPartialClassValidationSeverity>Warning</IoCToolsPartialClassValidationSeverity>
+        <IoCToolsBackgroundServiceValidationSeverity>Warning</IoCToolsBackgroundServiceValidationSeverity>
+        <IoCToolsInheritanceChainValidationSeverity>Warning</IoCToolsInheritanceChainValidationSeverity>
+        
+        <!-- Disable all dependency validation diagnostics (default: false) -->
+        <!-- <IoCToolsDisableDiagnostics>true</IoCToolsDisableDiagnostics> -->
+        
+        <!-- Available severity options: Error, Warning, Info, Hidden -->
+        <!-- To see diagnostic examples in action, build the project and check build output -->
+        
+        <!-- Enable generated file output for debugging (commented by default) -->
+        <!-- Uncomment these to view generated files in the 'generated' folder during development -->
+        <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+        <CompilerGeneratedFilesOutputPath>generated</CompilerGeneratedFilesOutputPath>
     </PropertyGroup>
 
     <ItemGroup>
+        <!-- Core package references for sample functionality -->
         <PackageReference Include="Mediator.Abstractions" Version="2.1.7"/>
-        <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0"/>
+        
+        <!-- Microsoft.Extensions packages for background services, configuration, and options -->
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="6.0.1"/>
+        <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="6.0.2"/>
+        <PackageReference Include="Microsoft.Extensions.Http" Version="6.0.1"/>
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="6.0.1"/>
+        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="6.0.0"/>
+        <PackageReference Include="Microsoft.Extensions.Options" Version="6.0.1"/>
+        <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="6.0.0"/>
+        <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" Version="6.0.0"/>
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\IoCTools.Abstractions\IoCTools.Abstractions.csproj"/>
         <ProjectReference Include="..\IoCTools.Generator\IoCTools.Generator\IoCTools.Generator.csproj" OutputItemType="Analyzer"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Remove="generated\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <EmbeddedResource Remove="generated\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="generated\**" />
+      <None Remove="build.log" />
     </ItemGroup>
 </Project>

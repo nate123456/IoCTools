@@ -6,3 +6,19 @@ riderModule.iml
 .DS_Store
 
 .idea/.idea.IoCTools/.idea/
+
+IoCTools.Sample/generated/IoCTools.Generator/IoCTools.Generator.DependencyInjectionGenerator/
+
+IoCTools.Sample/generated_debug/
+
+IoCTools.Generator.Tests/TestResults/
+
+TestResults/
+
+IoCTools.Sample/generated_output/
+
+IoCTools.Generator.Tests/TestResults/
+
+generated/
+
+IoCTools.Sample/temp_generated/
