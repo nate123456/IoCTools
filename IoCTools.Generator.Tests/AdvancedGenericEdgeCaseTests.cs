@@ -1,6 +1,6 @@
-using Microsoft.CodeAnalysis;
-
 namespace IoCTools.Generator.Tests;
+
+using Microsoft.CodeAnalysis;
 
 /// <summary>
 ///     ADVANCED GENERIC EDGE CASE TESTS
@@ -41,8 +41,6 @@ public interface IContravariant<in T> { void Set(T value); }
 
 // Invariant interface
 public interface IInvariant<T> { T Get(); void Set(T value); }
-
-[Service]
 public partial class VarianceService
 {
     [Inject] private readonly ICovariant<string> _covariant;
@@ -93,8 +91,6 @@ public interface INotNullProcessor<T> where T : notnull { }
 
 // Multiple type parameter constraints with interdependencies
 public interface IChainedProcessor<T, U> where T : U where U : class { }
-
-[Service]
 public partial class AdvancedConstraintService<T, U, V>
     where T : struct, IComparable<T>
     where U : class, IEntity, IValidatable, new()
@@ -136,6 +132,7 @@ public partial class AdvancedConstraintService<T, U, V>
         // Arrange - Test generic service registration (actual current behavior)
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using System.Collections.Generic;
 
 namespace Test;
@@ -147,7 +144,8 @@ public interface IRepository<T> where T : class
 }
 
 // Generic service - current implementation registers as class-only
-[Service]
+[Scoped]
+[RegisterAsAll]
 public partial class Repository<T> : IRepository<T> where T : class
 {
     [Inject] private readonly IComparer<T> _comparer;
@@ -157,7 +155,7 @@ public partial class Repository<T> : IRepository<T> where T : class
 }
 
 // Mixed generic dependencies
-[Service]
+[Scoped]
 public partial class MixedGenericService<T> where T : class
 {
     [Inject] private readonly IRepository<T> _openGeneric;
@@ -175,9 +173,12 @@ public partial class MixedGenericService<T> where T : class
         Assert.NotNull(registrationSource);
 
         // Verify actual generator behavior - registers open generics with typeof and FQN
-        Assert.Contains("services.AddScoped(typeof(global::Test.Repository<>), typeof(global::Test.Repository<>));", registrationSource.Content);
-        Assert.Contains("services.AddScoped(typeof(global::Test.IRepository<>), typeof(global::Test.Repository<>));", registrationSource.Content);
-        Assert.Contains("services.AddScoped(typeof(global::Test.MixedGenericService<>), typeof(global::Test.MixedGenericService<>));", registrationSource.Content);
+        Assert.Contains("services.AddScoped(typeof(global::Test.Repository<>));", registrationSource.Content);
+        Assert.Contains("services.AddScoped(typeof(global::Test.IRepository<>), typeof(global::Test.Repository<>));",
+            registrationSource.Content);
+        Assert.Contains(
+            "services.AddScoped(typeof(global::Test.MixedGenericService<>), typeof(global::Test.MixedGenericService<>));",
+            registrationSource.Content);
     }
 
     [Fact]
@@ -194,8 +195,6 @@ namespace Test;
 public interface IEntity { }
 public interface IValidatable { }
 public interface IRepository<T> where T : IEntity { }
-
-[Service]
 public partial class MultiConstraintService<T, V> 
     where T : class, IEntity, IValidatable, new()
     where V : IEnumerable<T>
@@ -231,8 +230,6 @@ using System;
 namespace Test;
 
 public delegate bool CustomPredicate<T>(T item);
-
-[Service]
 public partial class DelegateService
 {
     [Inject] private readonly Func<string, int> _stringToInt;
@@ -274,8 +271,6 @@ using IoCTools.Abstractions.Annotations;
 using System;
 
 namespace Test;
-
-[Service]
 public partial class TupleService
 {
     [Inject] private readonly Tuple<string, int> _simpleTuple;
@@ -316,8 +311,6 @@ public class AppSettings
 }
 
 public interface IEmailService { }
-
-[Service]
 public partial class FrameworkIntegrationService<T> where T : class
 {
     [Inject] private readonly ILogger<FrameworkIntegrationService<T>> _logger;
@@ -358,8 +351,6 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 
 namespace Test;
-
-[Service]
 public partial class AsyncDelegateService
 {
     [Inject] private readonly Func<string, Task<int>> _asyncFunc;
@@ -408,8 +399,6 @@ public interface IContravariant<in T> where T : class { void Set(T value); }
 
 // Variance in nested generics
 public interface IProcessor<T> { }
-
-[Service]
 public partial class VarianceNestedService
 {
     [Inject] private readonly IProcessor<ICovariant<string>> _covariantNested;
@@ -450,19 +439,19 @@ namespace Test;
 
 public interface ICache<T> { }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class SingletonCache<T> : ICache<T>
 {
     [Inject] private readonly IComparer<T> _comparer;
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class ScopedCache<T> : ICache<T>
 {
     [Inject] private readonly IEqualityComparer<T> _equalityComparer;
 }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class TransientProcessor<T>
 {
     [Inject] private readonly ICache<T> _cache;
@@ -482,7 +471,7 @@ public partial class TransientProcessor<T>
         Assert.Contains("AddSingleton", registrationSource.Content);
         Assert.Contains("AddScoped", registrationSource.Content);
         Assert.Contains("AddTransient", registrationSource.Content);
-        
+
         // Verify generic type references are present
         Assert.Contains("SingletonCache<", registrationSource.Content);
         Assert.Contains("ScopedCache<", registrationSource.Content);
@@ -502,7 +491,7 @@ using System.Threading.Tasks;
 namespace Test;
 
 // Extremely deep nesting (10+ levels)
-[Service]
+
 public partial class DeepNestingService
 {
     [Inject] private readonly Dictionary<string, List<Tuple<int, Dictionary<Guid, List<KeyValuePair<string, Tuple<bool, Dictionary<int, List<string>>>>>>>>> _deepNesting;
@@ -510,8 +499,6 @@ public partial class DeepNestingService
 
 // Very wide generic parameter list
 public interface IWideGeneric<T1, T2, T3, T4, T5, T6, T7, T8> { }
-
-[Service]
 public partial class WideGenericService<T1, T2, T3, T4, T5, T6, T7, T8>
     where T1 : class where T2 : struct where T3 : IComparable<T3>
     where T4 : class, new() where T5 : struct, IComparable<T5>
@@ -523,7 +510,7 @@ public partial class WideGenericService<T1, T2, T3, T4, T5, T6, T7, T8>
 }
 
 // Extremely long generic type names
-[Service]
+
 public partial class VeryLongGenericTypeNamesServiceWithManyCharactersInTheNameToTestPerformanceLimits<TVeryLongGenericParameterNameThatIsVeryVeryLongIndeed>
     where TVeryLongGenericParameterNameThatIsVeryVeryLongIndeed : class
 {
@@ -562,8 +549,6 @@ using System;
 namespace Test;
 
 public interface IValueProcessor<T> where T : struct { }
-
-[Service]
 public partial class ValueTypeService<T> where T : struct
 {
     [Inject] private readonly IValueProcessor<T> _processor;
@@ -596,8 +581,6 @@ namespace Test;
 
 public interface INode<T> where T : INode<T> { }
 public interface ITree<T> { IEnumerable<T> Children { get; } }
-
-[Service]
 public partial class RecursiveService<T> where T : INode<T>
 {
     [Inject] private readonly INode<T> _node;
@@ -625,26 +608,24 @@ public partial class RecursiveService<T> where T : INode<T>
         // Arrange - Nested generic inheritance with type substitution
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using System.Collections.Generic;
 
 namespace Test;
 
 public interface IProcessor<T> { }
 
-[UnregisteredService]
 public abstract partial class BaseProcessor<T, U>
 {
     [Inject] private readonly IProcessor<T> _primaryProcessor;
     [Inject] private readonly IEnumerable<IProcessor<U>> _secondaryProcessors;
 }
 
-[UnregisteredService]
 public abstract partial class MiddleProcessor<T> : BaseProcessor<T, string>
 {
     [Inject] private readonly IProcessor<IEnumerable<T>> _collectionProcessor;
 }
-
-[Service]
+[Scoped]
 public partial class ConcreteProcessor : MiddleProcessor<int>
 {
     [Inject] private readonly IProcessor<bool> _boolProcessor;
@@ -678,8 +659,6 @@ using IoCTools.Abstractions.Annotations;
 using System;
 
 namespace Test;
-
-[Service]
 public partial class ArrayMemoryService
 {
     [Inject] private readonly string[] _stringArray;
@@ -722,7 +701,7 @@ public interface IMalformed1<T { }
 public interface IMalformed2<123Invalid> { }
 
 // Missing closing bracket
-[Service]
+
 public partial class MalformedService
 {
     [Inject] private readonly Dictionary<string, int _malformedField;
@@ -762,8 +741,6 @@ public interface IFunctionPointerProcessor
 {
     unsafe delegate*<int, void> FunctionPointer { get; }
 }
-
-[Service]
 public partial class UnsupportedService
 {
     // These should potentially cause issues or be rejected
@@ -791,6 +768,7 @@ public partial class UnsupportedService
         // Arrange - Test complex inheritance with type parameter conflicts
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using System.Collections.Generic;
 
 namespace Test;
@@ -800,7 +778,8 @@ public interface IValidator<T> { }
 public interface IConverter<TIn, TOut> { }
 
 // Generic service implementing multiple generic interfaces with conflicting parameters
-[Service]
+[Scoped]
+[RegisterAsAll]
 public partial class ComplexGenericService<T, U> : IProcessor<T>, IValidator<U>, IConverter<T, U>
     where T : class
     where U : struct
@@ -814,8 +793,7 @@ public partial class ComplexGenericService<T, U> : IProcessor<T>, IValidator<U>,
 // Test complex but valid generic references
 public interface ICircular1<T> where T : class { }
 public interface ICircular2<T> { }
-
-[Service]
+[Scoped]
 public partial class CircularReferenceService
 {
     [Inject] private readonly ICircular1<string> _circular;
@@ -847,6 +825,7 @@ public partial class CircularReferenceService
         // Arrange - Comprehensive test that verifies generated code actually compiles and works
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
@@ -856,21 +835,21 @@ namespace Test;
 
 public interface IRepository<T> where T : class { }
 public interface IService<T> { }
-
-[Service]
+[Scoped]
+[RegisterAsAll]
 public partial class Repository<T> : IRepository<T> where T : class
 {
     [Inject] private readonly ILogger<Repository<T>> _logger;
 }
-
-[Service]
+[Scoped]
+[RegisterAsAll]
 public partial class BusinessService<T> : IService<T> where T : class
 {
     [Inject] private readonly IRepository<T> _repository;
     [Inject] private readonly IEnumerable<IService<string>> _stringServices;
 }
-
-[Service]
+[Scoped]
+[RegisterAsAll]
 public partial class ConcreteService : IService<string>
 {
     [Inject] private readonly IRepository<string> _stringRepository;
@@ -919,8 +898,6 @@ namespace Test;
 public delegate void RefAction<T>(ref T value);
 public delegate void OutAction<T>(out T value);
 public delegate void InAction<in T>(in T value);
-
-[Service]
 public partial class RefOutInService
 {
     [Inject] private readonly RefAction<int> _refAction;
@@ -968,8 +945,7 @@ public interface IGenericService<T>
 {
     void Process(T item);
 }
-
-[Service]
+[Scoped]
 public partial class ConcreteGenericService : IGenericService<string>
 {
     public void Process(string item) { }
@@ -986,8 +962,12 @@ public partial class ConcreteGenericService : IGenericService<string>
         Assert.NotNull(registrationSource);
 
         // Verify closed generic registration uses FQN format
-        Assert.Contains("services.AddScoped<global::Test.IGenericService<string>, global::Test.ConcreteGenericService>();", registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.ConcreteGenericService, global::Test.ConcreteGenericService>();", registrationSource.Content);
+        Assert.Contains(
+            "services.AddScoped<global::Test.IGenericService<string>, global::Test.ConcreteGenericService>();",
+            registrationSource.Content);
+        Assert.Contains(
+            "services.AddScoped<global::Test.ConcreteGenericService, global::Test.ConcreteGenericService>();",
+            registrationSource.Content);
 
         // Ensure no open generic registration for closed generic service
         Assert.DoesNotContain("AddScoped(typeof(IGenericService<>), typeof(ConcreteGenericService))",
@@ -1005,8 +985,6 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Test;
-
-[Service]
 public partial class InsaneNestingService
 {
     [Inject] private readonly Dictionary<string, List<Func<int, Task<IEnumerable<KeyValuePair<Guid, string>>>>>> _insaneNesting;

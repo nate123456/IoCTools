@@ -1,6 +1,6 @@
-using Microsoft.CodeAnalysis;
-
 namespace IoCTools.Generator.Models;
+
+using Microsoft.CodeAnalysis;
 
 /// <summary>
 ///     Represents configuration options registration information

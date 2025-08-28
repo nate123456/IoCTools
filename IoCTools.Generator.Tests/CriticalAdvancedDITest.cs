@@ -1,6 +1,6 @@
-using Microsoft.CodeAnalysis;
-
 namespace IoCTools.Generator.Tests;
+
+using Microsoft.CodeAnalysis;
 
 /// <summary>
 ///     Critical test that exposes the Advanced DI pattern failures.
@@ -24,8 +24,6 @@ public interface IEmailValidator
 {
     bool Validate(string email);
 }
-
-[Service]
 public partial class AdvancedDIService
 {
     [Inject] private readonly ILogger<AdvancedDIService> _logger;
@@ -59,8 +57,6 @@ public partial class AdvancedDIService
             .Where(d => d.Severity == DiagnosticSeverity.Error)
             .Where(d => !d.Id.StartsWith("CS0012")) // Ignore assembly reference errors for now
             .ToArray();
-
-
         Assert.Empty(errors);
     }
 
@@ -80,8 +76,6 @@ public interface ICacheService
     void Set(string key, object value);
     T Get<T>(string key);
 }
-
-[Service]
 public partial class LazyDependencyService
 {
     [Inject] private readonly ILogger<LazyDependencyService> _logger;
@@ -128,8 +122,6 @@ public interface IOptionalService
 {
     void DoWork();
 }
-
-[Service]
 public partial class OptionalDependencyService
 {
     [Inject] private readonly ILogger<OptionalDependencyService> _logger;
@@ -175,8 +167,6 @@ namespace TestProject.Services;
 public interface IEmailValidator { bool Validate(string email); }
 public interface ICacheService { void Set(string key, object value); }
 public interface IOptionalService { void DoWork(); }
-
-[Service]
 public partial class CompleteAdvancedService
 {
     [Inject] private readonly ILogger<CompleteAdvancedService> _logger;

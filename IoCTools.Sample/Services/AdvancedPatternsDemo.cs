@@ -1,8 +1,9 @@
-using IoCTools.Abstractions.Annotations;
+namespace IoCTools.Sample.Services;
+
+using Abstractions.Annotations;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-
-namespace IoCTools.Sample.Services;
 
 /// <summary>
 ///     Demonstrates advanced patterns that IoCTools supports and areas for improvement
@@ -13,7 +14,6 @@ public interface IAdvancedPatternsService
     Task DemonstrateFutureEnhancementsAsync();
 }
 
-[Service]
 public partial class AdvancedPatternsService : IAdvancedPatternsService
 {
     [Inject] private readonly ILogger<AdvancedPatternsService> _logger;

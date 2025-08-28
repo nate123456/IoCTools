@@ -1,12 +1,12 @@
-using IoCTools.Abstractions.Annotations;
-using IoCTools.Abstractions.Enumerations;
+namespace IoCTools.Sample.Services;
+
+using Abstractions.Annotations;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace IoCTools.Sample.Services;
-
 /// <summary>
-/// Comprehensive examples demonstrating UnregisteredService attribute usage patterns.
+/// Comprehensive examples demonstrating ManualService attribute usage patterns.
 /// These services generate constructors but are not automatically registered in DI container.
 /// </summary>
 
@@ -16,7 +16,6 @@ namespace IoCTools.Sample.Services;
 ///     Simple unregistered service - generates constructor but no registration
 ///     Must be manually registered if needed
 /// </summary>
-[UnregisteredService]
 public partial class ManualRegistrationService : IManualRegistrationService
 {
     [Inject] private readonly ILogger<ManualRegistrationService> _logger;
@@ -32,7 +31,6 @@ public partial class ManualRegistrationService : IManualRegistrationService
 ///     Legacy service that's been replaced but still needs constructor generation
 ///     Not registered to prevent accidental use
 /// </summary>
-[UnregisteredService]
 public partial class UnregisteredLegacyPaymentProcessor : ILegacyPaymentProcessor
 {
     [Inject] private readonly ILogger<UnregisteredLegacyPaymentProcessor> _logger;
@@ -51,7 +49,6 @@ public partial class UnregisteredLegacyPaymentProcessor : ILegacyPaymentProcesso
 ///     Test helper service - generates constructor but not registered
 ///     Used for testing without affecting production DI container
 /// </summary>
-[UnregisteredService]
 public partial class TestHelperService : ITestHelperService
 {
     [Inject] private readonly ILogger<TestHelperService> _logger;
@@ -78,7 +75,6 @@ public partial class TestHelperService : ITestHelperService
 ///     Base service that provides common functionality but shouldn't be registered
 ///     Derived classes decide their registration strategy
 /// </summary>
-[UnregisteredService]
 public partial class BasePaymentProcessor
 {
     [Inject] protected readonly ILogger<BasePaymentProcessor> Logger;
@@ -93,9 +89,8 @@ public partial class BasePaymentProcessor
 
 /// <summary>
 ///     New payment processor - inherits from unregistered base but is registered
-///     This demonstrates that [Service] classes can inherit from [UnregisteredService] bases
+///     This demonstrates that registered classes can inherit from  bases
 /// </summary>
-[Service()]
 public partial class UnregisteredNewPaymentProcessor : BasePaymentProcessor, INewPaymentProcessor
 {
     [Inject] private readonly ILogger<UnregisteredNewPaymentProcessor> _specificLogger;
@@ -115,7 +110,6 @@ public partial class UnregisteredNewPaymentProcessor : BasePaymentProcessor, INe
 ///     Another unregistered service in the inheritance chain
 ///     Demonstrates complex inheritance scenarios
 /// </summary>
-[UnregisteredService]
 public partial class AdvancedPaymentBase : BasePaymentProcessor
 {
     [Inject] private readonly ILogger<AdvancedPaymentBase> _advancedLogger;
@@ -135,7 +129,6 @@ public partial class AdvancedPaymentBase : BasePaymentProcessor
 /// <summary>
 ///     Final registered service in complex inheritance chain
 /// </summary>
-[Service()]
 public partial class EnterprisePaymentProcessor : AdvancedPaymentBase, IEnterprisePaymentProcessor
 {
     [Inject] private readonly ILogger<EnterprisePaymentProcessor> _enterpriseLogger;
@@ -164,10 +157,10 @@ public partial class EnterprisePaymentProcessor : AdvancedPaymentBase, IEnterpri
 ///     Factory that creates unregistered services manually
 ///     Demonstrates controlled instantiation of unregistered services
 /// </summary>
-[Service(Lifetime.Singleton)]
-public partial class UnregisteredServiceFactory : IUnregisteredServiceFactory
+[Singleton]
+public partial class ManualServiceFactory : IManualServiceFactory
 {
-    [Inject] private readonly ILogger<UnregisteredServiceFactory> _logger;
+    [Inject] private readonly ILogger<ManualServiceFactory> _logger;
     [Inject] private readonly IServiceProvider _serviceProvider;
 
     public ManualRegistrationService CreateManualRegistrationService()
@@ -229,7 +222,7 @@ public interface ITestHelperService
     Task<bool> ValidateAndCreateUserAsync(string name);
 }
 
-public interface IUnregisteredServiceFactory
+public interface IManualServiceFactory
 {
     ManualRegistrationService CreateManualRegistrationService();
     TestHelperService CreateTestHelperService();

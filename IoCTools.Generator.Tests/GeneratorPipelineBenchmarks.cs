@@ -1,11 +1,13 @@
+namespace IoCTools.Generator.Tests;
+
 using System.Diagnostics;
 using System.Text;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Xunit.Abstractions;
 
-namespace IoCTools.Generator.Tests;
+using Xunit.Abstractions;
 
 /// <summary>
 ///     Detailed benchmarks for individual stages of the IoCTools generator pipeline.
@@ -45,7 +47,7 @@ public class GeneratorPipelineBenchmarks
                 .OfType<TypeDeclarationSyntax>()
                 .Select(node => compilation.GetSemanticModel(node.SyntaxTree).GetDeclaredSymbol(node))
                 .OfType<INamedTypeSymbol>()
-                .Where(symbol => HasServiceAttribute(symbol))
+                .Where(symbol => HasLifetimeAttribute(symbol))
                 .ToList();
 
             stopwatch.Stop();
@@ -166,7 +168,8 @@ public class GeneratorPipelineBenchmarks
             $"Inheritance Analysis ({inheritanceLevels} levels, {servicesPerLevel} per level): {avgTime.TotalMilliseconds:F2}ms, {throughput:F0} services/sec");
 
         // Should handle inheritance efficiently - account for compilation overhead
-        var maxAllowedTime = totalServices * inheritanceLevels * 1.0; // 1ms per service per level (realistic for compilation overhead)
+        var maxAllowedTime =
+            totalServices * inheritanceLevels * 1.0; // 1ms per service per level (realistic for compilation overhead)
         Assert.True(avgTime.TotalMilliseconds < maxAllowedTime,
             $"Inheritance analysis too slow: {avgTime.TotalMilliseconds:F2}ms (limit: {maxAllowedTime:F2}ms)");
     }
@@ -415,29 +418,29 @@ public class GeneratorPipelineBenchmarks
         // Full pipeline includes compilation setup, generator driver initialization, etc.
         // However, the comparison is inherently unfair since individual stages work on pre-compiled objects
         // while full pipeline includes complete compilation from source code.
-        
+
         // Focus on absolute performance rather than relative overhead
         // The individual stages are measured on an already-compiled object, while full pipeline
         // includes syntax parsing, metadata reference loading, and compilation driver setup
         var fullPipelineMs = fullPipelineTime.TotalMilliseconds;
         var individualMs = individualStagesTotal.TotalMilliseconds;
-        
+
         // Set realistic absolute performance limits based on compilation complexity
         var maxAllowedFullPipelineTime = serviceCount switch
         {
-            <= 10 => 5000.0,   // 5 seconds for small projects (includes compilation setup)
-            <= 50 => 10000.0,  // 10 seconds for medium projects
-            _ => 20000.0       // 20 seconds for large projects
+            <= 10 => 5000.0, // 5 seconds for small projects (includes compilation setup)
+            <= 50 => 10000.0, // 10 seconds for medium projects
+            _ => 20000.0 // 20 seconds for large projects
         };
-        
+
         // Ensure individual stages remain efficient (these should be fast since they work on compiled objects)
         var maxAllowedIndividualTime = serviceCount switch
         {
-            <= 10 => 100.0,   // 100ms for individual stages on small projects
-            <= 50 => 200.0,   // 200ms for individual stages on medium projects  
-            _ => 500.0         // 500ms for individual stages on large projects
+            <= 10 => 100.0, // 100ms for individual stages on small projects
+            <= 50 => 200.0, // 200ms for individual stages on medium projects  
+            _ => 500.0 // 500ms for individual stages on large projects
         };
-        
+
         Assert.True(fullPipelineMs < maxAllowedFullPipelineTime,
             $"Full pipeline too slow: {fullPipelineMs:F1}ms (limit: {maxAllowedFullPipelineTime:F1}ms)");
         Assert.True(individualMs < maxAllowedIndividualTime,
@@ -469,14 +472,16 @@ public class GeneratorPipelineBenchmarks
             .OfType<TypeDeclarationSyntax>()
             .Select(node => compilation.GetSemanticModel(node.SyntaxTree).GetDeclaredSymbol(node))
             .OfType<INamedTypeSymbol>()
-            .Where(HasServiceAttribute)
+            .Where(HasLifetimeAttribute)
             .ToList();
     }
 
-    private bool HasServiceAttribute(INamedTypeSymbol symbol)
+    private bool HasLifetimeAttribute(INamedTypeSymbol symbol)
     {
         return symbol.GetAttributes().Any(attr =>
-            attr.AttributeClass?.ToDisplayString() == "IoCTools.Abstractions.Annotations.ServiceAttribute");
+            attr.AttributeClass?.ToDisplayString() == "IoCTools.Abstractions.Annotations.ScopedAttribute" ||
+            attr.AttributeClass?.ToDisplayString() == "IoCTools.Abstractions.Annotations.SingletonAttribute" ||
+            attr.AttributeClass?.ToDisplayString() == "IoCTools.Abstractions.Annotations.TransientAttribute");
     }
 
     private List<INamedTypeSymbol> GetServiceDependencies(INamedTypeSymbol service)
@@ -563,7 +568,7 @@ public class GeneratorPipelineBenchmarks
         for (var i = 0; i < count; i++)
         {
             code.AppendLine($"public interface IService{i} {{ }}");
-            code.AppendLine($"[Service] public partial class Service{i} : IService{i} {{ }}");
+            code.AppendLine($"[Scoped] public partial class Service{i} : IService{i} {{ }}");
             code.AppendLine();
         }
 
@@ -581,7 +586,7 @@ public class GeneratorPipelineBenchmarks
         for (var i = 0; i < count; i++)
         {
             code.AppendLine($"public interface IService{i} {{ }}");
-            code.AppendLine($"[Service] public partial class Service{i} : IService{i}");
+            code.AppendLine($"[Scoped] public partial class Service{i} : IService{i}");
             code.AppendLine("{");
 
             var depCount = Math.Min(maxDependencies, i);
@@ -604,7 +609,7 @@ public class GeneratorPipelineBenchmarks
         for (var i = 0; i < count; i++)
         {
             code.AppendLine($"public interface IService{i} {{ }}");
-            code.AppendLine($"[Service] public partial class Service{i} : IService{i}");
+            code.AppendLine($"[Scoped] public partial class Service{i} : IService{i}");
             code.AppendLine("{");
 
             // Add 2-3 inject fields per service
@@ -631,7 +636,7 @@ public class GeneratorPipelineBenchmarks
         for (var service = 0; service < servicesPerLevel; service++)
         {
             var baseClass = level == 0 ? "" : $" : BaseLevel{level - 1}Service{service % servicesPerLevel}";
-            code.AppendLine($"[Service] public partial class BaseLevel{level}Service{service}{baseClass}");
+            code.AppendLine($"[Scoped] public partial class BaseLevel{level}Service{service}{baseClass}");
             code.AppendLine("{");
             code.AppendLine($"    public virtual string GetLevel() => \"Level{level}\";");
             code.AppendLine("}");
@@ -652,7 +657,7 @@ public class GeneratorPipelineBenchmarks
         for (var i = 0; i < serviceCount; i++)
         {
             code.AppendLine($"public interface ICircularService{i} {{ }}");
-            code.AppendLine($"[Service] public partial class CircularService{i} : ICircularService{i}");
+            code.AppendLine($"[Scoped] public partial class CircularService{i} : ICircularService{i}");
             code.AppendLine("{");
 
             // Create dependency chains that may form cycles
@@ -678,7 +683,7 @@ public class GeneratorPipelineBenchmarks
         for (var i = 0; i < count; i++)
         {
             code.AppendLine($"public interface IService{i} {{ }}");
-            code.AppendLine($"[Service] public partial class Service{i} : IService{i}");
+            code.AppendLine($"[Scoped] public partial class Service{i} : IService{i}");
             code.AppendLine("{");
 
             // Add various types of dependencies

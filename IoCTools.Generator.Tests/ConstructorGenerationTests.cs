@@ -1,7 +1,8 @@
-using System.Text.RegularExpressions;
-using Microsoft.CodeAnalysis;
-
 namespace IoCTools.Generator.Tests;
+
+using System.Text.RegularExpressions;
+
+using Microsoft.CodeAnalysis;
 
 /// <summary>
 ///     BRUTAL COMPREHENSIVE CONSTRUCTOR GENERATION TESTS
@@ -19,8 +20,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 public interface ITestService { }
-
-[Service]
 public partial class SimpleService
 {
     [Inject] private readonly ITestService _service;
@@ -58,8 +57,6 @@ namespace Test;
 public interface IServiceA { }
 public interface IServiceB { }
 public interface IServiceC { }
-
-[Service]
 public partial class MultiDependencyService
 {
     [Inject] private readonly IServiceA _serviceA;
@@ -99,8 +96,6 @@ using System.Collections.Generic;
 namespace Test;
 
 public interface ITestService { }
-
-[Service]
 public partial class CollectionService
 {
     [Inject] private readonly IEnumerable<ITestService> _services;
@@ -132,8 +127,6 @@ using System.Collections.Generic;
 namespace Test;
 
 public interface ITestService { }
-
-[Service]
 public partial class NestedCollectionService
 {
     [Inject] private readonly IEnumerable<IEnumerable<ITestService>> _nestedServices;
@@ -166,8 +159,6 @@ namespace Test;
 
 public interface IRepository<T> { }
 public interface IValidator<T> { }
-
-[Service]
 public partial class GenericService<T> where T : class
 {
     [Inject] private readonly IRepository<T> _repository;
@@ -220,14 +211,8 @@ namespace Test;
 
 public interface ITestService { }
 public interface IAnotherService { }
-
-[Service]
 public class TestServiceImpl : ITestService { }
-
-[Service]
 public class AnotherServiceImpl : IAnotherService { }
-
-[Service]
 public partial class ArrayService
 {
     [Inject] private readonly ITestService[] _serviceArray;
@@ -258,8 +243,6 @@ namespace Test;
 
 public interface IEntity { }
 public interface IRepository<T> where T : IEntity { }
-
-[Service]
 public partial class ConstrainedGenericService<T, U> 
     where T : class, IEntity, new()
     where U : struct
@@ -292,8 +275,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 public interface ITestService { }
-
-[Service]
 public partial class NullableService
 {
     [Inject] private readonly ITestService? _nullableService;
@@ -323,8 +304,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 public interface ITestService { }
-
-[Service]
 public partial class ExistingFieldService
 {
     [Inject] private readonly ITestService _service;
@@ -371,8 +350,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 {interfaces}
-
-[Service]
 public partial class MassiveDependencyService
 {{
     {fields}
@@ -402,15 +379,13 @@ public partial class MassiveDependencyService
     [Fact]
     public void Constructor_NonPartialClassWithInject_ProducesError()
     {
-        // Arrange - Class with [Service] and [Inject] but NOT marked as partial
+        // Arrange - Class with [Scoped] and [Inject] but NOT marked as partial
         var source = @"
 using IoCTools.Abstractions.Annotations;
 
 namespace Test;
 
 public interface ITestService { }
-
-[Service]
 public class NonPartialService  // Missing 'partial' keyword!
 {
     [Inject] private readonly ITestService _service;
@@ -442,8 +417,6 @@ namespace Test;
 
 public interface ITestService { }
 public interface IAnotherService { }
-
-[Service]
 public partial class ExistingConstructorService
 {
     [Inject] private readonly ITestService _service;
@@ -493,8 +466,6 @@ namespace Test;
 
 public interface IServiceA { }
 public interface IServiceB { }
-
-[Service]
 public partial class SignatureTestService
 {
     [Inject] private readonly IServiceA _serviceA;
@@ -533,8 +504,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 public interface ITestService { }
-
-[Service]
 public partial class ProtectedFieldService
 {
     [Inject] protected readonly ITestService _protectedService;
@@ -557,8 +526,6 @@ public partial class ProtectedFieldService
 
         var constructorSource = result.GetConstructorSource("ProtectedFieldService");
         Assert.NotNull(constructorSource);
-
-
         // FIXED: Accept constructor with or without namespace prefixes (both are valid)
         var hasProtectedService = constructorSource.Content.Contains("ITestService protectedService") ||
                                   constructorSource.Content.Contains("Test.ITestService protectedService");
@@ -583,8 +550,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 public interface ITestService { }
-
-[Service]
 public partial class AccessModifierService
 {
     [Inject] internal readonly ITestService _internalService;
@@ -622,8 +587,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 public interface ITestService { }
-
-[Service]
 public partial class StaticFieldService
 {
     [Inject] private readonly ITestService _instanceService;  // Valid
@@ -656,8 +619,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 public interface ITestService { }
-
-[Service]
 public partial class PropertyInjectionService
 {
     [Inject] private readonly ITestService _fieldService;  // Field injection
@@ -695,8 +656,6 @@ namespace Test;
 
 public enum TestEnum { Value1, Value2 }
 public interface IValidService { }
-
-[Service]
 public partial class InvalidTypeService
 {
     [Inject] private readonly IValidService _validService;  // Valid
@@ -735,7 +694,7 @@ public interface ITestService { }
 
 public partial class OuterClass
 {
-    [Service]
+    
     public partial class NestedService
     {
         [Inject] private readonly ITestService _nestedService;
@@ -757,13 +716,11 @@ public partial class OuterClass
     [Fact]
     public void Constructor_ZeroDependencies_PartialServiceWithoutInject()
     {
-        // Arrange - Partial class with [Service] but NO [Inject] fields
+        // Arrange - Partial class with [Scoped] but NO [Inject] fields
         var source = @"
 using IoCTools.Abstractions.Annotations;
 
 namespace Test;
-
-[Service]
 public partial class ZeroDependencyService
 {
     // No [Inject] fields - should generate default constructor or no constructor
@@ -798,8 +755,6 @@ using System.Collections.Generic;
 namespace Test;
 
 public interface ITestService { }
-
-[Service]
 public partial class AsyncDependencyService
 {
     [Inject] private readonly Task<ITestService> _taskService;
@@ -832,8 +787,6 @@ namespace Test;
 
 public interface ITestService { }
 public delegate ITestService ServiceFactory(string key);
-
-[Service]
 public partial class FactoryPatternService
 {
     [Inject] private readonly Func<ITestService> _serviceFactory;
@@ -871,16 +824,14 @@ public interface ISingletonService { }
 public interface IScopedService { }
 public interface ITransientService { }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public class SingletonServiceImpl : ISingletonService { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public class ScopedServiceImpl : IScopedService { }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public class TransientServiceImpl : ITransientService { }
-
-[Service]
 public partial class MixedLifetimeService
 {
     [Inject] private readonly ISingletonService _singleton;
@@ -913,8 +864,6 @@ namespace Test;
 public interface IDebugService { }
 public interface IReleaseService { }
 public interface IAlwaysService { }
-
-[Service]
 public partial class ConditionalService
 {
 #if DEBUG
@@ -956,14 +905,10 @@ namespace Test;
 
 public interface IBaseService { }
 public interface IDerivedService { }
-
-[Service]
 public partial class BaseService
 {
     [Inject] protected readonly IBaseService _baseService;
 }
-
-[Service]
 public partial class DerivedService : BaseService
 {
     [Inject] private readonly IDerivedService _derivedService;
@@ -1002,20 +947,14 @@ namespace Test;
 public interface IServiceA { }
 public interface IServiceB { }
 public interface IServiceC { }
-
-[Service]
 public partial class GrandParentService
 {
     [Inject] protected readonly IServiceA _serviceA;
 }
-
-[Service]
 public partial class ParentService : GrandParentService
 {
     [Inject] protected readonly IServiceB _serviceB;
 }
-
-[Service]
 public partial class ChildService : ParentService
 {
     [Inject] private readonly IServiceC _serviceC;
@@ -1051,14 +990,8 @@ namespace Test;
 
 public interface ITestService { }
 public interface IAnotherService { }
-
-[Service]
 public class TestServiceImpl : ITestService { }
-
-[Service]
 public class AnotherServiceImpl : IAnotherService { }
-
-[Service]
 public partial class CompilationTestService
 {
     [Inject] private readonly ITestService _service;

@@ -1,6 +1,6 @@
-using Microsoft.CodeAnalysis;
-
 namespace IoCTools.Generator.Tests;
+
+using Microsoft.CodeAnalysis;
 
 /// <summary>
 ///     Simple test to validate advanced field injection patterns work
@@ -19,7 +19,6 @@ namespace Test;
 
 public interface ITestService { }
 
-[Service]
 public partial class CollectionService
 {
     [Inject] private readonly IEnumerable<ITestService> _services;
@@ -50,7 +49,6 @@ namespace Test;
 
 public interface ITestService { }
 
-[Service]
 public partial class NullableService
 {
     [Inject] private readonly ITestService? _optionalService;
@@ -80,7 +78,6 @@ namespace Test;
 
 public interface ITestService { }
 
-[Service]
 public partial class FactoryService
 {
     [Inject] private readonly Func<ITestService> _factory;
@@ -108,7 +105,6 @@ using System;
 
 namespace Test;
 
-[Service]
 public partial class ServiceProviderService
 {
     [Inject] private readonly IServiceProvider _provider;
@@ -137,7 +133,6 @@ namespace Test;
 
 public interface ITestService { }
 
-[Service]
 public partial class AccessModifierService
 {
     [Inject] protected readonly ITestService _protectedService;
@@ -167,7 +162,6 @@ namespace Test;
 public interface IDependsService { }
 public interface IInjectService { }
 
-[Service]
 [DependsOn<IDependsService>]
 public partial class MixedService
 {
@@ -202,7 +196,6 @@ namespace Test;
 
 public interface ITestService { }
 
-[Service]
 public partial class LazyService
 {
     [Inject] private readonly Lazy<ITestService> _lazyService;

@@ -1,6 +1,6 @@
-using System.Collections.Generic;
-
 namespace IoCTools.Generator.Utilities;
+
+using System.Collections.Generic;
 
 internal static class FrameworkTypes
 {

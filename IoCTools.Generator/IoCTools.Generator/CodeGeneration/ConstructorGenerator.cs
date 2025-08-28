@@ -1,16 +1,21 @@
+namespace IoCTools.Generator.CodeGeneration;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using IoCTools.Generator.Analysis;
-using IoCTools.Generator.Models;
+
+using Analysis;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace IoCTools.Generator.CodeGeneration;
+using Models;
 
-internal static class ConstructorGenerator
+using Utilities;
+
+internal static partial class ConstructorGenerator
 {
     /// <summary>
     ///     Generate inheritance-aware constructor with SourceProductionContext (for IIncrementalGenerator)
@@ -104,7 +109,9 @@ internal static class ConstructorGenerator
             {
                 // ClassDeclaration is not from this semantic model's syntax tree
                 // This should not happen in normal operation, but add defensive handling
+                classSymbol = null;
             }
+
 
             if (hierarchyDependencies.AllDependencies != null)
                 foreach (var (serviceType, _, _) in hierarchyDependencies.AllDependencies)
@@ -145,7 +152,7 @@ internal static class ConstructorGenerator
                         uniqueNamespaces.Add("Microsoft.Extensions.Options");
 
                     // Add System.Collections.Generic for collection types
-                    if (configFields.Any(f => IsCollectionType(f.FieldType)))
+                    if (configFields.Any(f => CollectionUtilities.IsCollectionType(f.FieldType)))
                     {
                         uniqueNamespaces.Add("System.Collections.Generic");
                         uniqueNamespaces.Add("System.Collections");
@@ -210,7 +217,8 @@ internal static class ConstructorGenerator
                 // might already be generated in other partial declarations
                 var allFields = currentClassSymbol.GetMembers().OfType<IFieldSymbol>();
 
-                foreach (var field in allFields) existingFieldNames.Add(field.Name);
+                foreach (var field in allFields)
+                    existingFieldNames.Add(field.Name);
             }
 
             // Check if a constructor with the same signature already exists
@@ -257,8 +265,8 @@ internal static class ConstructorGenerator
 
             // CRITICAL FIX: Use deduplicated AllDependencies instead of RawAllDependencies to prevent duplicate fields
             // This ensures duplicate [DependsOn<T>] attributes only generate one field
-            var allLevelZeroDependencies = hierarchyDependencies.DerivedDependencies ?? 
-                new List<(ITypeSymbol, string, DependencySource)>();
+            var allLevelZeroDependencies = hierarchyDependencies.DerivedDependencies ??
+                                           new List<(ITypeSymbol, string, DependencySource)>();
 
             var fieldsToGenerate = allLevelZeroDependencies
                 .Where(f => !existingFieldNames.Contains(f.FieldName))
@@ -267,11 +275,13 @@ internal static class ConstructorGenerator
                     .Contains(f.FieldName)) // CRITICAL: Don't generate fields for [InjectConfiguration] fields
                 .ToList();
 
-            // DEBUG LOG: Verify we have DependsOn fields to generate
+            // DEBUG LOG: Verify we have DependsOn fields to generate (removed unused variables to fix CS0219)
+            // var dependsOnCount = allLevelZeroDependencies.Count(f => f.Source == DependencySource.DependsOn);
+            // var filteredDependsOnCount = fieldsToGenerate.Count(f => f.Source == DependencySource.DependsOn);
+
+            // CRITICAL FIX: If all DependsOn fields were filtered out but we should have some, this indicates a bug
             var dependsOnCount = allLevelZeroDependencies.Count(f => f.Source == DependencySource.DependsOn);
             var filteredDependsOnCount = fieldsToGenerate.Count(f => f.Source == DependencySource.DependsOn);
-            
-            // CRITICAL FIX: If all DependsOn fields were filtered out but we should have some, this indicates a bug
             if (dependsOnCount > 0 && filteredDependsOnCount == 0)
             {
                 // Re-add DependsOn fields that were incorrectly filtered out
@@ -284,15 +294,16 @@ internal static class ConstructorGenerator
 
             // CRITICAL FIX: Handle collision between [DependsOn] and [Inject] for same ServiceType in field generation
             // If both exist for same ServiceType, don't generate DependsOn field when Inject field exists
-            var finalFieldsToGenerate = new List<(ITypeSymbol ServiceType, string FieldName, DependencySource Source)>();
+            var finalFieldsToGenerate =
+                new List<(ITypeSymbol ServiceType, string FieldName, DependencySource Source)>();
             var fieldsByServiceType = fieldsToGenerate.GroupBy(f => f.ServiceType, SymbolEqualityComparer.Default);
-            
+
             foreach (var group in fieldsByServiceType)
             {
                 var fieldsForType = group.ToList();
                 var injectFields = fieldsForType.Where(f => f.Source == DependencySource.Inject).ToList();
                 var dependsOnFields = fieldsForType.Where(f => f.Source == DependencySource.DependsOn).ToList();
-                
+
                 if (injectFields.Any() && dependsOnFields.Any())
                 {
                     // COLLISION SCENARIO: Both [Inject] and [DependsOn] exist for same ServiceType
@@ -300,9 +311,10 @@ internal static class ConstructorGenerator
                     // CRITICAL FIX: Only skip DependsOn fields, but keep Inject fields if they need to be generated
                     // (This case is rare since Inject fields usually exist in source code)
                     finalFieldsToGenerate.AddRange(injectFields);
-                    
+
                     // Add any other fields that aren't part of the collision
-                    var otherFields = fieldsForType.Where(f => f.Source != DependencySource.Inject && f.Source != DependencySource.DependsOn);
+                    var otherFields = fieldsForType.Where(f =>
+                        f.Source != DependencySource.Inject && f.Source != DependencySource.DependsOn);
                     finalFieldsToGenerate.AddRange(otherFields);
                 }
                 else
@@ -312,13 +324,13 @@ internal static class ConstructorGenerator
                     finalFieldsToGenerate.AddRange(fieldsForType);
                 }
             }
-            
+
             // Use collision-resolved fields for field generation
             fieldsToGenerate = finalFieldsToGenerate;
 
             // CRITICAL FIX: Determine if fields should be protected for inheritance scenarios
             var accessModifier = ShouldUseProtectedFields(classDeclaration, classSymbol) ? "protected" : "private";
-            
+
             var fieldDeclarations = fieldsToGenerate.Select(d =>
                 $"{accessModifier} readonly {RemoveNamespacesAndDots(d.ServiceType, namespacesForStripping)} {d.FieldName};");
 
@@ -341,21 +353,22 @@ internal static class ConstructorGenerator
             // If both exist for same ServiceType, prefer [Inject] field over [DependsOn] field
             var finalDependencies = new List<(ITypeSymbol ServiceType, string FieldName, DependencySource Source)>();
             var dependenciesByServiceType = allDependencies.GroupBy(d => d.ServiceType, SymbolEqualityComparer.Default);
-            
+
             foreach (var group in dependenciesByServiceType)
             {
                 var dependenciesForType = group.ToList();
                 var injectDeps = dependenciesForType.Where(d => d.Source == DependencySource.Inject).ToList();
                 var dependsOnDeps = dependenciesForType.Where(d => d.Source == DependencySource.DependsOn).ToList();
-                
+
                 if (injectDeps.Count == 1 && dependsOnDeps.Count == 1)
                 {
                     // COLLISION SCENARIO: One [Inject] field vs one [DependsOn] for same ServiceType
                     // Prefer the [Inject] dependency - it represents an existing field that should take precedence
                     finalDependencies.Add(injectDeps.First());
-                    
+
                     // Add any other dependencies that aren't part of the collision
-                    var otherDeps = dependenciesForType.Where(d => d.Source != DependencySource.Inject && d.Source != DependencySource.DependsOn);
+                    var otherDeps = dependenciesForType.Where(d =>
+                        d.Source != DependencySource.Inject && d.Source != DependencySource.DependsOn);
                     finalDependencies.AddRange(otherDeps);
                 }
                 else
@@ -364,7 +377,7 @@ internal static class ConstructorGenerator
                     finalDependencies.AddRange(dependenciesForType);
                 }
             }
-            
+
             // Use collision-resolved dependencies for parameter generation
             allDependencies = finalDependencies;
 
@@ -388,7 +401,7 @@ internal static class ConstructorGenerator
 
                 parameterNames.Add(paramName);
 
-                var typeString = GetTypeStringWithNullableAnnotation(f.ServiceType, f.FieldName, classSymbol!,
+                var typeString = GetTypeStringWithNullableAnnotation(f.ServiceType, f.FieldName, classSymbol,
                     namespacesForStripping);
                 parametersWithNames.Add((typeString, paramName, f));
             }
@@ -411,59 +424,31 @@ internal static class ConstructorGenerator
                     typeDecl.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)));
 
                 // Check if base class inherits from BackgroundService
-                var baseIsBackgroundService = false;
-                var currentBaseType = baseClass;
-                while (currentBaseType != null && !baseIsBackgroundService)
-                {
-                    if (currentBaseType.ToDisplayString() == "Microsoft.Extensions.Hosting.BackgroundService")
-                    {
-                        baseIsBackgroundService = true;
-                        break;
-                    }
+                var baseIsHostedService = TypeAnalyzer.IsAssignableFromIHostedService(baseClass);
 
-                    currentBaseType = currentBaseType.BaseType;
-                }
+                // Check if base class will have constructor using intelligent inference
+                var baseHasInjectFields = baseClass.GetMembers().OfType<IFieldSymbol>()
+                    .Any(field => field.GetAttributes().Any(attr => attr.AttributeClass?.Name == "InjectAttribute"));
+                var baseHasInjectConfigurationFields = baseClass.GetMembers().OfType<IFieldSymbol>()
+                    .Any(field =>
+                        field.GetAttributes().Any(attr => attr.AttributeClass?.Name == "InjectConfigurationAttribute"));
+                var baseHasDependsOnAttribute = baseClass.GetAttributes()
+                    .Any(attr => attr.AttributeClass?.Name?.StartsWith("DependsOn") == true);
+                var baseHasConditionalServiceAttribute = baseClass.GetAttributes().Any(attr =>
+                    attr.AttributeClass?.ToDisplayString() ==
+                    "IoCTools.Abstractions.Annotations.ConditionalServiceAttribute");
+                var baseHasRegisterAsAllAttribute = baseClass.GetAttributes()
+                    .Any(attr => attr.AttributeClass?.Name == "RegisterAsAllAttribute");
+                var baseHasRegisterAsAttribute = baseClass.GetAttributes().Any(attr =>
+                    attr.AttributeClass?.Name?.StartsWith("RegisterAsAttribute") == true &&
+                    attr.AttributeClass?.IsGenericType == true);
 
-                var baseClassWillHaveConstructor = baseClass.GetAttributes().Any(attr =>
-                                                       attr.AttributeClass?.ToDisplayString() ==
-                                                       "IoCTools.Abstractions.Annotations.ServiceAttribute" ||
-                                                       attr.AttributeClass?.ToDisplayString() ==
-                                                       "IoCTools.Abstractions.Annotations.UnregisteredServiceAttribute") ||
-                                                   baseIsBackgroundService;
+                var baseClassWillHaveConstructor =
+                    baseHasInjectFields || baseHasInjectConfigurationFields || baseHasDependsOnAttribute ||
+                    baseHasConditionalServiceAttribute || baseHasRegisterAsAllAttribute || baseHasRegisterAsAttribute ||
+                    baseIsHostedService;
 
-                // Check if this class is subject to "all ancestors unregistered" rule
-                // If so, it should not call base constructors
-                var allAncestorsAreUnregistered = false;
-                var ancestorCount = 0;
-                var tempType = classSymbol.BaseType;
-                while (tempType != null && tempType.SpecialType != SpecialType.System_Object)
-                {
-                    ancestorCount++;
-                    var isUnregistered = tempType.GetAttributes().Any(attr =>
-                        attr.AttributeClass?.ToDisplayString() ==
-                        "IoCTools.Abstractions.Annotations.UnregisteredServiceAttribute");
-                    if (!isUnregistered) break;
-                    tempType = tempType.BaseType;
-                }
-
-                if (ancestorCount >= 2)
-                {
-                    allAncestorsAreUnregistered = true;
-                    tempType = classSymbol.BaseType;
-                    while (tempType != null && tempType.SpecialType != SpecialType.System_Object)
-                    {
-                        var isUnregistered = tempType.GetAttributes().Any(attr =>
-                            attr.AttributeClass?.ToDisplayString() ==
-                            "IoCTools.Abstractions.Annotations.UnregisteredServiceAttribute");
-                        if (!isUnregistered)
-                        {
-                            allAncestorsAreUnregistered = false;
-                            break;
-                        }
-
-                        tempType = tempType.BaseType;
-                    }
-                }
+                // REMOVED: ManualService ancestor logic - using intelligent inference now
 
                 if (canBaseAcceptDIParameters && isBaseClassPartial && baseClassWillHaveConstructor &&
                     baseHierarchyDependencies.AllDependencies.Any())
@@ -478,7 +463,8 @@ internal static class ConstructorGenerator
                     foreach (var baseDep in baseHierarchyDependencies.AllDependencies)
                     {
                         // Skip configuration dependencies unless they're the _configuration parameter
-                        if (baseDep.Source == DependencySource.ConfigurationInjection && baseDep.FieldName != "_configuration")
+                        if (baseDep.Source == DependencySource.ConfigurationInjection &&
+                            baseDep.FieldName != "_configuration")
                             continue;
 
                         var matchingParam = parametersWithNames.FirstOrDefault(p =>
@@ -563,24 +549,39 @@ internal static class ConstructorGenerator
                 .ToDictionary(p => p.Dependency.ServiceType, p => p.ParamName, SymbolEqualityComparer.Default);
 
             // Generate assignments for ALL derived dependencies using the ServiceType mapping
+            // Skip primitive SupportsReloading fields - they're handled in config assignments section
             var regularAssignments = hierarchyDependencies.DerivedDependencies
                 .Where(d => d.Source != DependencySource.ConfigurationInjection ||
-                           IsOptionsPatternOrConfigObjectAssignment(d.FieldName, classSymbol, semanticModel))
+                            IsOptionsPatternOrConfigObjectAssignment(d.FieldName, classSymbol, semanticModel))
+                .Where(d => !IsPrimitiveSupportsReloadingField(d.FieldName, classSymbol, semanticModel))
                 .Where(d => serviceTypeToParamName.ContainsKey(d.ServiceType)) // Ensure parameter exists
                 .Select(d =>
                 {
                     var paramName = serviceTypeToParamName[d.ServiceType];
-                    
-                    // Check if this is a SupportsReloading field that uses Options pattern
+
+                    // Check if this is a SupportsReloading field that uses Options pattern (complex objects only)
                     if (d.Source == DependencySource.Inject &&
-                        IsSupportsReloadingField(d.FieldName, classSymbol, semanticModel))
+                        IsSupportsReloadingFieldWithOptionsPattern(d.FieldName, classSymbol, semanticModel))
                         return $"this.{d.FieldName} = {paramName}.Value;";
                     return $"this.{d.FieldName} = {paramName};";
                 });
 
             // Add configuration injection assignments
+            // Find IConfiguration parameter name
+            var iConfigurationType =
+                semanticModel.Compilation.GetTypeByMetadataName("Microsoft.Extensions.Configuration.IConfiguration");
+            var configurationParameterName = "configuration"; // default fallback
+            if (iConfigurationType != null)
+            {
+                var configParam = parametersWithNames.FirstOrDefault(p =>
+                    SymbolEqualityComparer.Default.Equals(p.Dependency.ServiceType, iConfigurationType));
+                if (!string.IsNullOrEmpty(configParam.ParamName))
+                    configurationParameterName = configParam.ParamName;
+            }
+
             var configAssignments =
-                GenerateConfigurationAssignments(classSymbol, semanticModel, namespacesForStripping);
+                GenerateConfigurationAssignments(classSymbol, semanticModel, namespacesForStripping,
+                    configurationParameterName);
 
             var allAssignments = regularAssignments.Concat(configAssignments);
             var assignmentStr = string.Join("\n        ", allAssignments);
@@ -594,44 +595,30 @@ internal static class ConstructorGenerator
             if (namespaceParent is FileScopedNamespaceDeclarationSyntax)
                 isFileScopedNamespace = true;
 
-            // Create namespace declaration only if there is a namespace
             var namespaceDeclaration = string.IsNullOrEmpty(namespaceName) ? "" : $"namespace {namespaceName};";
-
-            // For file-scoped namespaces, put namespace before usings; for others, put after
             var beforeUsings = isFileScopedNamespace ? namespaceDeclaration : "";
             var afterUsings = !isFileScopedNamespace ? namespaceDeclaration : "";
 
-            // Check if this is a nested class
             var isNestedClass = classDeclaration.Parent is TypeDeclarationSyntax;
 
-            // Initialize variables for template replacement
-            string openingBraces = "";
-            string closingBraces = "";
-            string constructorCode;
+            var openingBraces = "";
+            var closingBraces = "";
             if (isNestedClass)
             {
-                // For nested classes, only generate nested structure if ALL parent classes are partial
                 var containingClasses =
                     new List<(TypeDeclarationSyntax syntax, string declaration, string accessibility)>();
                 var current = classDeclaration.Parent;
-
-                // Traverse up to find all containing classes
                 while (current is TypeDeclarationSyntax parentClass)
                 {
                     var parentAccessibility = parentClass.Modifiers.Any(m => m.IsKind(SyntaxKind.PublicKeyword))
-                        ?
-                        "public"
-                        :
-                        parentClass.Modifiers.Any(m => m.IsKind(SyntaxKind.InternalKeyword))
+                        ? "public"
+                        : parentClass.Modifiers.Any(m => m.IsKind(SyntaxKind.InternalKeyword))
                             ? "internal"
-                            :
-                            parentClass.Modifiers.Any(m => m.IsKind(SyntaxKind.ProtectedKeyword))
+                            : parentClass.Modifiers.Any(m => m.IsKind(SyntaxKind.ProtectedKeyword))
                                 ? "protected"
-                                :
-                                parentClass.Modifiers.Any(m => m.IsKind(SyntaxKind.PrivateKeyword))
+                                : parentClass.Modifiers.Any(m => m.IsKind(SyntaxKind.PrivateKeyword))
                                     ? "private"
-                                    :
-                                    "public"; // default
+                                    : "public";
 
                     var parentKeyword = GetTypeDeclarationKeyword(parentClass);
                     containingClasses.Add((parentClass,
@@ -640,71 +627,29 @@ internal static class ConstructorGenerator
                     current = current.Parent;
                 }
 
-                containingClasses.Reverse(); // Outermost class first
-
+                containingClasses.Reverse();
                 openingBraces = string.Join("\n", containingClasses.Select(c => $"{c.declaration}\n{{"));
                 closingBraces = string.Join("\n", Enumerable.Range(0, containingClasses.Count).Select(_ => "}"));
-
-                constructorCode = """
-                                    #nullable enable
-                                    {{beforeUsings}}
-                                    {{usings}}
-                                    {{afterUsings}}
-
-                                    {{openingBraces}}
-                                    {{accessibilityModifier}} partial {{typeKeyword}} {{fullClassName}}{{constraintClauses}}
-                                    {
-                                        {{fieldsStr}}
-                                        
-                                        public {{constructorName}}({{parameterStr}}){{baseCallStr}}
-                                        {
-                                            {{assignmentStr}}
-                                        }
-                                    }
-                                    {{closingBraces}}
-                                    """.Trim();
-            }
-            else
-            {
-                // For non-nested classes, use the original template
-                constructorCode = """
-                                    #nullable enable
-                                    {{beforeUsings}}
-                                    {{usings}}
-                                    {{afterUsings}}
-
-                                    {{accessibilityModifier}} partial {{typeKeyword}} {{fullClassName}}{{constraintClauses}}
-                                    {
-                                        {{fieldsStr}}
-                                        
-                                        public {{constructorName}}({{parameterStr}}){{baseCallStr}}
-                                        {
-                                            {{assignmentStr}}
-                                        }
-                                    }
-                                    """.Trim();
             }
 
-            // CRITICAL FIX: Replace template placeholders with actual values
-            var finalCode = constructorCode
-                .Replace("{{fieldsStr}}", fieldsStr)
-                .Replace("{{parameterStr}}", parameterStr)
-                .Replace("{{assignmentStr}}", assignmentStr)
-                .Replace("{{baseCallStr}}", baseCallStr)
-                .Replace("{{constructorName}}", constructorName)
-                .Replace("{{fullClassName}}", fullClassName)
-                .Replace("{{accessibilityModifier}}", accessibilityModifier)
-                .Replace("{{typeKeyword}}", typeKeyword)
-                .Replace("{{constraintClauses}}", constraintClauses)
-                .Replace("{{usings}}", usings.ToString())
-                .Replace("{{beforeUsings}}", beforeUsings)
-                .Replace("{{afterUsings}}", afterUsings)
-                .Replace("{{openingBraces}}", openingBraces)
-                .Replace("{{closingBraces}}", closingBraces);
-
-            return finalCode;
+            return RenderConstructorSource(
+                beforeUsings,
+                usings.ToString(),
+                afterUsings,
+                isNestedClass,
+                openingBraces,
+                closingBraces,
+                accessibilityModifier,
+                typeKeyword,
+                fullClassName,
+                constraintClauses,
+                fieldsStr,
+                parameterStr,
+                baseCallStr,
+                constructorName,
+                assignmentStr);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             // Log the exception if needed and return empty constructor
             return "";
@@ -712,125 +657,7 @@ internal static class ConstructorGenerator
     }
 
     // Helper methods needed by the constructor generator
-    private static void CollectNamespaces(ITypeSymbol typeSymbol,
-        HashSet<string> uniqueNamespaces)
-    {
-        if (typeSymbol == null) return;
 
-        var ns = typeSymbol.ContainingNamespace;
-        if (ns != null && !ns.IsGlobalNamespace)
-        {
-            var nsName = ns.ToDisplayString();
-            if (!string.IsNullOrEmpty(nsName))
-                uniqueNamespaces.Add(nsName);
-        }
-
-        // Handle generic types
-        if (typeSymbol is INamedTypeSymbol namedType && namedType.TypeArguments.Length > 0)
-            foreach (var typeArg in namedType.TypeArguments)
-                CollectNamespaces(typeArg, uniqueNamespaces);
-
-        // Handle array types
-        if (typeSymbol is IArrayTypeSymbol arrayType) CollectNamespaces(arrayType.ElementType, uniqueNamespaces);
-    }
-
-    private static void CollectNamespacesFromConstraints(TypeParameterConstraintClauseSyntax constraintClause,
-        SemanticModel semanticModel,
-        HashSet<string> uniqueNamespaces)
-    {
-        foreach (var constraint in constraintClause.Constraints)
-            if (constraint is TypeConstraintSyntax typeConstraint)
-            {
-                var typeInfo = semanticModel.GetTypeInfo(typeConstraint.Type);
-                if (typeInfo.Type != null) CollectNamespaces(typeInfo.Type, uniqueNamespaces);
-            }
-    }
-
-    private static string GetClassNamespace(TypeDeclarationSyntax classDeclaration)
-    {
-        var parent = classDeclaration.Parent;
-        while (parent != null)
-        {
-            if (parent is BaseNamespaceDeclarationSyntax namespaceDeclaration)
-                return namespaceDeclaration.Name.ToString();
-            parent = parent.Parent;
-        }
-
-        return null;
-    }
-
-    private static string GetClassAccessibilityModifier(INamedTypeSymbol classSymbol)
-    {
-        return classSymbol.DeclaredAccessibility switch
-        {
-            Accessibility.Public => "public",
-            Accessibility.Internal => "internal",
-            Accessibility.Protected => "protected",
-            Accessibility.Private => "private",
-            Accessibility.ProtectedOrInternal => "protected internal",
-            Accessibility.ProtectedAndInternal => "private protected",
-            _ => "public"
-        };
-    }
-
-    private static string GetTypeDeclarationKeyword(TypeDeclarationSyntax typeDeclaration)
-    {
-        return typeDeclaration switch
-        {
-            ClassDeclarationSyntax => "class",
-            RecordDeclarationSyntax => "record",
-            StructDeclarationSyntax => "struct",
-            InterfaceDeclarationSyntax => "interface",
-            _ => "class"
-        };
-    }
-
-    private static string RemoveNamespacesAndDots(ITypeSymbol typeSymbol,
-        HashSet<string> namespacesToStrip)
-    {
-        if (typeSymbol == null) return "object";
-
-        // Special handling for array types to generate valid C# syntax
-        if (typeSymbol is IArrayTypeSymbol arrayType)
-        {
-            var elementTypeName = RemoveNamespacesAndDots(arrayType.ElementType, namespacesToStrip);
-
-            // Handle multi-dimensional arrays (e.g., int[,])
-            var ranks = new string(',', arrayType.Rank - 1);
-            return $"{elementTypeName}[{ranks}]";
-        }
-
-        // Use improved SymbolDisplayFormat with better handling for complex generic types
-        var format = new SymbolDisplayFormat(
-            typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypes,
-            genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
-            delegateStyle: SymbolDisplayDelegateStyle.NameOnly,
-            miscellaneousOptions: SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier |
-                                  SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
-
-        var fullTypeName = typeSymbol.ToDisplayString(format);
-
-        if (namespacesToStrip != null && namespacesToStrip.Count > 0)
-        {
-            // FIX: Use simple string replacement instead of regex to avoid stack overflow
-            // Sort namespaces by length descending to process longer ones first
-            var sortedNamespaces = namespacesToStrip.Where(ns => !string.IsNullOrEmpty(ns))
-                .OrderByDescending(ns => ns.Length)
-                .ToList();
-
-            foreach (var ns in sortedNamespaces)
-            {
-                // Remove namespace from beginning of type name
-                if (fullTypeName.StartsWith($"{ns}.")) fullTypeName = fullTypeName.Substring(ns.Length + 1);
-
-                // Simple string replacement for nested generics - avoid regex
-                // Replace all occurrences of "namespace." with empty string
-                fullTypeName = fullTypeName.Replace($"{ns}.", "");
-            }
-        }
-
-        return fullTypeName;
-    }
 
     private static bool HasInjectFields(InheritanceHierarchyDependencies hierarchyDependencies)
     {
@@ -840,602 +667,14 @@ internal static class ConstructorGenerator
         return hierarchyDependencies.RawAllDependencies?.Any(d => d.Source == DependencySource.Inject) ?? false;
     }
 
-    private static string GetParameterNameFromFieldName(string fieldName)
-    {
-        // If field starts with underscore, remove it
-        if (fieldName.StartsWith("_"))
-        {
-            var nameWithoutUnderscore = fieldName.Substring(1);
-
-            // Check if the name contains underscores (snake_case pattern)
-            if (nameWithoutUnderscore.Contains("_"))
-            {
-                // Convert snake_case to camelCase for constructor parameter (C# convention)
-                var parts = nameWithoutUnderscore.Split('_');
-                var camelCaseName = parts[0].ToLowerInvariant() + 
-                    string.Concat(parts.Skip(1).Select(p => char.ToUpperInvariant(p[0]) + p.Substring(1).ToLowerInvariant()));
-                return EscapeReservedKeyword(camelCaseName);
-            }
-
-            // FIXED: Always use camelCase for constructor parameters (C# convention)
-            // The naming convention in DependsOn should only affect field names, not parameter names
-            var paramName1 = char.ToLowerInvariant(nameWithoutUnderscore[0]) + nameWithoutUnderscore.Substring(1);
-            return EscapeReservedKeyword(paramName1);
-        }
-
-        // For fields without underscore, convert first letter to lowercase
-        var paramName = char.ToLowerInvariant(fieldName[0]) + fieldName.Substring(1);
-
-        // Handle C# reserved keywords by adding a suffix
-        return EscapeReservedKeyword(paramName);
-    }
-
-    private static string GetTypeStringWithNullableAnnotation(ITypeSymbol serviceType,
-        string fieldName,
-        INamedTypeSymbol classSymbol,
-        HashSet<string> namespacesForStripping)
-    {
-        // For nullable types, we need to get the display string with nullable annotations preserved first
-        // Then apply namespace removal afterwards
-        var formatWithNullable = new SymbolDisplayFormat(
-            typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypes,
-            genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
-            delegateStyle: SymbolDisplayDelegateStyle.NameOnly,
-            miscellaneousOptions: SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier |
-                                  SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
-
-        var fullTypeName = serviceType.ToDisplayString(formatWithNullable);
-
-        // Now apply namespace removal while preserving nullable annotations
-        if (namespacesForStripping != null)
-        {
-            // Enhanced namespace removal for complex generic types
-            // Sort namespaces by length descending to process longer ones first
-            var sortedNamespaces = namespacesForStripping.Where(ns => !string.IsNullOrEmpty(ns))
-                .OrderByDescending(ns => ns.Length);
-
-            foreach (var ns in sortedNamespaces)
-            {
-                // Remove namespace from beginning of type name
-                if (fullTypeName.StartsWith($"{ns}.")) fullTypeName = fullTypeName.Substring(ns.Length + 1);
-
-                // Simple string replacement for nested generics - avoid regex
-                // Replace all occurrences of "namespace." with empty string
-                fullTypeName = fullTypeName.Replace($"{ns}.", "");
-            }
-        }
-
-        return fullTypeName;
-    }
-
-    private static List<string> GenerateConfigurationAssignments(INamedTypeSymbol? classSymbol,
-        SemanticModel semanticModel,
-        HashSet<string> namespacesForStripping)
-    {
-        var assignments = new List<string>();
-
-        if (classSymbol == null)
-            return assignments;
-
-        // SIMPLIFIED CONFIGURATION INHERITANCE STRATEGY:
-        // 1. Each class generates assignments ONLY for its own [InjectConfiguration] fields
-        // 2. Base class constructors handle their own config fields
-        // 3. Derived class constructors handle their own config fields
-        // 4. Base constructor calls pass configuration parameter to base when needed
-
-        var hasServiceAttribute = classSymbol.GetAttributes()
-            .Any(attr =>
-                attr.AttributeClass?.ToDisplayString() == "IoCTools.Abstractions.Annotations.ServiceAttribute");
-
-        var isUnregisteredService = classSymbol.GetAttributes()
-            .Any(attr => attr.AttributeClass?.ToDisplayString() ==
-                         "IoCTools.Abstractions.Annotations.UnregisteredServiceAttribute");
-
-        // CRITICAL FIX: Always get configuration fields from the CURRENT class only
-        // Each class should only handle its own configuration fields to avoid CS0191 readonly assignment errors
-        var configFields = DependencyAnalyzer.GetConfigurationInjectedFieldsForType(classSymbol, semanticModel);
-
-        // Check if we're in an inheritance scenario (has a base class that's not System.Object)
-        var hasInheritance = classSymbol?.BaseType != null &&
-                             classSymbol.BaseType.SpecialType != SpecialType.System_Object;
-
-        // Generate assignments for configuration fields
-        foreach (var configField in configFields)
-        {
-            if (configField.IsOptionsPattern || configField.SupportsReloading)
-                // Options pattern fields and SupportsReloading fields are injected as regular dependencies, not bound from configuration
-                continue;
-
-            string assignment;
-            if (configField.IsDirectValueBinding)
-            {
-                // Direct value binding: configuration.GetValue<T>("key") or configuration["key"] for strings
-                var fieldTypeName = RemoveNamespacesAndDots(configField.FieldType, namespacesForStripping);
-                var configKey = configField.ConfigurationKey ?? "";
-
-                // For the basic case, just generate the simple GetValue call
-                // The .NET configuration system and default value handling should be left to runtime
-                // Use global qualified names for System types to avoid namespace resolution issues
-                var typeName = configField.FieldType.ToDisplayString();
-                var fullTypeName = configField.FieldType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                var metadataName = configField.FieldType.MetadataName;
-                var namespaceAndMetadata = configField.FieldType.ContainingNamespace?.ToDisplayString() + "." +
-                                           configField.FieldType.MetadataName;
-
-                // Check if this is a System type by multiple criteria (same logic as IsDirectValueType)
-                var isSystemType = typeName.StartsWith("System.") ||
-                                   fullTypeName.StartsWith("global::System.") ||
-                                   metadataName is "TimeSpan" or "DateTime" or "DateTimeOffset" or "Guid" or "Uri" ||
-                                   namespaceAndMetadata is "System.TimeSpan" or "System.DateTime"
-                                       or "System.DateTimeOffset" or "System.Guid" or "System.Uri";
-
-                if (isSystemType)
-                {
-                    // Use the fully qualified name for System types
-                    if (fullTypeName.StartsWith("global::"))
-                    {
-                        typeName = fullTypeName;
-                    }
-                    else if (fullTypeName.StartsWith("System."))
-                    {
-                        typeName = "global::" + fullTypeName;
-                    }
-                    else
-                    {
-                        // For cases where fullTypeName is just the short name (like "TimeSpan"),
-                        // construct the full qualified name using namespace information
-                        if (namespaceAndMetadata.StartsWith("System."))
-                        {
-                            typeName = "global::" + namespaceAndMetadata;
-                        }
-                        else
-                        {
-                            // For well-known System types, construct the correct qualified name
-                            if (metadataName is "TimeSpan" or "DateTime" or "DateTimeOffset" or "Guid" or "Uri")
-                                typeName = "global::System." + metadataName;
-                            else
-                                // Fallback - use the qualified format and add global:: prefix
-                                typeName = "global::" + fullTypeName;
-                        }
-                    }
-                }
-                else
-                {
-                    // For other types, use the stripped namespace version
-                    typeName = fieldTypeName;
-                }
-
-                // Handle Required validation and DefaultValue patterns using correct .NET patterns
-                if (configField.DefaultValue != null)
-                {
-                    // Use .NET's standard GetValue<T>(key, defaultValue) overload - the correct pattern
-                    var formattedDefault =
-                        FormatDefaultValueForGetValue(configField.DefaultValue, configField.FieldType);
-                    assignment =
-                        $"this.{configField.FieldName} = configuration.GetValue<{typeName}>(\"{configKey}\", {formattedDefault});";
-                }
-                else if (configField.Required && IsReferenceTypeOrNullable(configField.FieldType) && !hasInheritance)
-                {
-                    // Required reference type - use null-coalescing with exception (only works for reference types)
-                    // BUT: For inheritance scenarios, use simpler pattern to avoid complexity
-                    assignment =
-                        $"this.{configField.FieldName} = configuration.GetValue<{typeName}>(\"{configKey}\") ?? throw new global::System.ArgumentException(\"Required configuration '{configKey}' is missing\", \"{configKey}\");";
-                }
-                else
-                {
-                    // Optional field or value type without default - use standard GetValue
-                    assignment =
-                        $"this.{configField.FieldName} = configuration.GetValue<{typeName}>(\"{configKey}\")!;";
-                }
-            }
-            else
-            {
-                // Section binding: configuration.GetSection("section").Get<T>()
-                var sectionName = configField.GetSectionName();
-
-                // CRITICAL FIX: Handle collection interface types - can't bind directly to interfaces
-                if (IsCollectionInterfaceType(configField.FieldType))
-                {
-                    var (concreteTypeName, conversionMethod) =
-                        GetConcreteCollectionBinding(configField.FieldType, namespacesForStripping);
-
-                    // Handle Required validation for section binding (but simplify for inheritance scenarios)
-                    if (configField.Required && !hasInheritance)
-                        assignment =
-                            $"this.{configField.FieldName} = configuration.GetSection(\"{sectionName}\").Get<{concreteTypeName}>(){conversionMethod} ?? throw new global::System.InvalidOperationException(\"Required configuration section '{sectionName}' is missing\");";
-                    else
-                        assignment =
-                            $"this.{configField.FieldName} = configuration.GetSection(\"{sectionName}\").Get<{concreteTypeName}>(){conversionMethod}!;";
-                }
-                else
-                {
-                    // For other types (arrays, concrete collections, custom types), use direct binding
-                    var fieldTypeName = RemoveNamespacesAndDots(configField.FieldType, namespacesForStripping);
-
-                    // Handle Required validation for section binding (but simplify for inheritance scenarios)
-                    if (configField.Required && !hasInheritance)
-                        assignment =
-                            $"this.{configField.FieldName} = configuration.GetSection(\"{sectionName}\").Get<{fieldTypeName}>() ?? throw new global::System.InvalidOperationException(\"Required configuration section '{sectionName}' is missing\");";
-                    else
-                        assignment =
-                            $"this.{configField.FieldName} = configuration.GetSection(\"{sectionName}\").Get<{fieldTypeName}>()!;";
-                }
-            }
-
-            assignments.Add(assignment);
-        }
-
-        return assignments;
-    }
-
-    private static List<(ITypeSymbol ServiceType, string FieldName, DependencySource Source)>
-        GetConfigurationDependencies(
-            INamedTypeSymbol? classSymbol,
-            SemanticModel semanticModel,
-            HashSet<string> namespacesForStripping)
-    {
-        var dependencies = new List<(ITypeSymbol ServiceType, string FieldName, DependencySource Source)>();
-
-        if (classSymbol == null)
-            return dependencies;
-
-        // Collect configuration fields from the entire inheritance hierarchy
-        var allConfigFields = new List<ConfigurationInjectionInfo>();
-        var currentType = classSymbol;
-
-        while (currentType != null && currentType.SpecialType != SpecialType.System_Object)
-        {
-            var configFields = DependencyAnalyzer.GetConfigurationInjectedFieldsForType(currentType, semanticModel);
-            allConfigFields.AddRange(configFields);
-            currentType = currentType.BaseType;
-        }
-
-        if (!allConfigFields.Any())
-            return dependencies;
-
-        // NOTE: IConfiguration dependency is already handled by DependencyAnalyzer.GetInheritanceHierarchyDependencies
-        // Don't add it here to avoid duplicates
-
-        // Add options pattern dependencies as regular DI dependencies 
-        // (Options are injected from DI container, not configuration binding)
-        // Remove duplicates by field name (derived class fields take precedence)
-        var uniqueConfigFields = allConfigFields
-            .Where(f => f.IsOptionsPattern || f.SupportsReloading)
-            .GroupBy(f => f.FieldName)
-            .Select(g => g.First()) // First one encountered (from derived class)
-            .ToList();
-
-        foreach (var configField in uniqueConfigFields)
-        {
-            ITypeSymbol serviceType;
-
-            if (configField.SupportsReloading && !configField.IsOptionsPattern)
-            {
-                // For SupportsReloading = true, create IOptionsSnapshot<T> instead of direct field type
-                var optionsType =
-                    semanticModel.Compilation.GetTypeByMetadataName("Microsoft.Extensions.Options.IOptionsSnapshot`1");
-                if (optionsType != null)
-                    serviceType = optionsType.Construct(configField.FieldType);
-                else
-                    // Fallback to direct field type if IOptionsSnapshot not found
-                    serviceType = configField.FieldType;
-            }
-            else
-            {
-                // For existing options pattern types, use as-is
-                serviceType = configField.FieldType;
-            }
-
-            dependencies.Add((serviceType, configField.FieldName, DependencySource.Inject));
-        }
-
-        return dependencies;
-    }
-
-    private static bool IsIConfigurationField(string fieldName,
-        ITypeSymbol serviceType,
-        SemanticModel semanticModel)
-    {
-        var iConfigurationType =
-            semanticModel.Compilation.GetTypeByMetadataName("Microsoft.Extensions.Configuration.IConfiguration");
-        return iConfigurationType != null && SymbolEqualityComparer.Default.Equals(serviceType, iConfigurationType);
-    }
-
-    private static ITypeSymbol? FindIConfigurationType(Compilation compilation) =>
-        compilation.GetTypeByMetadataName("Microsoft.Extensions.Configuration.IConfiguration");
-
-    private static bool IsOptionsPatternAssignment(string fieldName,
-        INamedTypeSymbol? classSymbol,
-        SemanticModel semanticModel)
-    {
-        if (classSymbol == null)
-            return false;
-
-        // Check for options pattern fields across the entire inheritance hierarchy
-        var currentType = classSymbol;
-        while (currentType != null && currentType.SpecialType != SpecialType.System_Object)
-        {
-            var configFields = DependencyAnalyzer.GetConfigurationInjectedFieldsForType(currentType, semanticModel);
-            var configField = configFields.FirstOrDefault(f => f.FieldName == fieldName);
-
-            if (configField?.IsOptionsPattern == true)
-                return true;
-
-            currentType = currentType.BaseType;
-        }
-
-        return false;
-    }
-
-    private static bool IsOptionsPatternOrConfigObjectAssignment(string fieldName,
-        INamedTypeSymbol? classSymbol,
-        SemanticModel semanticModel)
-    {
-        if (classSymbol == null)
-            return false;
-
-        // Check for options pattern or config object fields across the entire inheritance hierarchy
-        var currentType = classSymbol;
-        while (currentType != null && currentType.SpecialType != SpecialType.System_Object)
-        {
-            var configFields = DependencyAnalyzer.GetConfigurationInjectedFieldsForType(currentType, semanticModel);
-            var configField = configFields.FirstOrDefault(f => f.FieldName == fieldName);
-
-            if (configField != null && (configField.IsOptionsPattern || !configField.IsDirectValueBinding))
-                return true;
-
-            currentType = currentType.BaseType;
-        }
-
-        return false;
-    }
-
-    private static bool IsSupportsReloadingField(string fieldName,
-        INamedTypeSymbol? classSymbol,
-        SemanticModel semanticModel)
-    {
-        if (classSymbol == null)
-            return false;
-
-        // Check for SupportsReloading fields across the entire inheritance hierarchy
-        var currentType = classSymbol;
-        while (currentType != null && currentType.SpecialType != SpecialType.System_Object)
-        {
-            var configFields = DependencyAnalyzer.GetConfigurationInjectedFieldsForType(currentType, semanticModel);
-            var configField = configFields.FirstOrDefault(f => f.FieldName == fieldName);
-
-            if (configField != null && configField.SupportsReloading && !configField.IsOptionsPattern)
-                return true;
-
-            currentType = currentType.BaseType;
-        }
-
-        return false;
-    }
 
     /// <summary>
-    ///     Escapes C# reserved keywords by appending a suffix to avoid compilation errors
+    ///     Determines if DependsOn fields should be protected instead of private to allow inheritance access
     /// </summary>
-    private static string EscapeReservedKeyword(string identifier)
+    private static bool ShouldUseProtectedFields(TypeDeclarationSyntax classDeclaration,
+        INamedTypeSymbol? classSymbol)
     {
-        // C# reserved keywords that could conflict with parameter names
-        var reservedKeywords = new HashSet<string>
-        {
-            "abstract", "as", "base", "bool", "break", "byte", "case", "catch", "char", "checked",
-            "class", "const", "continue", "decimal", "default", "delegate", "do", "double", "else",
-            "enum", "event", "explicit", "extern", "false", "finally", "fixed", "float", "for",
-            "foreach", "goto", "if", "implicit", "in", "int", "interface", "internal", "is", "lock",
-            "long", "namespace", "new", "null", "object", "operator", "out", "override", "params",
-            "private", "protected", "public", "readonly", "ref", "return", "sbyte", "sealed",
-            "short", "sizeof", "stackalloc", "static", "string", "struct", "switch", "this",
-            "throw", "true", "try", "typeof", "uint", "ulong", "unchecked", "unsafe", "ushort",
-            "using", "virtual", "void", "volatile", "while"
-        };
-
-        if (reservedKeywords.Contains(identifier)) return identifier + "Value";
-
-        return identifier;
-    }
-
-    private static bool IsNullableValueType(ITypeSymbol typeSymbol) =>
-        // Check if it's a nullable value type (e.g., int?, bool?, TimeSpan?)
-        typeSymbol.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T;
-
-    private static string FormatDefaultValue(object defaultValue,
-        string targetTypeName)
-    {
-        switch (defaultValue)
-        {
-            case string str:
-                // For string type, wrap in quotes
-                if (targetTypeName == "string")
-                    return $"\"{str}\"";
-                // For other types like TimeSpan, DateTime, etc. that receive string values, 
-                // we need to parse them
-                return targetTypeName switch
-                {
-                    "TimeSpan" => $"TimeSpan.Parse(\"{str}\")",
-                    "DateTime" => $"DateTime.Parse(\"{str}\")",
-                    "DateTimeOffset" => $"DateTimeOffset.Parse(\"{str}\")",
-                    "Guid" => $"Guid.Parse(\"{str}\")",
-                    "Uri" => $"new Uri(\"{str}\")",
-                    _ => $"\"{str}\""
-                };
-            case bool b:
-                return b ? "true" : "false";
-            case null:
-                return "null";
-            default:
-                // For numeric types and others, use direct ToString()
-                return defaultValue.ToString() ?? "null";
-        }
-    }
-
-    private static bool IsCollectionType(ITypeSymbol type)
-    {
-        if (type is IArrayTypeSymbol)
-            return true;
-
-        if (type is not INamedTypeSymbol namedType)
-            return false;
-
-        // Check for common collection types
-        var typeName = namedType.OriginalDefinition.ToDisplayString();
-        return typeName.StartsWith("System.Collections.Generic.List<") ||
-               typeName.StartsWith("System.Collections.Generic.IEnumerable<") ||
-               typeName.StartsWith("System.Collections.Generic.IList<") ||
-               typeName.StartsWith("System.Collections.Generic.ICollection<") ||
-               typeName.StartsWith("System.Collections.Generic.Dictionary<") ||
-               typeName.StartsWith("System.Collections.Generic.IDictionary<") ||
-               typeName.StartsWith("System.Collections.Generic.IReadOnlyList<") ||
-               typeName.StartsWith("System.Collections.Generic.IReadOnlyCollection<");
-    }
-
-    private static bool IsCollectionInterfaceType(ITypeSymbol type)
-    {
-        if (type is not INamedTypeSymbol namedType)
-            return false;
-
-        var typeName = namedType.OriginalDefinition.ToDisplayString();
-        return typeName.StartsWith("System.Collections.Generic.IEnumerable<") ||
-               typeName.StartsWith("System.Collections.Generic.IReadOnlyList<") ||
-               typeName.StartsWith("System.Collections.Generic.IReadOnlyCollection<") ||
-               typeName.StartsWith("System.Collections.Generic.IList<") ||
-               typeName.StartsWith("System.Collections.Generic.ICollection<");
-    }
-
-    private static (string concreteTypeName, string conversionMethod) GetConcreteCollectionBinding(
-        ITypeSymbol fieldType,
-        HashSet<string> namespacesForStripping)
-    {
-        if (fieldType is not INamedTypeSymbol namedType)
-            return (RemoveNamespacesAndDots(fieldType, namespacesForStripping), "");
-
-        var typeName = namedType.OriginalDefinition.ToDisplayString();
-
-        if (typeName.StartsWith("System.Collections.Generic.IReadOnlyList<"))
-        {
-            // IReadOnlyList<T> -> List<T> with .AsReadOnly()
-            var elementType = namedType.TypeArguments.FirstOrDefault();
-            if (elementType != null)
-            {
-                var elementTypeName = RemoveNamespacesAndDots(elementType, namespacesForStripping);
-                return ($"List<{elementTypeName}>", "?.AsReadOnly()");
-            }
-        }
-        else if (typeName.StartsWith("System.Collections.Generic.IReadOnlyCollection<"))
-        {
-            // IReadOnlyCollection<T> -> List<T> with .AsReadOnly()
-            var elementType = namedType.TypeArguments.FirstOrDefault();
-            if (elementType != null)
-            {
-                var elementTypeName = RemoveNamespacesAndDots(elementType, namespacesForStripping);
-                return ($"List<{elementTypeName}>", "?.AsReadOnly()");
-            }
-        }
-        else if (typeName.StartsWith("System.Collections.Generic.IEnumerable<"))
-        {
-            // IEnumerable<T> -> bind directly to IEnumerable<T> for configuration injection
-            return (RemoveNamespacesAndDots(fieldType, namespacesForStripping), "");
-        }
-        else if (typeName.StartsWith("System.Collections.Generic.IList<"))
-        {
-            // IList<T> -> bind directly to IList<T> for configuration injection
-            return (RemoveNamespacesAndDots(fieldType, namespacesForStripping), "");
-        }
-        else if (typeName.StartsWith("System.Collections.Generic.ICollection<"))
-        {
-            // ICollection<T> -> List<T> (ICollection can't be bound directly)
-            var elementType = namedType.TypeArguments.FirstOrDefault();
-            if (elementType != null)
-            {
-                var elementTypeName = RemoveNamespacesAndDots(elementType, namespacesForStripping);
-                return ($"List<{elementTypeName}>", "");
-            }
-        }
-
-        // Not a collection interface, return as-is
-        return (RemoveNamespacesAndDots(fieldType, namespacesForStripping), "");
-    }
-
-    private static string GetFullyQualifiedTypeName(ITypeSymbol fieldType,
-        string shortTypeName)
-    {
-        // For built-in System types that may have namespace resolution issues,
-        // use fully qualified names to avoid compiler errors
-        var fullTypeName = fieldType.ToDisplayString();
-
-        if (fullTypeName.StartsWith("System.")) return fullTypeName; // Use fully qualified name for System types
-
-        return shortTypeName; // Use short name for other types
-    }
-
-    /// <summary>
-    ///     Formats default values for use with IConfiguration.GetValue
-    ///     <T>
-    ///         (key, defaultValue)
-    ///         This is different from FormatDefaultValue as it needs to match the target type exactly
-    /// </summary>
-    private static string FormatDefaultValueForGetValue(object defaultValue,
-        ITypeSymbol targetType)
-    {
-        if (defaultValue == null)
-            return "default";
-
-        // Handle string default values that need type conversion
-        if (defaultValue is string stringValue)
-            return targetType.SpecialType switch
-            {
-                SpecialType.System_String => $"\"{EscapeStringLiteral(stringValue)}\"",
-                SpecialType.System_Int32 when int.TryParse(stringValue, out var intVal) => intVal.ToString(),
-                SpecialType.System_Boolean when bool.TryParse(stringValue, out var boolVal) => boolVal.ToString()
-                    .ToLowerInvariant(),
-                SpecialType.System_Double when double.TryParse(stringValue, out var doubleVal) => doubleVal.ToString(),
-                SpecialType.System_Decimal when decimal.TryParse(stringValue, out var decimalVal) => $"{decimalVal}m",
-                _ => HandleComplexDefaultValue(stringValue, targetType)
-            };
-
-        // Handle already-typed default values
-        return defaultValue switch
-        {
-            bool b => b.ToString().ToLowerInvariant(),
-            string s => $"\"{EscapeStringLiteral(s)}\"",
-            _ => defaultValue.ToString() ?? "default"
-        };
-    }
-
-    private static string HandleComplexDefaultValue(string stringValue,
-        ITypeSymbol targetType)
-    {
-        var typeName = targetType.ToDisplayString();
-
-        return typeName switch
-        {
-            "System.TimeSpan" => $"global::System.TimeSpan.Parse(\"{EscapeStringLiteral(stringValue)}\")",
-            "System.DateTime" => $"global::System.DateTime.Parse(\"{EscapeStringLiteral(stringValue)}\")",
-            "System.DateTimeOffset" => $"global::System.DateTimeOffset.Parse(\"{EscapeStringLiteral(stringValue)}\")",
-            "System.Guid" => $"global::System.Guid.Parse(\"{EscapeStringLiteral(stringValue)}\")",
-            "System.Uri" => $"new global::System.Uri(\"{EscapeStringLiteral(stringValue)}\")",
-            _ => $"\"{EscapeStringLiteral(stringValue)}\"" // Default to string representation
-        };
-    }
-
-    private static string EscapeStringLiteral(string value) => value.Replace("\\", "\\\\").Replace("\"", "\\\"")
-        .Replace("\n", "\\n").Replace("\r", "\\r").Replace("\t", "\\t");
-
-    private static bool IsReferenceTypeOrNullable(ITypeSymbol typeSymbol) => typeSymbol.IsReferenceType ||
-                                                                             (typeSymbol is INamedTypeSymbol
-                                                                                  namedType &&
-                                                                              namedType.OriginalDefinition
-                                                                                  .SpecialType ==
-                                                                              SpecialType.System_Nullable_T);
-
-    /// <summary>
-    /// Determines if DependsOn fields should be protected instead of private to allow inheritance access
-    /// </summary>
-    private static bool ShouldUseProtectedFields(TypeDeclarationSyntax classDeclaration, INamedTypeSymbol? classSymbol)
-    {
-        if (classSymbol == null) 
+        if (classSymbol == null)
             return false;
 
         // CRITICAL FIX: Use protected fields ONLY for abstract classes

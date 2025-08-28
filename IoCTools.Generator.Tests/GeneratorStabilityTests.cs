@@ -1,9 +1,11 @@
+namespace IoCTools.Generator.Tests;
+
 using System.Diagnostics;
 using System.Text;
-using Microsoft.CodeAnalysis;
-using Xunit.Abstractions;
 
-namespace IoCTools.Generator.Tests;
+using Microsoft.CodeAnalysis;
+
+using Xunit.Abstractions;
 
 /// <summary>
 ///     Tests to validate generator stability, idempotency, and consistency
@@ -23,10 +25,11 @@ public class GeneratorStabilityTests
         // Arrange
         var sourceCode = """
                          using IoCTools.Abstractions.Annotations;
+                         using IoCTools.Abstractions.Enumerations;
 
                          namespace TestNamespace;
 
-                         [Service]
+                         [Scoped]
                          public partial class TestService
                          {
                              [Inject] private readonly IService1 _dep1;
@@ -36,10 +39,10 @@ public class GeneratorStabilityTests
                          public interface IService1 { }
                          public interface IService2 { }
 
-                         [Service]
+                         [Scoped]
                          public partial class Service1 : IService1 { }
 
-                         [Service] 
+                         [Scoped] 
                          public partial class Service2 : IService2 { }
                          """;
 
@@ -82,23 +85,24 @@ public class GeneratorStabilityTests
         // Arrange - Services that don't interact with each other
         var sourceCode = """
                          using IoCTools.Abstractions.Annotations;
+                         using IoCTools.Abstractions.Enumerations;
                          using System.Collections.Generic;
 
                          namespace TestNamespace;
 
-                         [Service]
+                         [Scoped]
                          public partial class ServiceA
                          {
                              [Inject] private readonly IDepA _depA;
                          }
 
-                         [Service]
+                         [Scoped]
                          public partial class ServiceB  
                          {
                              [Inject] private readonly IDepB _depB;
                          }
 
-                         [Service]
+                         [Scoped]
                          public partial class ServiceC
                          {
                              [Inject] private readonly IDepC _depC;
@@ -108,13 +112,13 @@ public class GeneratorStabilityTests
                          public interface IDepB { }
                          public interface IDepC { }
 
-                         [Service]
+                         [Scoped]
                          public partial class DepA : IDepA { }
 
-                         [Service]
+                         [Scoped]
                          public partial class DepB : IDepB { }
 
-                         [Service]
+                         [Scoped]
                          public partial class DepC : IDepC { }
                          """;
 
@@ -154,6 +158,7 @@ public class GeneratorStabilityTests
         var sourceBuilder = new StringBuilder();
 
         sourceBuilder.AppendLine("using IoCTools.Abstractions.Annotations;");
+        sourceBuilder.AppendLine("using IoCTools.Abstractions.Enumerations;");
         sourceBuilder.AppendLine();
         sourceBuilder.AppendLine("namespace TestNamespace");
         sourceBuilder.AppendLine("{");
@@ -161,7 +166,7 @@ public class GeneratorStabilityTests
         // Generate simple services without complex dependencies
         for (var i = 0; i < serviceCount; i++)
         {
-            sourceBuilder.AppendLine("    [Service]");
+            sourceBuilder.AppendLine("    [Scoped]");
             sourceBuilder.AppendLine($"    public partial class Service{i} {{ }}");
             sourceBuilder.AppendLine();
         }
@@ -198,24 +203,25 @@ public class GeneratorStabilityTests
         // Arrange - Test complex type names that could cause file naming conflicts
         var sourceCode = """
                          using IoCTools.Abstractions.Annotations;
+                         using IoCTools.Abstractions.Enumerations;
                          using System.Collections.Generic;
 
                          namespace Complex.Nested.Namespace
                          {
 
-                             [Service]
+                             [Scoped]
                              public partial class SimpleService
                              {
                                  [Inject] private readonly ISimpleDep _dep;
                              }
 
-                             [Service]
+                             [Scoped]
                              public partial class AnotherService
                              {
                                  [Inject] private readonly IAnotherDep _dep;
                              }
 
-                             [Service]
+                             [Scoped]
                              public partial class ServiceWithSpecialChars_AndSymbols
                              {
                                  [Inject] private readonly ISpecialDep _dep;
@@ -225,13 +231,13 @@ public class GeneratorStabilityTests
                              public interface IAnotherDep { }
                              public interface ISpecialDep { }
 
-                             [Service]
+                             [Scoped]
                              public partial class SimpleDep : ISimpleDep { }
 
-                             [Service]
+                             [Scoped]
                              public partial class AnotherDep : IAnotherDep { }
 
-                             [Service]
+                             [Scoped]
                              public partial class SpecialDep : ISpecialDep { }
                          }
                          """;
@@ -273,10 +279,11 @@ public class GeneratorStabilityTests
         // Arrange - Initial source code
         var initialSource = """
                             using IoCTools.Abstractions.Annotations;
+                            using IoCTools.Abstractions.Enumerations;
 
                             namespace TestNamespace;
 
-                            [Service]
+                            [Scoped]
                             public partial class ServiceA
                             {
                                 [Inject] private readonly IDepA _depA;
@@ -284,7 +291,7 @@ public class GeneratorStabilityTests
 
                             public interface IDepA { }
 
-                            [Service]
+                            [Scoped]
                             public partial class DepA : IDepA { }
                             """;
 
@@ -294,16 +301,17 @@ public class GeneratorStabilityTests
         // Arrange - Updated source with additional service
         var updatedSource = """
                             using IoCTools.Abstractions.Annotations;
+                            using IoCTools.Abstractions.Enumerations;
 
                             namespace TestNamespace;
 
-                            [Service]
+                            [Scoped]
                             public partial class ServiceA
                             {
                                 [Inject] private readonly IDepA _depA;
                             }
 
-                            [Service]
+                            [Scoped]
                             public partial class ServiceB
                             {
                                 [Inject] private readonly IDepB _depB;
@@ -312,10 +320,10 @@ public class GeneratorStabilityTests
                             public interface IDepA { }
                             public interface IDepB { }
 
-                            [Service]
+                            [Scoped]
                             public partial class DepA : IDepA { }
 
-                            [Service]
+                            [Scoped]
                             public partial class DepB : IDepB { }
                             """;
 
@@ -346,11 +354,12 @@ public class GeneratorStabilityTests
         // Arrange - Partial classes that could confuse the generator
         var sourceCode = """
                          using IoCTools.Abstractions.Annotations;
+                         using IoCTools.Abstractions.Enumerations;
 
                          namespace TestNamespace;
 
                          // First part of the class
-                         [Service]
+                         [Scoped]
                          public partial class SplitService
                          {
                              [Inject] private readonly IDep1 _dep1;
@@ -367,10 +376,10 @@ public class GeneratorStabilityTests
                          public interface IDep1 { }
                          public interface IDep2 { }
 
-                         [Service]
+                         [Scoped]
                          public partial class Dep1 : IDep1 { }
 
-                         [Service]
+                         [Scoped]
                          public partial class Dep2 : IDep2 { }
                          """;
 
@@ -398,11 +407,12 @@ public class GeneratorStabilityTests
         // Arrange - Source with some compilation issues but valid generator targets
         var sourceCode = """
                          using IoCTools.Abstractions.Annotations;
+                         using IoCTools.Abstractions.Enumerations;
                          using NonExistentNamespace; // This will cause a compilation error
 
                          namespace TestNamespace;
 
-                         [Service]
+                         [Scoped]
                          public partial class ValidService
                          {
                              [Inject] private readonly IDependency _dep;
@@ -415,7 +425,7 @@ public class GeneratorStabilityTests
 
                          public interface IDependency { }
 
-                         [Service]
+                         [Scoped]
                          public partial class Dependency : IDependency { }
                          """;
 
@@ -445,10 +455,11 @@ public class GeneratorStabilityTests
         // Arrange - Different service names in different namespaces to avoid ambiguity
         var sourceCode = """
                          using IoCTools.Abstractions.Annotations;
+                         using IoCTools.Abstractions.Enumerations;
 
                          namespace Namespace1 
                          {
-                             [Service]
+                             [Scoped]
                              public partial class Service1
                              {
                                  [Inject] private readonly IDep1 _dep;
@@ -456,13 +467,13 @@ public class GeneratorStabilityTests
 
                              public interface IDep1 { }
 
-                             [Service]  
+                             [Scoped]  
                              public partial class Dep1 : IDep1 { }
                          }
 
                          namespace Namespace2
                          {
-                             [Service]
+                             [Scoped]
                              public partial class Service2  
                              {
                                  [Inject] private readonly IDep2 _otherDep;
@@ -470,7 +481,7 @@ public class GeneratorStabilityTests
 
                              public interface IDep2 { }
 
-                             [Service]
+                             [Scoped]
                              public partial class Dep2 : IDep2 { }
                          }
                          """;
@@ -501,10 +512,11 @@ public class GeneratorStabilityTests
         // Arrange
         var sourceCode = """
                          using IoCTools.Abstractions.Annotations;
+                         using IoCTools.Abstractions.Enumerations;
 
                          namespace TestNamespace;
 
-                         [Service]
+                         [Scoped]
                          public partial class RebuildTestService
                          {
                              [Inject] private readonly IDependency _dep;
@@ -512,7 +524,7 @@ public class GeneratorStabilityTests
 
                          public interface IDependency { }
 
-                         [Service]
+                         [Scoped]
                          public partial class Dependency : IDependency { }
                          """;
 

@@ -1,14 +1,16 @@
-using IoCTools.Abstractions.Annotations;
-using IoCTools.Abstractions.Enumerations;
-using IoCTools.Sample.Interfaces;
+namespace IoCTools.Sample.Services;
+
+using System.Text;
+using System.Text.Json;
+
+using Abstractions.Annotations;
+
+using Interfaces;
+
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System.Net.Http;
-using System.Text.Json;
-
-namespace IoCTools.Sample.Services;
 
 /// <summary>
 /// Comprehensive examples demonstrating external service integration patterns.
@@ -19,34 +21,35 @@ namespace IoCTools.Sample.Services;
 #region External Services That Need Manual Configuration
 
 /// <summary>
-/// HTTP client service that requires manual configuration with named clients.
-/// Uses [ExternalService] because it needs complex HttpClient factory setup.
-/// This suppresses all IoCTools diagnostics since the service is managed externally.
+///     HTTP client service that requires manual configuration with named clients.
+///     Uses [ExternalService] because it needs complex HttpClient factory setup.
+///     This suppresses all IoCTools diagnostics since the service is managed externally.
 /// </summary>
 [ExternalService]
 public partial class HttpClientService : IHttpClientService
 {
+    [Inject] private readonly IConfiguration _configuration;
     [Inject] private readonly IHttpClientFactory _httpClientFactory;
     [Inject] private readonly ILogger<HttpClientService> _logger;
-    [Inject] private readonly IConfiguration _configuration;
 
-    public async Task<ApiResponse<T>> GetAsync<T>(string clientName, string endpoint) where T : class
+    public async Task<ApiResponse<T>> GetAsync<T>(string clientName,
+        string endpoint) where T : class
     {
         try
         {
             var client = _httpClientFactory.CreateClient(clientName);
             var response = await client.GetAsync(endpoint);
-            
+
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("API call failed: {StatusCode} for {Endpoint}", 
+                _logger.LogWarning("API call failed: {StatusCode} for {Endpoint}",
                     response.StatusCode, endpoint);
                 return new ApiResponse<T>(false, $"API call failed: {response.StatusCode}", default);
             }
 
             var json = await response.Content.ReadAsStringAsync();
             var data = JsonSerializer.Deserialize<T>(json);
-            
+
             _logger.LogInformation("Successfully retrieved data from {Endpoint}", endpoint);
             return new ApiResponse<T>(true, "Success", data);
         }
@@ -58,26 +61,26 @@ public partial class HttpClientService : IHttpClientService
     }
 
     public async Task<ApiResponse<TResponse>> PostAsync<TRequest, TResponse>(
-        string clientName, string endpoint, TRequest data) 
-        where TRequest : class 
+        string clientName,
+        string endpoint,
+        TRequest data)
+        where TRequest : class
         where TResponse : class
     {
         try
         {
             var client = _httpClientFactory.CreateClient(clientName);
             var json = JsonSerializer.Serialize(data);
-            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
-            
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
             var response = await client.PostAsync(endpoint, content);
-            
+
             if (!response.IsSuccessStatusCode)
-            {
                 return new ApiResponse<TResponse>(false, $"API call failed: {response.StatusCode}", default);
-            }
 
             var responseJson = await response.Content.ReadAsStringAsync();
             var responseData = JsonSerializer.Deserialize<TResponse>(responseJson);
-            
+
             return new ApiResponse<TResponse>(true, "Success", responseData);
         }
         catch (Exception ex)
@@ -89,32 +92,23 @@ public partial class HttpClientService : IHttpClientService
 }
 
 /// <summary>
-/// Database context service that requires manual configuration with connection strings.
-/// Simulates Entity Framework context registration patterns.
-/// Uses [ExternalService] to indicate this is manually registered and managed.
+///     Database context service that requires manual configuration with connection strings.
+///     Simulates Entity Framework context registration patterns.
+///     Uses [ExternalService] to indicate this is manually registered and managed.
 /// </summary>
 [ExternalService]
 public partial class DatabaseContextService : IDatabaseContextService
 {
-    [Inject] private readonly ILogger<DatabaseContextService> _logger;
     [Inject] private readonly IConfiguration _configuration;
-    
-    private readonly string _connectionString;
 
-    // Additional constructor for manual configuration (generated constructor will handle DI)
-    public void Initialize()
-    {
-        var connectionString = _configuration.GetConnectionString("DefaultConnection") 
-            ?? throw new InvalidOperationException("Connection string not found");
-        _logger.LogInformation("Database context initialized with connection: {Database}", 
-            GetDatabaseName(connectionString));
-    }
+    private readonly string _connectionString;
+    [Inject] private readonly ILogger<DatabaseContextService> _logger;
 
     public async Task<T?> FindByIdAsync<T>(int id) where T : class
     {
         await Task.Delay(10); // Simulate database query
         _logger.LogDebug("Finding entity of type {Type} with ID {Id}", typeof(T).Name, id);
-        
+
         // Simulate returning mock data
         return Activator.CreateInstance<T>();
     }
@@ -123,7 +117,7 @@ public partial class DatabaseContextService : IDatabaseContextService
     {
         await Task.Delay(20); // Simulate database query
         _logger.LogDebug("Retrieving all entities of type {Type}", typeof(T).Name);
-        
+
         return new[] { Activator.CreateInstance<T>() };
     }
 
@@ -141,40 +135,49 @@ public partial class DatabaseContextService : IDatabaseContextService
         return true;
     }
 
-    private static string GetDatabaseName(string connectionString)
+    // Additional constructor for manual configuration (generated constructor will handle DI)
+    public void Initialize()
     {
+        var connectionString = _configuration.GetConnectionString("DefaultConnection")
+                               ?? throw new InvalidOperationException("Connection string not found");
+        _logger.LogInformation("Database context initialized with connection: {Database}",
+            GetDatabaseName(connectionString));
+    }
+
+    private static string GetDatabaseName(string connectionString) =>
         // Simple parsing - in real app would use proper connection string builder
-        return connectionString.Contains("Database=") 
+        connectionString.Contains("Database=")
             ? connectionString.Split("Database=")[1].Split(";")[0]
             : "Unknown";
-    }
 }
 
 /// <summary>
-/// Redis cache service that requires manual configuration with connection strings.
-/// Uses [ExternalService] because Redis client needs complex setup.
-/// All dependencies marked as external to suppress diagnostics.
+///     Redis cache service that requires manual configuration with connection strings.
+///     Uses [ExternalService] because Redis client needs complex setup.
+///     All dependencies marked as external to suppress diagnostics.
 /// </summary>
 [ExternalService]
 public partial class ExternalRedisCacheService : IDistributedCacheService
 {
-    [Inject] private readonly ILogger<ExternalRedisCacheService> _logger;
     [Inject] private readonly IConfiguration _configuration;
-    
+    [Inject] private readonly ILogger<ExternalRedisCacheService> _logger;
+
     public async Task<T?> GetAsync<T>(string key) where T : class
     {
         // In real implementation, would use StackExchange.Redis
         await Task.Delay(5); // Simulate Redis call
         _logger.LogDebug("Retrieved cache key: {Key}", key);
-        
+
         // Simulate cache miss/hit
         return Random.Shared.NextDouble() > 0.5 ? Activator.CreateInstance<T>() : null;
     }
 
-    public async Task SetAsync<T>(string key, T value, TimeSpan? expiration = null) where T : class
+    public async Task SetAsync<T>(string key,
+        T value,
+        TimeSpan? expiration = null) where T : class
     {
         await Task.Delay(3); // Simulate Redis call
-        _logger.LogDebug("Set cache key: {Key} with expiration: {Expiration}", 
+        _logger.LogDebug("Set cache key: {Key} with expiration: {Expiration}",
             key, expiration?.ToString() ?? "None");
     }
 
@@ -194,34 +197,32 @@ public partial class ExternalRedisCacheService : IDistributedCacheService
 }
 
 /// <summary>
-/// Third-party API service that requires manual configuration with API keys and endpoints.
-/// Shows integration with external SaaS services.
-/// Uses [ExternalService] to indicate external management and suppress validation.
+///     Third-party API service that requires manual configuration with API keys and endpoints.
+///     Shows integration with external SaaS services.
+///     Uses [ExternalService] to indicate external management and suppress validation.
 /// </summary>
 [ExternalService]
 public partial class ThirdPartyApiService : IThirdPartyApiService
 {
+    [Inject] private readonly IConfiguration _configuration;
     [Inject] private readonly IHttpClientService _httpClientService;
     [Inject] private readonly ILogger<ThirdPartyApiService> _logger;
-    [Inject] private readonly IConfiguration _configuration;
 
     public async Task<PaymentProcessingResult> ProcessPaymentAsync(ExternalPaymentRequest request)
     {
         try
         {
             _logger.LogInformation("Processing external payment for amount: ${Amount}", request.Amount);
-            
+
             var apiResponse = await _httpClientService.PostAsync<ExternalPaymentRequest, ExternalPaymentResponse>(
                 "payment-gateway", "/api/v1/payments", request);
-            
-            if (!apiResponse.Success || apiResponse.Data == null)
-            {
-                return new PaymentProcessingResult(false, apiResponse.Message);
-            }
 
-            _logger.LogInformation("Payment processed successfully: {TransactionId}", 
+            if (!apiResponse.Success || apiResponse.Data == null)
+                return new PaymentProcessingResult(false, apiResponse.Message);
+
+            _logger.LogInformation("Payment processed successfully: {TransactionId}",
                 apiResponse.Data.TransactionId);
-                
+
             return new PaymentProcessingResult(true, "Payment processed", apiResponse.Data.TransactionId);
         }
         catch (Exception ex)
@@ -235,10 +236,11 @@ public partial class ThirdPartyApiService : IThirdPartyApiService
     {
         try
         {
-            var apiResponse = await _httpClientService.PostAsync<ExternalNotificationRequest, ExternalNotificationResponse>(
-                "notification-service", "/api/v1/notifications", request);
-            
-            return apiResponse.Success 
+            var apiResponse =
+                await _httpClientService.PostAsync<ExternalNotificationRequest, ExternalNotificationResponse>(
+                    "notification-service", "/api/v1/notifications", request);
+
+            return apiResponse.Success
                 ? new ExternalNotificationResult(true, "Notification sent", apiResponse.Data?.MessageId)
                 : new ExternalNotificationResult(false, apiResponse.Message);
         }
@@ -249,22 +251,23 @@ public partial class ThirdPartyApiService : IThirdPartyApiService
         }
     }
 
-    public async Task<IoCTools.Sample.Interfaces.ValidationResult> ValidateDataAsync(object data, string validationType)
+    public async Task<ValidationResult> ValidateDataAsync(object data,
+        string validationType)
     {
         try
         {
             var request = new { Data = data, ValidationType = validationType };
             var apiResponse = await _httpClientService.PostAsync<object, ExternalValidationResponse>(
                 "validation-service", "/api/v1/validate", request);
-            
+
             return apiResponse.Success && apiResponse.Data != null
-                ? new IoCTools.Sample.Interfaces.ValidationResult(apiResponse.Data.IsValid, apiResponse.Data.Errors ?? [])
-                : new IoCTools.Sample.Interfaces.ValidationResult(false, [apiResponse.Message]);
+                ? new ValidationResult(apiResponse.Data.IsValid, apiResponse.Data.Errors ?? [])
+                : new ValidationResult(false, [apiResponse.Message]);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Validation failed for type: {ValidationType}", validationType);
-            return new IoCTools.Sample.Interfaces.ValidationResult(false, [ex.Message]);
+            return new ValidationResult(false, [ex.Message]);
         }
     }
 }
@@ -274,16 +277,16 @@ public partial class ThirdPartyApiService : IThirdPartyApiService
 #region IoCTools Services That Use External Services
 
 /// <summary>
-/// Business service that automatically gets registered but depends on external services.
-/// This shows how IoCTools services can depend on manually configured external services.
+///     Business service that automatically gets registered but depends on external services.
+///     This shows how IoCTools services can depend on manually configured external services.
 /// </summary>
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class OrderProcessingBusinessService : IOrderProcessingBusinessService
 {
-    [Inject] private readonly IDatabaseContextService _databaseContext;
     [Inject] private readonly IDistributedCacheService _cacheService;
-    [Inject] private readonly IThirdPartyApiService _thirdPartyApi;
+    [Inject] private readonly IDatabaseContextService _databaseContext;
     [Inject] private readonly ILogger<OrderProcessingBusinessService> _logger;
+    [Inject] private readonly IThirdPartyApiService _thirdPartyApi;
 
     public async Task<OrderProcessingResult> ProcessOrderAsync(ExternalOrder order)
     {
@@ -302,34 +305,29 @@ public partial class OrderProcessingBusinessService : IOrderProcessingBusinessSe
             // 2. Validate with third-party service
             var validation = await _thirdPartyApi.ValidateDataAsync(order, "order-validation");
             if (!validation.IsValid)
-            {
                 return new OrderProcessingResult(false, "Order validation failed", validation.Errors);
-            }
 
             // 3. Process payment through third-party API
             var paymentRequest = new ExternalPaymentRequest(order.PaymentAmount, order.Currency, order.PaymentMethod);
             var paymentResult = await _thirdPartyApi.ProcessPaymentAsync(paymentRequest);
-            
-            if (!paymentResult.Success)
-            {
-                return new OrderProcessingResult(false, "Payment processing failed");
-            }
+
+            if (!paymentResult.Success) return new OrderProcessingResult(false, "Payment processing failed");
 
             // 4. Save to database
             var savedOrder = await _databaseContext.SaveAsync(order);
-            
+
             // 5. Cache the result
             await _cacheService.SetAsync($"order:{order.Id}", savedOrder, TimeSpan.FromMinutes(30));
 
             // 6. Send notification
             var notificationRequest = new ExternalNotificationRequest(
-                order.CustomerEmail, 
-                "Order Processed", 
+                order.CustomerEmail,
+                "Order Processed",
                 $"Your order {order.Id} has been processed successfully.");
             await _thirdPartyApi.SendNotificationAsync(notificationRequest);
 
             _logger.LogInformation("Order processing completed: {OrderId}", order.Id);
-            return new OrderProcessingResult(true, "Order processed successfully", 
+            return new OrderProcessingResult(true, "Order processed successfully",
                 PaymentTransactionId: paymentResult.TransactionId);
         }
         catch (Exception ex)
@@ -345,10 +343,7 @@ public partial class OrderProcessingBusinessService : IOrderProcessingBusinessSe
         {
             // Check cache first
             var cachedOrder = await _cacheService.GetAsync<ExternalOrder>($"order:{orderId}");
-            if (cachedOrder != null)
-            {
-                return new OrderRetrievalResult(true, "Retrieved from cache", cachedOrder);
-            }
+            if (cachedOrder != null) return new OrderRetrievalResult(true, "Retrieved from cache", cachedOrder);
 
             // Fallback to database
             var order = await _databaseContext.FindByIdAsync<ExternalOrder>(orderId);
@@ -370,18 +365,20 @@ public partial class OrderProcessingBusinessService : IOrderProcessingBusinessSe
 }
 
 /// <summary>
-/// Framework integration service that uses built-in .NET services.
-/// Shows how IoCTools services can depend on framework services like IMemoryCache, ILogger, etc.
+///     Framework integration service that uses built-in .NET services.
+///     Shows how IoCTools services can depend on framework services like IMemoryCache, ILogger, etc.
 /// </summary>
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class FrameworkIntegrationService : IFrameworkIntegrationService
 {
-    [Inject] private readonly IMemoryCache _memoryCache;
     [Inject] private readonly IConfiguration _configuration;
-    [Inject] private readonly IServiceProvider _serviceProvider;
     [Inject] private readonly ILogger<FrameworkIntegrationService> _logger;
+    [Inject] private readonly IMemoryCache _memoryCache;
+    [Inject] private readonly IServiceProvider _serviceProvider;
 
-    public async Task<CacheOperationResult> CacheDataWithMemoryCacheAsync<T>(string key, T data, TimeSpan? expiration = null) where T : class
+    public async Task<CacheOperationResult> CacheDataWithMemoryCacheAsync<T>(string key,
+        T data,
+        TimeSpan? expiration = null) where T : class
     {
         try
         {
@@ -393,7 +390,7 @@ public partial class FrameworkIntegrationService : IFrameworkIntegrationService
 
             _memoryCache.Set(key, data, options);
             _logger.LogDebug("Cached data with key: {Key}", key);
-            
+
             await Task.Delay(1); // Simulate async operation
             return new CacheOperationResult(true, "Data cached successfully");
         }
@@ -411,14 +408,11 @@ public partial class FrameworkIntegrationService : IFrameworkIntegrationService
             var section = _configuration.GetSection(sectionName);
             var values = new Dictionary<string, string>();
 
-            foreach (var item in section.GetChildren())
-            {
-                values[item.Key] = item.Value ?? string.Empty;
-            }
+            foreach (var item in section.GetChildren()) values[item.Key] = item.Value ?? string.Empty;
 
-            _logger.LogDebug("Retrieved {Count} configuration values from section: {Section}", 
+            _logger.LogDebug("Retrieved {Count} configuration values from section: {Section}",
                 values.Count, sectionName);
-            
+
             await Task.Delay(1); // Simulate async operation
             return new ConfigurationResult(true, "Configuration retrieved", values);
         }
@@ -435,18 +429,16 @@ public partial class FrameworkIntegrationService : IFrameworkIntegrationService
         {
             var service = _serviceProvider.GetService<T>();
             var serviceType = typeof(T);
-            
+
             if (service != null)
             {
                 _logger.LogDebug("Successfully resolved service: {ServiceType}", serviceType.Name);
                 await Task.Delay(1); // Simulate async operation
                 return new ServiceResolutionResult(true, "Service resolved", serviceType.Name, service.GetHashCode());
             }
-            else
-            {
-                _logger.LogWarning("Service not found: {ServiceType}", serviceType.Name);
-                return new ServiceResolutionResult(false, "Service not registered", serviceType.Name);
-            }
+
+            _logger.LogWarning("Service not found: {ServiceType}", serviceType.Name);
+            return new ServiceResolutionResult(false, "Service not registered", serviceType.Name);
         }
         catch (Exception ex)
         {
@@ -457,22 +449,24 @@ public partial class FrameworkIntegrationService : IFrameworkIntegrationService
 }
 
 /// <summary>
-/// Mixed registration example that combines automatic IoCTools registration with manual dependencies.
-/// Shows the hybrid pattern where some dependencies are automatic and others are manual.
+///     Mixed registration example that combines automatic IoCTools registration with manual dependencies.
+///     Shows the hybrid pattern where some dependencies are automatic and others are manual.
 /// </summary>
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class HybridIntegrationService : IHybridIntegrationService
 {
-    // These are automatically resolved by IoCTools
-    [Inject] private readonly IPaymentService _paymentService; // IoCTools registered service
+    [Inject] private readonly IDatabaseContextService _databaseContext; // External service
     [Inject] private readonly IEmailService _emailService; // IoCTools registered service
-    [Inject] private readonly ILogger<HybridIntegrationService> _logger; // Framework service
-    
+
     // These need to be manually registered
     [Inject] private readonly IHttpClientService _httpClientService; // External service
-    [Inject] private readonly IThirdPartyApiService _thirdPartyApiService; // External service
-    [Inject] private readonly IDatabaseContextService _databaseContext; // External service
+
+    [Inject] private readonly ILogger<HybridIntegrationService> _logger; // Framework service
+
+    // These are automatically resolved by IoCTools
+    [Inject] private readonly IPaymentService _paymentService; // IoCTools registered service
     [Inject] private readonly IServiceProvider _serviceProvider; // For health checks
+    [Inject] private readonly IThirdPartyApiService _thirdPartyApiService; // External service
 
     public async Task<IntegrationResult> ProcessBusinessWorkflowAsync(BusinessWorkflowRequest request)
     {
@@ -482,10 +476,7 @@ public partial class HybridIntegrationService : IHybridIntegrationService
 
             // 1. Use IoCTools service for payment processing
             var paymentResult = await _paymentService.ProcessPaymentAsync(new Payment(request.Amount));
-            if (!paymentResult.Success)
-            {
-                return new IntegrationResult(false, "Payment failed", request.WorkflowId);
-            }
+            if (!paymentResult.Success) return new IntegrationResult(false, "Payment failed", request.WorkflowId);
 
             // 2. Use external database service to save workflow state
             await _databaseContext.SaveAsync(request);
@@ -493,16 +484,13 @@ public partial class HybridIntegrationService : IHybridIntegrationService
             // 3. Call external API for additional processing
             var apiRequest = new ExternalPaymentRequest(request.Amount, "USD", "CreditCard");
             var externalResult = await _thirdPartyApiService.ProcessPaymentAsync(apiRequest);
-            
-            if (!externalResult.Success)
-            {
-                _logger.LogWarning("External API call failed but continuing workflow");
-            }
+
+            if (!externalResult.Success) _logger.LogWarning("External API call failed but continuing workflow");
 
             // 4. Use IoCTools service for email notification
             await _emailService.SendEmailAsync(
-                request.CustomerEmail, 
-                "Workflow Completed", 
+                request.CustomerEmail,
+                "Workflow Completed",
                 $"Your workflow {request.WorkflowId} has been processed."
             );
 
@@ -511,9 +499,9 @@ public partial class HybridIntegrationService : IHybridIntegrationService
                 "workflow-service", $"/api/workflows/{request.WorkflowId}/confirm");
 
             _logger.LogInformation("Business workflow completed: {WorkflowId}", request.WorkflowId);
-            return new IntegrationResult(true, "Workflow completed successfully", request.WorkflowId, 
-                PaymentTransactionId: Guid.NewGuid().ToString(),
-                ExternalTransactionId: externalResult.TransactionId);
+            return new IntegrationResult(true, "Workflow completed successfully", request.WorkflowId,
+                Guid.NewGuid().ToString(),
+                externalResult.TransactionId);
         }
         catch (Exception ex)
         {
@@ -579,79 +567,26 @@ public partial class HybridIntegrationService : IHybridIntegrationService
 #region Registration Helper Service
 
 /// <summary>
-/// Service that demonstrates how to manually configure and register external services.
-/// This would typically be called from Program.cs during application startup.
+///     Service that demonstrates how to manually configure and register external services.
+///     This would typically be called from Program.cs during application startup.
 /// </summary>
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class ExternalServiceRegistrationHelper : IExternalServiceRegistrationHelper
 {
     [Inject] private readonly ILogger<ExternalServiceRegistrationHelper> _logger;
 
-    public void ConfigureExternalServices(IServiceCollection services, IConfiguration configuration)
+    public void ConfigureExternalServices(IServiceCollection services,
+        IConfiguration configuration)
     {
         _logger.LogInformation("Configuring external services for manual registration");
 
         // Configure HTTP clients with different configurations
         ConfigureHttpClients(services, configuration);
-        
+
         // Register external services that need manual registration
         RegisterExternalServices(services);
-        
+
         _logger.LogInformation("External service configuration completed");
-    }
-
-    private static void ConfigureHttpClients(IServiceCollection services, IConfiguration configuration)
-    {
-        // Payment Gateway HTTP Client
-        services.AddHttpClient("payment-gateway", client =>
-        {
-            client.BaseAddress = new Uri(configuration.GetValue<string>("ExternalServices:PaymentGateway:BaseUrl") 
-                ?? "https://api.paymentgateway.example.com/");
-            client.DefaultRequestHeaders.Add("Authorization", 
-                $"Bearer {configuration.GetValue<string>("ExternalServices:PaymentGateway:ApiKey")}");
-            client.DefaultRequestHeaders.Add("User-Agent", "IoCTools-Sample/1.0");
-            client.Timeout = TimeSpan.FromSeconds(30);
-        });
-
-        // Notification Service HTTP Client
-        services.AddHttpClient("notification-service", client =>
-        {
-            client.BaseAddress = new Uri(configuration.GetValue<string>("ExternalServices:NotificationService:BaseUrl") 
-                ?? "https://api.notifications.example.com/");
-            client.DefaultRequestHeaders.Add("X-API-Key", 
-                configuration.GetValue<string>("ExternalServices:NotificationService:ApiKey") ?? "demo-key");
-            client.Timeout = TimeSpan.FromSeconds(15);
-        });
-
-        // Validation Service HTTP Client
-        services.AddHttpClient("validation-service", client =>
-        {
-            client.BaseAddress = new Uri(configuration.GetValue<string>("ExternalServices:ValidationService:BaseUrl") 
-                ?? "https://api.validation.example.com/");
-            client.DefaultRequestHeaders.Add("Accept", "application/json");
-            client.Timeout = TimeSpan.FromSeconds(10);
-        });
-
-        // Workflow Service HTTP Client
-        services.AddHttpClient("workflow-service", client =>
-        {
-            client.BaseAddress = new Uri(configuration.GetValue<string>("ExternalServices:WorkflowService:BaseUrl") 
-                ?? "https://api.workflow.example.com/");
-            client.DefaultRequestHeaders.Add("Content-Type", "application/json");
-        });
-    }
-
-    private void RegisterExternalServices(IServiceCollection services)
-    {
-        // Register external services that have [ExternalService]
-        // These need manual registration because they require complex configuration
-        
-        services.AddScoped<IHttpClientService, HttpClientService>();
-        services.AddScoped<IDatabaseContextService, DatabaseContextService>();
-        services.AddScoped<IDistributedCacheService, ExternalRedisCacheService>();
-        services.AddScoped<IThirdPartyApiService, ThirdPartyApiService>();
-        
-        _logger.LogDebug("Registered external services: HttpClient, Database, Redis, ThirdPartyApi");
     }
 
     public void ValidateExternalServiceConfiguration(IConfiguration configuration)
@@ -661,30 +596,75 @@ public partial class ExternalServiceRegistrationHelper : IExternalServiceRegistr
         // Validate required configuration sections
         var requiredConfigs = new[]
         {
-            "ExternalServices:PaymentGateway:BaseUrl",
-            "ExternalServices:PaymentGateway:ApiKey",
-            "ExternalServices:NotificationService:BaseUrl",
-            "ExternalServices:NotificationService:ApiKey",
+            "ExternalServices:PaymentGateway:BaseUrl", "ExternalServices:PaymentGateway:ApiKey",
+            "ExternalServices:NotificationService:BaseUrl", "ExternalServices:NotificationService:ApiKey",
             "ConnectionStrings:DefaultConnection"
         };
 
         foreach (var config in requiredConfigs)
-        {
             if (string.IsNullOrWhiteSpace(configuration.GetValue<string>(config)))
-            {
                 missingConfigurations.Add(config);
-            }
-        }
 
         if (missingConfigurations.Count > 0)
-        {
-            _logger.LogWarning("Missing external service configurations: {Configs}", 
+            _logger.LogWarning("Missing external service configurations: {Configs}",
                 string.Join(", ", missingConfigurations));
-        }
         else
-        {
             _logger.LogInformation("All external service configurations are present");
-        }
+    }
+
+    private static void ConfigureHttpClients(IServiceCollection services,
+        IConfiguration configuration)
+    {
+        // Payment Gateway HTTP Client
+        services.AddHttpClient("payment-gateway", client =>
+        {
+            client.BaseAddress = new Uri(configuration.GetValue<string>("ExternalServices:PaymentGateway:BaseUrl")
+                                         ?? "https://api.paymentgateway.example.com/");
+            client.DefaultRequestHeaders.Add("Authorization",
+                $"Bearer {configuration.GetValue<string>("ExternalServices:PaymentGateway:ApiKey")}");
+            client.DefaultRequestHeaders.Add("User-Agent", "IoCTools-Sample/1.0");
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+
+        // Notification Service HTTP Client
+        services.AddHttpClient("notification-service", client =>
+        {
+            client.BaseAddress = new Uri(configuration.GetValue<string>("ExternalServices:NotificationService:BaseUrl")
+                                         ?? "https://api.notifications.example.com/");
+            client.DefaultRequestHeaders.Add("X-API-Key",
+                configuration.GetValue<string>("ExternalServices:NotificationService:ApiKey") ?? "demo-key");
+            client.Timeout = TimeSpan.FromSeconds(15);
+        });
+
+        // Validation Service HTTP Client
+        services.AddHttpClient("validation-service", client =>
+        {
+            client.BaseAddress = new Uri(configuration.GetValue<string>("ExternalServices:ValidationService:BaseUrl")
+                                         ?? "https://api.validation.example.com/");
+            client.DefaultRequestHeaders.Add("Accept", "application/json");
+            client.Timeout = TimeSpan.FromSeconds(10);
+        });
+
+        // Workflow Service HTTP Client
+        services.AddHttpClient("workflow-service", client =>
+        {
+            client.BaseAddress = new Uri(configuration.GetValue<string>("ExternalServices:WorkflowService:BaseUrl")
+                                         ?? "https://api.workflow.example.com/");
+            client.DefaultRequestHeaders.Add("Content-Type", "application/json");
+        });
+    }
+
+    private void RegisterExternalServices(IServiceCollection services)
+    {
+        // Register external services that have [ExternalService]
+        // These need manual registration because they require complex configuration
+
+        services.AddScoped<IHttpClientService, HttpClientService>();
+        services.AddScoped<IDatabaseContextService, DatabaseContextService>();
+        services.AddScoped<IDistributedCacheService, ExternalRedisCacheService>();
+        services.AddScoped<IThirdPartyApiService, ThirdPartyApiService>();
+
+        _logger.LogDebug("Registered external services: HttpClient, Database, Redis, ThirdPartyApi");
     }
 }
 
@@ -694,8 +674,12 @@ public partial class ExternalServiceRegistrationHelper : IExternalServiceRegistr
 
 public interface IHttpClientService
 {
-    Task<ApiResponse<T>> GetAsync<T>(string clientName, string endpoint) where T : class;
-    Task<ApiResponse<TResponse>> PostAsync<TRequest, TResponse>(string clientName, string endpoint, TRequest data) 
+    Task<ApiResponse<T>> GetAsync<T>(string clientName,
+        string endpoint) where T : class;
+
+    Task<ApiResponse<TResponse>> PostAsync<TRequest, TResponse>(string clientName,
+        string endpoint,
+        TRequest data)
         where TRequest : class where TResponse : class;
 }
 
@@ -709,18 +693,24 @@ public interface IDatabaseContextService
 
 public interface IDistributedCacheService
 {
+    string CacheType { get; }
     Task<T?> GetAsync<T>(string key) where T : class;
-    Task SetAsync<T>(string key, T value, TimeSpan? expiration = null) where T : class;
+
+    Task SetAsync<T>(string key,
+        T value,
+        TimeSpan? expiration = null) where T : class;
+
     Task RemoveAsync(string key);
     Task<bool> ExistsAsync(string key);
-    string CacheType { get; }
 }
 
 public interface IThirdPartyApiService
 {
     Task<PaymentProcessingResult> ProcessPaymentAsync(ExternalPaymentRequest request);
     Task<ExternalNotificationResult> SendNotificationAsync(ExternalNotificationRequest request);
-    Task<IoCTools.Sample.Interfaces.ValidationResult> ValidateDataAsync(object data, string validationType);
+
+    Task<ValidationResult> ValidateDataAsync(object data,
+        string validationType);
 }
 
 public interface IOrderProcessingBusinessService
@@ -731,7 +721,10 @@ public interface IOrderProcessingBusinessService
 
 public interface IFrameworkIntegrationService
 {
-    Task<CacheOperationResult> CacheDataWithMemoryCacheAsync<T>(string key, T data, TimeSpan? expiration = null) where T : class;
+    Task<CacheOperationResult> CacheDataWithMemoryCacheAsync<T>(string key,
+        T data,
+        TimeSpan? expiration = null) where T : class;
+
     Task<ConfigurationResult> GetConfigurationValuesAsync(string sectionName);
     Task<ServiceResolutionResult> ResolveServiceDynamicallyAsync<T>() where T : class;
 }
@@ -744,7 +737,9 @@ public interface IHybridIntegrationService
 
 public interface IExternalServiceRegistrationHelper
 {
-    void ConfigureExternalServices(IServiceCollection services, IConfiguration configuration);
+    void ConfigureExternalServices(IServiceCollection services,
+        IConfiguration configuration);
+
     void ValidateExternalServiceConfiguration(IConfiguration configuration);
 }
 
@@ -784,7 +779,11 @@ public record PaymentProcessingResult(bool Success, string Message, string? Tran
 
 public record ExternalNotificationResult(bool Success, string Message, string? MessageId = null);
 
-public record OrderProcessingResult(bool Success, string Message, IEnumerable<string>? ValidationErrors = null, string? PaymentTransactionId = null);
+public record OrderProcessingResult(
+    bool Success,
+    string Message,
+    IEnumerable<string>? ValidationErrors = null,
+    string? PaymentTransactionId = null);
 
 public record OrderRetrievalResult(bool Success, string Message, ExternalOrder? Order = null);
 
@@ -796,9 +795,18 @@ public record ServiceResolutionResult(bool Success, string Message, string Servi
 
 public record BusinessWorkflowRequest(string WorkflowId, string CustomerEmail, decimal Amount);
 
-public record IntegrationResult(bool Success, string Message, string WorkflowId, string? PaymentTransactionId = null, string? ExternalTransactionId = null);
+public record IntegrationResult(
+    bool Success,
+    string Message,
+    string WorkflowId,
+    string? PaymentTransactionId = null,
+    string? ExternalTransactionId = null);
 
-public record HealthCheckResult(bool IsHealthy, string Message, Dictionary<string, bool> ServiceHealth, IEnumerable<string> Issues);
+public record HealthCheckResult(
+    bool IsHealthy,
+    string Message,
+    Dictionary<string, bool> ServiceHealth,
+    IEnumerable<string> Issues);
 
 public record WorkflowConfirmation(string WorkflowId, string Status, DateTime ConfirmedAt);
 

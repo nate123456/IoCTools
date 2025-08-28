@@ -1,26 +1,37 @@
+namespace IoCTools.Generator.Diagnostics;
+
 using System.Collections.Generic;
 using System.Linq;
-using IoCTools.Generator.Models;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace IoCTools.Generator.Diagnostics;
+using Models;
 
 internal static class ConfigurationValidator
 {
     // Types that can be bound from configuration without issues
     private static readonly HashSet<string> SupportedPrimitiveTypes = new()
     {
-        "System.String", "string",
-        "System.Int32", "int",
-        "System.Int64", "long",
-        "System.Int16", "short",
-        "System.Byte", "byte",
-        "System.Boolean", "bool",
-        "System.Double", "double",
-        "System.Single", "float",
-        "System.Decimal", "decimal",
+        "System.String",
+        "string",
+        "System.Int32",
+        "int",
+        "System.Int64",
+        "long",
+        "System.Int16",
+        "short",
+        "System.Byte",
+        "byte",
+        "System.Boolean",
+        "bool",
+        "System.Double",
+        "double",
+        "System.Single",
+        "float",
+        "System.Decimal",
+        "decimal",
         "System.DateTime",
         "System.DateTimeOffset",
         "System.TimeSpan",

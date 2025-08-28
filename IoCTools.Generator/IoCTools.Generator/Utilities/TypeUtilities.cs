@@ -1,7 +1,8 @@
-using System.Linq;
-using Microsoft.CodeAnalysis;
-
 namespace IoCTools.Generator.Utilities;
+
+using System.Linq;
+
+using Microsoft.CodeAnalysis;
 
 internal static class TypeUtilities
 {
@@ -15,8 +16,7 @@ internal static class TypeUtilities
             // Check if it's a common collection type that should use its type argument for naming
             var collectionTypes = new[]
             {
-                "IEnumerable", "IList", "ICollection", "List",
-                "IReadOnlyList", "IReadOnlyCollection", "Array"
+                "IEnumerable", "IList", "ICollection", "List", "IReadOnlyList", "IReadOnlyCollection", "Array"
             };
 
             if (collectionTypes.Contains(typeName) && namedType.TypeArguments.Length > 0)

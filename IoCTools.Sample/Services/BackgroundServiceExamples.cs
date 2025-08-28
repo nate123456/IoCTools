@@ -1,19 +1,23 @@
-using System.Collections.Concurrent;
-using System.Net.Http;
-using IoCTools.Abstractions.Annotations;
-using IoCTools.Abstractions.Enumerations;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Http;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+
+// For configuration models
 
 namespace IoCTools.Sample.Services;
+
+using System.Collections.Concurrent;
+
+using Abstractions.Annotations;
+
+using Configuration;
+
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 // === BACKGROUND SERVICE CONFIGURATION CLASSES ===
 
 /// <summary>
-/// Configuration for email queue processing background service
+///     Configuration for email queue processing background service
 /// </summary>
 public class EmailProcessorSettings
 {
@@ -25,7 +29,7 @@ public class EmailProcessorSettings
 }
 
 /// <summary>
-/// Configuration for data cleanup background service
+///     Configuration for data cleanup background service
 /// </summary>
 public class DataCleanupSettings
 {
@@ -37,7 +41,7 @@ public class DataCleanupSettings
 }
 
 /// <summary>
-/// Configuration for health check monitoring background service
+///     Configuration for health check monitoring background service
 /// </summary>
 public class HealthMonitorSettings
 {
@@ -49,7 +53,7 @@ public class HealthMonitorSettings
 }
 
 /// <summary>
-/// Configuration for file watcher background service
+///     Configuration for file watcher background service
 /// </summary>
 public class FileWatcherSettings
 {
@@ -60,24 +64,14 @@ public class FileWatcherSettings
     public int ProcessingDelayMs { get; set; } = 1000;
 }
 
-/// <summary>
-/// Configuration for notification background service
-/// </summary>
-public class NotificationSchedulerSettings
-{
-    public bool Enabled { get; set; } = true;
-    public int IntervalMinutes { get; set; } = 15;
-    public string DefaultNotificationProvider { get; set; } = "Email";
-    public bool SendDailyDigest { get; set; } = true;
-    public string DigestTime { get; set; } = "09:00";
-}
+// NOTE: NotificationSchedulerSettings is defined in Configuration/ConfigurationModels.cs to avoid duplicates
 
 // === 1. SIMPLE BACKGROUND SERVICE ===
 
 /// <summary>
-/// Basic background service example that inherits from BackgroundService
+///     Basic background service example that inherits from BackgroundService
 /// </summary>
-[Service(Lifetime.Singleton)]  // Background services should be Singleton
+// Background services are automatically detected by intelligent inference
 public partial class SimpleBackgroundWorker : BackgroundService
 {
     [Inject] private readonly ILogger<SimpleBackgroundWorker> _logger;
@@ -89,14 +83,14 @@ public partial class SimpleBackgroundWorker : BackgroundService
         while (!stoppingToken.IsCancellationRequested)
         {
             _logger.LogInformation("SimpleBackgroundWorker running at: {Time}", DateTimeOffset.Now);
-            
+
             // Simulate work
             await DoWorkAsync(stoppingToken);
-            
+
             // Wait for next execution
             await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
         }
-        
+
         _logger.LogInformation("SimpleBackgroundWorker stopped at: {Time}", DateTimeOffset.Now);
     }
 
@@ -111,14 +105,15 @@ public partial class SimpleBackgroundWorker : BackgroundService
 // === 2. EMAIL QUEUE PROCESSOR WITH DEPENDENCY INJECTION ===
 
 /// <summary>
-/// Background service that processes email queue with full dependency injection
+///     Background service that processes email queue with full dependency injection
 /// </summary>
-[Service(Lifetime.Singleton)]
 public partial class EmailQueueProcessor : BackgroundService
 {
     [Inject] private readonly ILogger<EmailQueueProcessor> _logger;
     [Inject] private readonly IServiceScopeFactory _scopeFactory;
-    [InjectConfiguration("BackgroundServices:EmailProcessor")] private readonly EmailProcessorSettings _settings;
+
+    [InjectConfiguration("BackgroundServices:EmailProcessor")]
+    private readonly EmailProcessorSettings _settings;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -128,7 +123,7 @@ public partial class EmailQueueProcessor : BackgroundService
             return;
         }
 
-        _logger.LogInformation("EmailQueueProcessor started. Interval: {IntervalSeconds}s, Batch Size: {BatchSize}", 
+        _logger.LogInformation("EmailQueueProcessor started. Interval: {IntervalSeconds}s, Batch Size: {BatchSize}",
             _settings.IntervalSeconds, _settings.BatchSize);
 
         while (!stoppingToken.IsCancellationRequested)
@@ -154,12 +149,12 @@ public partial class EmailQueueProcessor : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         var scopedEmailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
 
-        _logger.LogInformation("Processing email batch of up to {BatchSize} emails from queue {QueueName}", 
+        _logger.LogInformation("Processing email batch of up to {BatchSize} emails from queue {QueueName}",
             _settings.BatchSize, _settings.QueueName);
 
         // Simulate retrieving and processing emails from queue
         var emailsToProcess = GetPendingEmails(_settings.BatchSize);
-        
+
         foreach (var email in emailsToProcess)
         {
             if (cancellationToken.IsCancellationRequested) break;
@@ -192,16 +187,21 @@ public partial class EmailQueueProcessor : BackgroundService
 // === 3. DATA CLEANUP SERVICE WITH CONFIGURATION ===
 
 /// <summary>
-/// Background service that performs periodic data cleanup operations
+///     Background service that performs periodic data cleanup operations
 /// </summary>
-[Service(Lifetime.Singleton)]
 public partial class DataCleanupService : BackgroundService
 {
+    [InjectConfiguration("DataCleanupSettings")]
+    private readonly DataCleanupSettings _cleanupSettings;
+
+    [InjectConfiguration("Database:ConnectionString")]
+    private readonly string _connectionString;
+
     [Inject] private readonly ILogger<DataCleanupService> _logger;
     [Inject] private readonly IServiceScopeFactory _scopeFactory;
-    [InjectConfiguration("Database:ConnectionString")] private readonly string _connectionString;
-    [InjectConfiguration] private readonly DataCleanupSettings _cleanupSettings;
-    [InjectConfiguration("Database:DefaultTimeout", DefaultValue = 30)] private readonly int _timeoutSeconds;
+
+    [InjectConfiguration("Database:DefaultTimeout", DefaultValue = 30)]
+    private readonly int _timeoutSeconds;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -211,7 +211,8 @@ public partial class DataCleanupService : BackgroundService
             return;
         }
 
-        _logger.LogInformation("DataCleanupService started. Interval: {IntervalHours}h, Retention: {RetentionDays} days", 
+        _logger.LogInformation(
+            "DataCleanupService started. Interval: {IntervalHours}h, Retention: {RetentionDays} days",
             _cleanupSettings.IntervalHours, _cleanupSettings.RetentionDays);
 
         while (!stoppingToken.IsCancellationRequested)
@@ -235,7 +236,7 @@ public partial class DataCleanupService : BackgroundService
 
     private async Task PerformCleanupAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Starting data cleanup operation for tables: {Tables}", 
+        _logger.LogInformation("Starting data cleanup operation for tables: {Tables}",
             string.Join(", ", _cleanupSettings.TableNames));
 
         var cutoffDate = DateTime.UtcNow.AddDays(-_cleanupSettings.RetentionDays);
@@ -248,27 +249,26 @@ public partial class DataCleanupService : BackgroundService
             var recordsDeleted = await CleanupTableAsync(tableName, cutoffDate, cancellationToken);
             totalRecordsDeleted += recordsDeleted;
 
-            _logger.LogInformation("Cleaned up {RecordsDeleted} records from {TableName}", 
+            _logger.LogInformation("Cleaned up {RecordsDeleted} records from {TableName}",
                 recordsDeleted, tableName);
         }
 
-        if (_cleanupSettings.CompressOldData)
-        {
-            await CompressOldDataAsync(cancellationToken);
-        }
+        if (_cleanupSettings.CompressOldData) await CompressOldDataAsync(cancellationToken);
 
-        _logger.LogInformation("Data cleanup completed. Total records deleted: {TotalDeleted}", 
+        _logger.LogInformation("Data cleanup completed. Total records deleted: {TotalDeleted}",
             totalRecordsDeleted);
     }
 
-    private async Task<int> CleanupTableAsync(string tableName, DateTime cutoffDate, CancellationToken cancellationToken)
+    private async Task<int> CleanupTableAsync(string tableName,
+        DateTime cutoffDate,
+        CancellationToken cancellationToken)
     {
         // Simulate database cleanup operation
-        _logger.LogDebug("Cleaning up table {TableName} for records older than {CutoffDate}", 
+        _logger.LogDebug("Cleaning up table {TableName} for records older than {CutoffDate}",
             tableName, cutoffDate);
 
         await Task.Delay(500, cancellationToken); // Simulate database operation
-        
+
         // Return simulated count of deleted records
         return Random.Shared.Next(0, 100);
     }
@@ -284,16 +284,18 @@ public partial class DataCleanupService : BackgroundService
 // === 4. HEALTH CHECK MONITORING SERVICE ===
 
 /// <summary>
-/// Background service that monitors application health endpoints
+///     Background service that monitors application health endpoints
 /// </summary>
-[Service(Lifetime.Singleton)]
 public partial class HealthCheckService : BackgroundService
 {
-    [Inject] private readonly ILogger<HealthCheckService> _logger;
-    [Inject] private readonly IHttpClientFactory _httpClientFactory;
-    [Inject] private readonly IServiceScopeFactory _scopeFactory;
-    [InjectConfiguration] private readonly HealthMonitorSettings _healthSettings;
     [InjectConfiguration("Api:BaseUrl")] private readonly string _baseUrl;
+
+    [InjectConfiguration("HealthMonitorSettings")]
+    private readonly HealthMonitorSettings _healthSettings;
+
+    [Inject] private readonly IHttpClientFactory _httpClientFactory;
+    [Inject] private readonly ILogger<HealthCheckService> _logger;
+    [Inject] private readonly IServiceScopeFactory _scopeFactory;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -303,7 +305,8 @@ public partial class HealthCheckService : BackgroundService
             return;
         }
 
-        _logger.LogInformation("HealthCheckService started. Monitoring {EndpointCount} endpoints every {IntervalMinutes} minutes", 
+        _logger.LogInformation(
+            "HealthCheckService started. Monitoring {EndpointCount} endpoints every {IntervalMinutes} minutes",
             _healthSettings.EndpointsToCheck.Length, _healthSettings.IntervalMinutes);
 
         while (!stoppingToken.IsCancellationRequested)
@@ -325,7 +328,7 @@ public partial class HealthCheckService : BackgroundService
 
     private async Task PerformHealthChecksAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Performing health checks on {EndpointCount} endpoints", 
+        _logger.LogInformation("Performing health checks on {EndpointCount} endpoints",
             _healthSettings.EndpointsToCheck.Length);
 
         using var httpClient = _httpClientFactory.CreateClient();
@@ -343,31 +346,28 @@ public partial class HealthCheckService : BackgroundService
             var status = healthy ? "HEALTHY" : "UNHEALTHY";
             _logger.LogInformation("Health check for {Endpoint}: {Status}", endpoint, status);
 
-            if (!healthy)
-            {
-                _logger.LogWarning("Health check failed for {Endpoint}: {Error}", endpoint, error);
-            }
+            if (!healthy) _logger.LogWarning("Health check failed for {Endpoint}: {Error}", endpoint, error);
         }
 
         // Send notification if any endpoints are unhealthy
         var unhealthyEndpoints = healthResults.Where(r => !r.healthy).ToArray();
-        if (unhealthyEndpoints.Any())
-        {
-            await NotifyHealthIssuesAsync(unhealthyEndpoints);
-        }
+        if (unhealthyEndpoints.Any()) await NotifyHealthIssuesAsync(unhealthyEndpoints);
 
-        _logger.LogInformation("Health check completed. {HealthyCount}/{TotalCount} endpoints healthy", 
+        _logger.LogInformation("Health check completed. {HealthyCount}/{TotalCount} endpoints healthy",
             healthResults.Count(r => r.healthy), healthResults.Count);
     }
 
-    private async Task<(bool healthy, string? error)> CheckEndpointAsync(HttpClient httpClient, string endpoint, CancellationToken cancellationToken)
+    private async Task<(bool healthy, string? error)> CheckEndpointAsync(HttpClient httpClient,
+        string endpoint,
+        CancellationToken cancellationToken)
     {
         try
         {
             var fullUrl = $"{_baseUrl.TrimEnd('/')}{endpoint}";
             var response = await httpClient.GetAsync(fullUrl, cancellationToken);
-            
-            return (response.IsSuccessStatusCode, response.IsSuccessStatusCode ? null : $"HTTP {(int)response.StatusCode}");
+
+            return (response.IsSuccessStatusCode,
+                response.IsSuccessStatusCode ? null : $"HTTP {(int)response.StatusCode}");
         }
         catch (Exception ex)
         {
@@ -377,14 +377,14 @@ public partial class HealthCheckService : BackgroundService
 
     private async Task NotifyHealthIssuesAsync((string endpoint, bool healthy, string? error)[] unhealthyEndpoints)
     {
-        _logger.LogWarning("Sending health issue notification for {Count} unhealthy endpoints", 
+        _logger.LogWarning("Sending health issue notification for {Count} unhealthy endpoints",
             unhealthyEndpoints.Length);
 
         try
         {
             using var scope = _scopeFactory.CreateScope();
             var emailService = scope.ServiceProvider.GetService<IEmailService>();
-            
+
             if (emailService != null)
             {
                 await emailService.SendConfirmationAsync(_healthSettings.NotificationEmail);
@@ -405,18 +405,19 @@ public partial class HealthCheckService : BackgroundService
 // === 5. FILE WATCHER SERVICE ===
 
 /// <summary>
-/// Background service that monitors file system changes and processes new files
+///     Background service that monitors file system changes and processes new files
 /// </summary>
-[Service(Lifetime.Singleton)]
 public partial class FileWatcherService : BackgroundService
 {
+    private readonly ConcurrentQueue<string> _filesToProcess = new();
     [Inject] private readonly ILogger<FileWatcherService> _logger;
+    private readonly SemaphoreSlim _processingLock = new(1, 1);
     [Inject] private readonly IServiceScopeFactory _scopeFactory;
-    [InjectConfiguration] private readonly FileWatcherSettings _watcherSettings;
+
+    [InjectConfiguration("FileWatcherSettings")]
+    private readonly FileWatcherSettings _watcherSettings;
 
     private FileSystemWatcher? _fileWatcher;
-    private readonly ConcurrentQueue<string> _filesToProcess = new();
-    private readonly SemaphoreSlim _processingLock = new(1, 1);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -426,13 +427,13 @@ public partial class FileWatcherService : BackgroundService
             return;
         }
 
-        _logger.LogInformation("FileWatcherService started. Watching path: {WatchPath}", 
+        _logger.LogInformation("FileWatcherService started. Watching path: {WatchPath}",
             _watcherSettings.WatchPath);
 
         try
         {
             StartFileWatcher();
-            
+
             // Process files in background
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -469,8 +470,8 @@ public partial class FileWatcherService : BackgroundService
 
         // Start watching
         _fileWatcher.EnableRaisingEvents = true;
-        
-        _logger.LogInformation("File watcher started for extensions: {Extensions}", 
+
+        _logger.LogInformation("File watcher started for extensions: {Extensions}",
             string.Join(", ", _watcherSettings.FileExtensions));
     }
 
@@ -484,7 +485,8 @@ public partial class FileWatcherService : BackgroundService
         }
     }
 
-    private void OnFileCreated(object sender, FileSystemEventArgs e)
+    private void OnFileCreated(object sender,
+        FileSystemEventArgs e)
     {
         if (ShouldProcessFile(e.FullPath))
         {
@@ -493,7 +495,8 @@ public partial class FileWatcherService : BackgroundService
         }
     }
 
-    private void OnFileChanged(object sender, FileSystemEventArgs e)
+    private void OnFileChanged(object sender,
+        FileSystemEventArgs e)
     {
         if (ShouldProcessFile(e.FullPath))
         {
@@ -502,10 +505,8 @@ public partial class FileWatcherService : BackgroundService
         }
     }
 
-    private void OnError(object sender, ErrorEventArgs e)
-    {
-        _logger.LogError(e.GetException(), "File watcher error");
-    }
+    private void OnError(object sender,
+        ErrorEventArgs e) => _logger.LogError(e.GetException(), "File watcher error");
 
     private bool ShouldProcessFile(string filePath)
     {
@@ -518,7 +519,7 @@ public partial class FileWatcherService : BackgroundService
         if (_filesToProcess.IsEmpty) return;
 
         await _processingLock.WaitAsync(cancellationToken);
-        
+
         try
         {
             var processedCount = 0;
@@ -526,15 +527,12 @@ public partial class FileWatcherService : BackgroundService
             {
                 await ProcessFileAsync(filePath, cancellationToken);
                 processedCount++;
-                
+
                 // Limit batch processing to avoid blocking
                 if (processedCount >= 10) break;
             }
-            
-            if (processedCount > 0)
-            {
-                _logger.LogInformation("Processed {Count} files from queue", processedCount);
-            }
+
+            if (processedCount > 0) _logger.LogInformation("Processed {Count} files from queue", processedCount);
         }
         finally
         {
@@ -542,7 +540,8 @@ public partial class FileWatcherService : BackgroundService
         }
     }
 
-    private async Task ProcessFileAsync(string filePath, CancellationToken cancellationToken)
+    private async Task ProcessFileAsync(string filePath,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -553,10 +552,10 @@ public partial class FileWatcherService : BackgroundService
             }
 
             _logger.LogInformation("Processing file: {FilePath}", filePath);
-            
+
             // Simulate file processing
             var fileInfo = new FileInfo(filePath);
-            _logger.LogInformation("File details - Name: {Name}, Size: {Size} bytes, Modified: {Modified}", 
+            _logger.LogInformation("File details - Name: {Name}, Size: {Size} bytes, Modified: {Modified}",
                 fileInfo.Name, fileInfo.Length, fileInfo.LastWriteTime);
 
             // In a real implementation, you might:
@@ -565,9 +564,9 @@ public partial class FileWatcherService : BackgroundService
             // - Store file metadata in database
             // - Move file to processed folder
             // - Send notifications
-            
+
             await Task.Delay(100, cancellationToken); // Simulate processing time
-            
+
             _logger.LogInformation("Successfully processed file: {FilePath}", filePath);
         }
         catch (Exception ex)
@@ -580,16 +579,20 @@ public partial class FileWatcherService : BackgroundService
 // === 6. NOTIFICATION SCHEDULER SERVICE WITH CONDITIONAL REGISTRATION ===
 
 /// <summary>
-/// Background service that sends scheduled notifications with conditional registration
+///     Background service that sends scheduled notifications with conditional registration
 /// </summary>
-[Service(Lifetime.Singleton)]
 [ConditionalService(ConfigValue = "Features:EnableNotifications", Equals = "true")]
 public partial class NotificationSchedulerService : BackgroundService
 {
     [Inject] private readonly ILogger<NotificationSchedulerService> _logger;
+
+    [InjectConfiguration("Features:EnableNotifications", DefaultValue = "false")]
+    private readonly string _notificationsEnabled;
+
+    [InjectConfiguration("NotificationSchedulerSettings")]
+    private readonly NotificationSchedulerSettings _schedulerSettings;
+
     [Inject] private readonly IServiceScopeFactory _scopeFactory;
-    [InjectConfiguration] private readonly NotificationSchedulerSettings _schedulerSettings;
-    [InjectConfiguration("Features:EnableNotifications", DefaultValue = "false")] private readonly string _notificationsEnabled;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -599,21 +602,20 @@ public partial class NotificationSchedulerService : BackgroundService
             return;
         }
 
-        _logger.LogInformation("NotificationSchedulerService started. Interval: {IntervalMinutes} minutes, Provider: {Provider}", 
+        _logger.LogInformation(
+            "NotificationSchedulerService started. Interval: {IntervalMinutes} minutes, Provider: {Provider}",
             _schedulerSettings.IntervalMinutes, _schedulerSettings.DefaultNotificationProvider);
 
-        _logger.LogInformation("NotificationSchedulerService will resolve notification providers dynamically through scoped services");
+        _logger.LogInformation(
+            "NotificationSchedulerService will resolve notification providers dynamically through scoped services");
 
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
                 await ProcessScheduledNotificationsAsync(stoppingToken);
-                
-                if (_schedulerSettings.SendDailyDigest)
-                {
-                    await CheckDailyDigestAsync(stoppingToken);
-                }
+
+                if (_schedulerSettings.SendDailyDigest) await CheckDailyDigestAsync(stoppingToken);
             }
             catch (Exception ex)
             {
@@ -632,7 +634,7 @@ public partial class NotificationSchedulerService : BackgroundService
 
         // Simulate retrieving scheduled notifications from database
         var notifications = GetPendingNotifications();
-        
+
         foreach (var notification in notifications)
         {
             if (cancellationToken.IsCancellationRequested) break;
@@ -650,16 +652,17 @@ public partial class NotificationSchedulerService : BackgroundService
         _logger.LogInformation("Processed {Count} scheduled notifications", notifications.Length);
     }
 
-    private async Task SendNotificationAsync(ScheduledNotification notification, CancellationToken cancellationToken)
+    private async Task SendNotificationAsync(ScheduledNotification notification,
+        CancellationToken cancellationToken)
     {
         using var scope = _scopeFactory.CreateScope();
         var notificationServices = scope.ServiceProvider.GetServices<INotificationService>();
         var notificationService = notificationServices.FirstOrDefault();
-        
+
         if (notificationService != null)
         {
             await notificationService.SendNotificationAsync($"Scheduled: {notification.Message}");
-            _logger.LogInformation("Sent notification {NotificationId} to {Recipient}", 
+            _logger.LogInformation("Sent notification {NotificationId} to {Recipient}",
                 notification.Id, notification.Recipient);
         }
         else
@@ -673,7 +676,8 @@ public partial class NotificationSchedulerService : BackgroundService
         var currentTime = DateTime.Now.ToString("HH:mm");
         if (currentTime == _schedulerSettings.DigestTime)
         {
-            _logger.LogInformation("Sending daily digest at scheduled time: {DigestTime}", _schedulerSettings.DigestTime);
+            _logger.LogInformation("Sending daily digest at scheduled time: {DigestTime}",
+                _schedulerSettings.DigestTime);
             await SendDailyDigestAsync(cancellationToken);
         }
     }
@@ -682,7 +686,7 @@ public partial class NotificationSchedulerService : BackgroundService
     {
         using var scope = _scopeFactory.CreateScope();
         var emailService = scope.ServiceProvider.GetService<IEmailService>();
-        
+
         if (emailService != null)
         {
             await emailService.SendConfirmationAsync("admin@example.com");
@@ -704,34 +708,41 @@ public partial class NotificationSchedulerService : BackgroundService
 // === 7. COMPLEX BACKGROUND SERVICE WITH MULTIPLE DEPENDENCIES ===
 
 /// <summary>
-/// Complex background service demonstrating multiple dependency types and patterns
+///     Complex background service demonstrating multiple dependency types and patterns
 /// </summary>
-[Service(Lifetime.Singleton)]
 public partial class ComplexBackgroundService : BackgroundService
 {
-    [Inject] private readonly ILogger<ComplexBackgroundService> _logger;
     [Inject] private readonly ICacheService _cacheService;
-    [Inject] private readonly IServiceScopeFactory _scopeFactory;
-    
+
+    // Options pattern injection - Use IOptions<T> (Singleton) instead of IOptionsSnapshot<T> (Scoped) for BackgroundServices
+    [InjectConfiguration] private readonly IOptions<DataCleanupSettings> _cleanupOptions;
+
     // Configuration injection examples
-    [InjectConfiguration("Database:ConnectionString")] private readonly string _connectionString;
-    [InjectConfiguration("Email:FromAddress")] private readonly string _fromAddress;
-    [InjectConfiguration("BackgroundServices:DataSync:IntervalMinutes", DefaultValue = 15)] private readonly int _syncInterval;
-    [InjectConfiguration("Features:EnableAdvancedLogging", DefaultValue = false)] private readonly bool _enableAdvancedLogging;
+    [InjectConfiguration("Database:ConnectionString")]
+    private readonly string _connectionString;
+
     [InjectConfiguration] private readonly EmailProcessorSettings _emailSettings;
 
-    // Options pattern injection
-    [InjectConfiguration] private readonly IOptionsSnapshot<DataCleanupSettings> _cleanupOptions;
+    [InjectConfiguration("Features:EnableAdvancedLogging", DefaultValue = false)]
+    private readonly bool _enableAdvancedLogging;
+
+    [InjectConfiguration("Email:FromAddress")]
+    private readonly string _fromAddress;
+
+    [Inject] private readonly ILogger<ComplexBackgroundService> _logger;
+    [Inject] private readonly IServiceScopeFactory _scopeFactory;
+
+    [InjectConfiguration("BackgroundServices:DataSync:IntervalMinutes", DefaultValue = 15)]
+    private readonly int _syncInterval;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("ComplexBackgroundService started - will resolve notification providers dynamically");
 
         if (_enableAdvancedLogging)
-        {
-            _logger.LogInformation("Advanced logging enabled. Email settings: {EmailSettings}, Sync interval: {SyncInterval} minutes", 
+            _logger.LogInformation(
+                "Advanced logging enabled. Email settings: {EmailSettings}, Sync interval: {SyncInterval} minutes",
                 _emailSettings.QueueName, _syncInterval);
-        }
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -763,22 +774,21 @@ public partial class ComplexBackgroundService : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         var scopedEmailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
         var scopedNotificationServices = scope.ServiceProvider.GetServices<INotificationService>();
-        
+
         // 3. Multi-service operations
         foreach (var notificationService in scopedNotificationServices.Take(2)) // Limit for demo
         {
             if (cancellationToken.IsCancellationRequested) break;
-            
+
             await notificationService.SendNotificationAsync("Complex background service is running");
             _logger.LogInformation("Sent notification via {ServiceType}", notificationService.GetType().Name);
         }
 
         // 4. Configuration-driven operations
         if (_enableAdvancedLogging)
-        {
-            _logger.LogInformation("Advanced operation with cleanup settings. Retention: {RetentionDays} days, Tables: {Tables}", 
+            _logger.LogInformation(
+                "Advanced operation with cleanup settings. Retention: {RetentionDays} days, Tables: {Tables}",
                 _cleanupOptions.Value.RetentionDays, string.Join(", ", _cleanupOptions.Value.TableNames));
-        }
 
         // 5. Email operations using injected configuration
         if (!string.IsNullOrEmpty(_fromAddress))
@@ -794,13 +804,47 @@ public partial class ComplexBackgroundService : BackgroundService
 // === SUPPORTING CLASSES ===
 
 /// <summary>
-/// Represents a scheduled notification
+///     Represents a scheduled notification
 /// </summary>
 public record ScheduledNotification(int Id, string Message, string Recipient, DateTime ScheduledTime);
 
+// === 8. CUSTOM IHOSTEDSERVICE IMPLEMENTATION (TESTING REFACTOR) ===
+
+/// <summary>
+///     Custom IHostedService implementation that directly implements the interface
+///     This tests the refactored unified IHostedService detection logic
+/// </summary>
+public partial class CustomHostedService : IHostedService
+{
+    [Inject] private readonly ILogger<CustomHostedService> _logger;
+    private Timer? _timer;
+
+    public Task StartAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("CustomHostedService started");
+
+        // Create a timer that fires every 30 seconds
+        _timer = new Timer(DoWork, null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
+
+        return Task.CompletedTask;
+    }
+
+    public Task StopAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("CustomHostedService stopped");
+
+        _timer?.Change(Timeout.Infinite, 0);
+        _timer?.Dispose();
+
+        return Task.CompletedTask;
+    }
+
+    private void DoWork(object? state) =>
+        _logger.LogInformation("CustomHostedService executing work at: {Time}", DateTimeOffset.Now);
+}
+
 // Note: IHttpClientFactory is provided by Microsoft.Extensions.Http
 // We register it in Program.cs with services.AddHttpClient()
-
 /// <summary>
 /// Concurrent queue for thread-safe file processing
 /// </summary>

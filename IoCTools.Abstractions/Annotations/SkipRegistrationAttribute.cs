@@ -1,6 +1,6 @@
-using System;
-
 namespace IoCTools.Abstractions.Annotations;
+
+using System;
 
 /// <summary>
 ///     Marks a service class to skip registration for all interfaces when used with RegisterAsAll.

@@ -1,11 +1,8 @@
-using Microsoft.CodeAnalysis;
-using System.Text.RegularExpressions;
-
 namespace IoCTools.Generator.Tests;
 
 /// <summary>
-/// Comprehensive tests for DependsOn field generation functionality
-/// Tests the missing feature where [DependsOn] attributes should generate private readonly fields
+///     Comprehensive tests for DependsOn field generation functionality
+///     Tests the missing feature where [DependsOn] attributes should generate private readonly fields
 /// </summary>
 public class DependsOnFieldGenerationTests
 {
@@ -20,8 +17,6 @@ using Microsoft.Extensions.Logging;
 namespace Test;
 
 public interface ITestService { }
-
-[Service]
 [DependsOn<ITestService>]
 public partial class TestClass
 {
@@ -36,16 +31,17 @@ public partial class TestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - should compile without errors
-        Assert.False(result.HasErrors, $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
-        
+        Assert.False(result.HasErrors,
+            $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
+
         // Check that field was generated
         var constructorSource = result.GetConstructorSource("TestClass");
         Assert.NotNull(constructorSource);
         Assert.Contains("private readonly ITestService _testService;", constructorSource.Content);
-        
+
         // Check constructor parameter
         Assert.Contains("public TestClass(ITestService testService)", constructorSource.Content);
-        
+
         // Check field assignment
         Assert.Contains("_testService = testService;", constructorSource.Content);
     }
@@ -62,8 +58,6 @@ namespace Test;
 public interface IService1 { }
 public interface IService2 { }
 public interface IService3 { }
-
-[Service]
 [DependsOn<IService1, IService2, IService3>]
 public partial class TestClass
 {
@@ -79,21 +73,22 @@ public partial class TestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors, $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
-        
+        Assert.False(result.HasErrors,
+            $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
+
         var constructorSource = result.GetConstructorSource("TestClass");
         Assert.NotNull(constructorSource);
-        
+
         // Check all fields generated
         Assert.Contains("private readonly IService1 _service1;", constructorSource.Content);
         Assert.Contains("private readonly IService2 _service2;", constructorSource.Content);
         Assert.Contains("private readonly IService3 _service3;", constructorSource.Content);
-        
+
         // Check constructor parameters
         Assert.Contains("IService1 service1", constructorSource.Content);
         Assert.Contains("IService2 service2", constructorSource.Content);
         Assert.Contains("IService3 service3", constructorSource.Content);
-        
+
         // Check field assignments
         Assert.Contains("_service1 = service1;", constructorSource.Content);
         Assert.Contains("_service2 = service2;", constructorSource.Content);
@@ -112,8 +107,6 @@ namespace Test;
 
 public interface IUserManagementService { }
 public interface IAuditService { }
-
-[Service]
 [DependsOn<IUserManagementService, IAuditService>(NamingConvention.CamelCase)]
 public partial class TestClass
 {
@@ -128,11 +121,12 @@ public partial class TestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors, $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
-        
+        Assert.False(result.HasErrors,
+            $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
+
         var constructorSource = result.GetConstructorSource("TestClass");
         Assert.NotNull(constructorSource);
-        
+
         // Check camelCase field names (default: stripI=true, prefix="_")
         Assert.Contains("private readonly IUserManagementService _userManagementService;", constructorSource.Content);
         Assert.Contains("private readonly IAuditService _auditService;", constructorSource.Content);
@@ -150,8 +144,6 @@ namespace Test;
 
 public interface IUserManagementService { }
 public interface IAuditService { }
-
-[Service]
 [DependsOn<IUserManagementService, IAuditService>(NamingConvention.PascalCase)]
 public partial class TestClass
 {
@@ -166,11 +158,12 @@ public partial class TestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors, $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
-        
+        Assert.False(result.HasErrors,
+            $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
+
         var constructorSource = result.GetConstructorSource("TestClass");
         Assert.NotNull(constructorSource);
-        
+
         // Check PascalCase field names
         Assert.Contains("private readonly IUserManagementService _UserManagementService;", constructorSource.Content);
         Assert.Contains("private readonly IAuditService _AuditService;", constructorSource.Content);
@@ -188,8 +181,6 @@ namespace Test;
 
 public interface IUserManagementService { }
 public interface IAuditService { }
-
-[Service]
 [DependsOn<IUserManagementService, IAuditService>(NamingConvention.SnakeCase)]
 public partial class TestClass
 {
@@ -204,11 +195,12 @@ public partial class TestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors, $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
-        
+        Assert.False(result.HasErrors,
+            $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
+
         var constructorSource = result.GetConstructorSource("TestClass");
         Assert.NotNull(constructorSource);
-        
+
         // Check snake_case field names
         Assert.Contains("private readonly IUserManagementService _user_management_service;", constructorSource.Content);
         Assert.Contains("private readonly IAuditService _audit_service;", constructorSource.Content);
@@ -226,8 +218,6 @@ namespace Test;
 
 public interface IPaymentService { }
 public interface IEmailService { }
-
-[Service]
 [DependsOn<IPaymentService, IEmailService>(prefix: ""svc_"", stripI: true)]
 public partial class TestClass
 {
@@ -242,11 +232,12 @@ public partial class TestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors, $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
-        
+        Assert.False(result.HasErrors,
+            $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
+
         var constructorSource = result.GetConstructorSource("TestClass");
         Assert.NotNull(constructorSource);
-        
+
         // Check custom prefix with I stripped
         Assert.Contains("private readonly IPaymentService svc_paymentService;", constructorSource.Content);
         Assert.Contains("private readonly IEmailService svc_emailService;", constructorSource.Content);
@@ -263,8 +254,6 @@ namespace Test;
 
 public interface IPaymentService { }
 public interface IEmailService { }
-
-[Service]
 [DependsOn<IPaymentService, IEmailService>(prefix: """", stripI: false)]
 public partial class TestClass
 {
@@ -279,11 +268,12 @@ public partial class TestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors, $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
-        
+        Assert.False(result.HasErrors,
+            $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
+
         var constructorSource = result.GetConstructorSource("TestClass");
         Assert.NotNull(constructorSource);
-        
+
         // Check semantic naming (camelCase even with stripI=false)
         Assert.Contains("private readonly IPaymentService paymentService;", constructorSource.Content);
         Assert.Contains("private readonly IEmailService emailService;", constructorSource.Content);
@@ -301,8 +291,6 @@ namespace Test;
 
 public interface IPaymentService { }
 public interface IEmailService { }
-
-[Service]
 [DependsOn<IPaymentService>(prefix: ""payment_"", stripI: true, namingConvention: NamingConvention.SnakeCase)]
 [DependsOn<IEmailService>(prefix: ""notification_"", stripI: true, namingConvention: NamingConvention.CamelCase)]
 public partial class TestClass
@@ -318,11 +306,12 @@ public partial class TestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors, $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
-        
+        Assert.False(result.HasErrors,
+            $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
+
         var constructorSource = result.GetConstructorSource("TestClass");
         Assert.NotNull(constructorSource);
-        
+
         // Check mixed configurations
         Assert.Contains("private readonly IPaymentService payment_payment_service;", constructorSource.Content);
         Assert.Contains("private readonly IEmailService notification_emailService;", constructorSource.Content);
@@ -341,8 +330,6 @@ namespace Test;
 
 public interface IPaymentService { }
 public interface IInventoryService { }
-
-[Service]
 [DependsOn<IPaymentService, IInventoryService>]
 public partial class TestClass
 {
@@ -362,21 +349,22 @@ public partial class TestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors, $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
-        
+        Assert.False(result.HasErrors,
+            $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
+
         var constructorSource = result.GetConstructorSource("TestClass");
         Assert.NotNull(constructorSource);
-        
+
         // Check ONLY generated fields from DependsOn (manual [Inject] fields are in source, not generated)
         Assert.Contains("private readonly IPaymentService _paymentService;", constructorSource.Content);
         Assert.Contains("private readonly IInventoryService _inventoryService;", constructorSource.Content);
-        
+
         // Check constructor has all parameters
         Assert.Contains("ILogger<TestClass> logger", constructorSource.Content);
         Assert.Contains("IConfiguration configuration", constructorSource.Content);
         Assert.Contains("IPaymentService paymentService", constructorSource.Content);
         Assert.Contains("IInventoryService inventoryService", constructorSource.Content);
-        
+
         // Check all field assignments (with proper this. prefix)
         Assert.Contains("this._logger = logger;", constructorSource.Content);
         Assert.Contains("this._configuration = configuration;", constructorSource.Content);
@@ -397,8 +385,6 @@ namespace Test;
 
 public interface IGenericRepository<T> { }
 public class User { }
-
-[Service]
 [DependsOn<ILogger<TestClass>>]
 public partial class TestClass
 {
@@ -415,11 +401,12 @@ public partial class TestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors, $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
-        
+        Assert.False(result.HasErrors,
+            $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
+
         var constructorSource = result.GetConstructorSource("TestClass");
         Assert.NotNull(constructorSource);
-        
+
         // Check ONLY generated field from DependsOn (manual [Inject] field is in source, not generated)
         Assert.Contains("private readonly ILogger<TestClass> _logger;", constructorSource.Content);
     }
@@ -437,8 +424,6 @@ namespace Test;
 public interface IAuditService { }
 public interface ISecurityService { }
 public interface IUserManagementService { }
-
-[Service]
 [DependsOn<IAuditService, ISecurityService>]
 public abstract partial class BaseSecureService
 {
@@ -450,8 +435,6 @@ public abstract partial class BaseSecureService
         _securityService.ToString();
     }
 }
-
-[Service]
 [DependsOn<IUserManagementService>]
 public partial class EnhancedSecureService : BaseSecureService
 {
@@ -468,19 +451,21 @@ public partial class EnhancedSecureService : BaseSecureService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors, $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
-        
+        Assert.False(result.HasErrors,
+            $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
+
         // Check base class fields - should be protected for abstract class inheritance
         var baseConstructorSource = result.GetConstructorSource("BaseSecureService");
         Assert.NotNull(baseConstructorSource);
         Assert.Contains("protected readonly IAuditService _auditService;", baseConstructorSource.Content);
         Assert.Contains("protected readonly ISecurityService _securityService;", baseConstructorSource.Content);
-        
+
         // Check derived class fields
         var derivedConstructorSource = result.GetConstructorSource("EnhancedSecureService");
         Assert.NotNull(derivedConstructorSource);
-        Assert.Contains("private readonly IUserManagementService _userManagementService;", derivedConstructorSource.Content);
-        
+        Assert.Contains("private readonly IUserManagementService _userManagementService;",
+            derivedConstructorSource.Content);
+
         // Check proper base constructor call
         Assert.Contains("base(", derivedConstructorSource.Content);
     }
@@ -498,8 +483,6 @@ public interface IService1 { }
 public interface IService2 { }
 public interface IService3 { }
 public interface IService4 { }
-
-[Service]
 [DependsOn<IService1, IService2>]
 [DependsOn<IService3, IService4>]
 public partial class TestClass
@@ -517,11 +500,12 @@ public partial class TestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors, $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
-        
+        Assert.False(result.HasErrors,
+            $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
+
         var constructorSource = result.GetConstructorSource("TestClass");
         Assert.NotNull(constructorSource);
-        
+
         // Check all fields from multiple DependsOn attributes
         Assert.Contains("private readonly IService1 _service1;", constructorSource.Content);
         Assert.Contains("private readonly IService2 _service2;", constructorSource.Content);

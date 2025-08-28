@@ -21,7 +21,7 @@ public interface ITestService { }
 
 [ConditionalService(Environment = ""Development"")]
 [ConditionalService(Environment = ""Testing"")]
-[Service]
+
 public partial class MultipleConditionalService : ITestService
 {
 }";
@@ -70,7 +70,7 @@ namespace Test;
 public interface ITestService { }
 
 [ConditionalService(Environment = ""开发环境"", ConfigValue = ""Función:Configuración"", Equals = ""activé"")]
-[Service]
+
 public partial class UnicodeService : ITestService
 {
 }";
@@ -107,7 +107,7 @@ namespace Test;
 public interface ITestService { }
 
 [ConditionalService(Environment = ""Development"", NotEnvironment = ""Development"")]
-[Service]
+
 public partial class ConflictingService : ITestService
 {
 }";
@@ -150,7 +150,7 @@ namespace Test;
 public interface ITestService { }
 
 [ConditionalService(Environment = ""Development,Testing"", NotEnvironment = ""Testing,Staging"")]
-[Service]
+
 public partial class OverlappingService : ITestService
 {
 }";
@@ -174,8 +174,11 @@ public partial class OverlappingService : ITestService
             if (registrationSource != null)
             {
                 // Should not generate contradictory conditions
-                var hasTestingInBoth = registrationSource.Content.Contains("string.Equals(environment, \"Testing\", StringComparison.OrdinalIgnoreCase)") &&
-                                       registrationSource.Content.Contains("!string.Equals(environment, \"Testing\", StringComparison.OrdinalIgnoreCase)");
+                var hasTestingInBoth =
+                    registrationSource.Content.Contains(
+                        "string.Equals(environment, \"Testing\", StringComparison.OrdinalIgnoreCase)") &&
+                    registrationSource.Content.Contains(
+                        "!string.Equals(environment, \"Testing\", StringComparison.OrdinalIgnoreCase)");
                 Assert.False(hasTestingInBoth, "Should resolve overlapping conditions");
             }
         }
@@ -193,7 +196,7 @@ namespace Test;
 public interface ITestService { }
 
 [ConditionalService(ConfigValue = ""Feature:Enabled"", Equals = ""true"", NotEquals = ""true"")]
-[Service]
+
 public partial class ConfigConflictService : ITestService
 {
 }";
@@ -228,8 +231,9 @@ public partial class ConfigConflictService : ITestService
     #region Missing Attributes Tests
 
     [Fact]
-    public void ConditionalService_WithoutServiceAttribute_ProducesDiagnostic()
+    public void ConditionalService_WithLifetimeInference_WorksCorrectly()
     {
+        // After intelligent inference refactor, ConditionalService no longer requires [Scoped] attribute
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
@@ -239,7 +243,7 @@ namespace Test;
 public interface ITestService { }
 
 [ConditionalService(Environment = ""Development"")]
-public partial class MissingServiceAttribute : ITestService
+public partial class ConditionalLifetimeInferenceValidationService : ITestService
 {
 }";
 
@@ -247,23 +251,19 @@ public partial class MissingServiceAttribute : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        // Should require [Service] attribute when using [ConditionalService]
+        // Should no longer produce IOC021 diagnostic - ConditionalService is itself a service indicator
         var diagnostics = result.GetDiagnosticsByCode("IOC021");
-        if (diagnostics.Any())
-        {
-            var message = diagnostics.First().GetMessage().ToLower();
-            // IOC021: "Class '{0}' has [ConditionalService] attribute but [Service] attribute is required"
-            Assert.Contains("conditionalservice", message);
-            Assert.Contains("service", message);
-            Assert.Contains("required", message); // Actual message uses "is required"
-        }
-        else
-        {
-            // Should not register service without [Service] attribute
-            var registrationSource = result.GetServiceRegistrationSource();
-            if (registrationSource != null)
-                Assert.DoesNotContain("MissingServiceAttribute", registrationSource.Content);
-        }
+        Assert.False(diagnostics.Any(),
+            "ConditionalService should work without [Scoped] attribute after intelligent inference refactor");
+
+        // Should register the ConditionalService class since ConditionalService is a service indicator
+        var registrationSource = result.GetServiceRegistrationSource();
+        Assert.NotNull(registrationSource);
+        Assert.Contains("ConditionalLifetimeInferenceValidationService", registrationSource.Content);
+
+        // Should generate conditional logic
+        Assert.Contains("Development", registrationSource.Content);
+        Assert.Contains("Environment.GetEnvironmentVariable", registrationSource.Content);
     }
 
     [Fact]
@@ -278,7 +278,7 @@ namespace Test;
 public interface ITestService { }
 
 [ConditionalService]
-[Service]
+
 public partial class EmptyConditionalService : ITestService
 {
 }";
@@ -326,7 +326,7 @@ namespace Test;
 public interface ITestService { }
 
 [ConditionalService(ConfigValue = ""Feature:Enabled"")]
-[Service]
+
 public partial class IncompleteConfigService : ITestService
 {
 }";
@@ -365,7 +365,7 @@ namespace Test;
 public interface ITestService { }
 
 [ConditionalService(Equals = ""true"")]
-[Service]
+
 public partial class OrphanedEqualsService : ITestService
 {
 }";
@@ -402,7 +402,7 @@ namespace Test;
 public interface ITestService { }
 
 [ConditionalService(NotEquals = ""false"")]
-[Service]
+
 public partial class OrphanedNotEqualsService : ITestService
 {
 }";
@@ -443,7 +443,7 @@ namespace Test;
 public interface ITestService { }
 
 [ConditionalService(Environment = """")]
-[Service]
+
 public partial class EmptyEnvironmentService : ITestService
 {
 }";
@@ -457,7 +457,8 @@ public partial class EmptyEnvironmentService : ITestService
         if (registrationSource != null)
             if (registrationSource.Content.Contains("EmptyEnvironmentService"))
                 // If registered, should handle empty string safely
-                Assert.Contains("string.Equals(environment, \"\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+                Assert.Contains("string.Equals(environment, \"\", StringComparison.OrdinalIgnoreCase)",
+                    registrationSource.Content);
     }
 
     [Fact]
@@ -472,7 +473,7 @@ namespace Test;
 public interface ITestService { }
 
 [ConditionalService(ConfigValue = """", Equals = ""value"")]
-[Service]
+
 public partial class EmptyConfigKeyService : ITestService
 {
 }";
@@ -489,7 +490,9 @@ public partial class EmptyConfigKeyService : ITestService
             if (registrationSource != null && registrationSource.Content.Contains("EmptyConfigKeyService"))
             {
                 // Should handle empty config key safely - accept various null-safe patterns
-                var hasNullSafePattern = registrationSource.Content.Contains("string.Equals(configuration[\"\"], \"value\", StringComparison.OrdinalIgnoreCase)");
+                var hasNullSafePattern =
+                    registrationSource.Content.Contains(
+                        "string.Equals(configuration[\"\"], \"value\", StringComparison.OrdinalIgnoreCase)");
                 Assert.True(hasNullSafePattern, "Generator should produce null-safe code for empty config keys");
             }
         }
@@ -507,7 +510,7 @@ namespace Test;
 public interface ITestService { }
 
 [ConditionalService(Environment = ""   "", ConfigValue = ""  \t  "", Equals = "" \n "")]
-[Service]
+
 public partial class WhitespaceService : ITestService
 {
 }";
@@ -521,8 +524,11 @@ public partial class WhitespaceService : ITestService
         if (registrationSource != null)
         {
             // Should either trim whitespace or preserve it consistently
-            var environmentCheck = registrationSource.Content.Contains("string.Equals(environment, \"   \", StringComparison.OrdinalIgnoreCase)") ||
-                                   registrationSource.Content.Contains("string.Equals(environment, \"\", StringComparison.OrdinalIgnoreCase)");
+            var environmentCheck =
+                registrationSource.Content.Contains(
+                    "string.Equals(environment, \"   \", StringComparison.OrdinalIgnoreCase)") ||
+                registrationSource.Content.Contains(
+                    "string.Equals(environment, \"\", StringComparison.OrdinalIgnoreCase)");
 
             if (registrationSource.Content.Contains("WhitespaceService"))
                 // Should generate some form of valid condition
@@ -542,7 +548,7 @@ namespace Test;
 public interface ITestService { }
 
 [ConditionalService(Environment = ""Dev-Test.Local"", ConfigValue = ""App:Feature.Name"", Equals = ""enabled/true"")]
-[Service]
+
 public partial class SpecialCharService : ITestService
 {
 }";
@@ -557,8 +563,11 @@ public partial class SpecialCharService : ITestService
         Assert.NotNull(registrationSource);
 
         // Should handle special characters in environment and config values
-        Assert.Contains("string.Equals(environment, \"Dev-Test.Local\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
-        Assert.Contains("string.Equals(configuration[\"App:Feature.Name\"], \"enabled/true\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Dev-Test.Local\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
+        Assert.Contains(
+            "string.Equals(configuration[\"App:Feature.Name\"], \"enabled/true\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
     }
 
     [Fact]
@@ -577,7 +586,7 @@ namespace Test;
 public interface ITestService {{ }}
 
 [ConditionalService(Environment = ""{longEnvironment}"", ConfigValue = ""{longConfigKey}"", Equals = ""{longConfigValue}"")]
-[Service]
+
 public partial class LongValueService : ITestService
 {{
 }}";
@@ -592,8 +601,11 @@ public partial class LongValueService : ITestService
         Assert.NotNull(registrationSource);
 
         // Should handle very long values without issues
-        Assert.Contains($"string.Equals(environment, \"{longEnvironment}\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
-        Assert.Contains($"string.Equals(configuration[\"{longConfigKey}\"], \"{longConfigValue}\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains($"string.Equals(environment, \"{longEnvironment}\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
+        Assert.Contains(
+            $"string.Equals(configuration[\"{longConfigKey}\"], \"{longConfigValue}\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
     }
 
     #endregion
@@ -612,7 +624,7 @@ namespace Test;
 public interface ITestService { }
 
 [ConditionalService(Environment = ""Invalid-Env@123"")]
-[Service]
+
 public partial class InvalidEnvService : ITestService
 {
 }";
@@ -627,7 +639,8 @@ public partial class InvalidEnvService : ITestService
         var registrationSource = result.GetServiceRegistrationSource();
         if (registrationSource != null && registrationSource.Content.Contains("InvalidEnvService"))
             // Should generate condition even for unusual environment names
-            Assert.Contains("string.Equals(environment, \"Invalid-Env@123\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+            Assert.Contains("string.Equals(environment, \"Invalid-Env@123\", StringComparison.OrdinalIgnoreCase)",
+                registrationSource.Content);
     }
 
     [Fact]
@@ -642,7 +655,7 @@ namespace Test;
 public interface ITestService { }
 
 [ConditionalService(Environment = ""null,undefined,true,false"")]
-[Service]
+
 public partial class ReservedNameService : ITestService
 {
 }";
@@ -657,9 +670,12 @@ public partial class ReservedNameService : ITestService
         if (registrationSource != null && registrationSource.Content.Contains("ReservedNameService"))
         {
             // Should handle reserved keywords as environment names
-            Assert.Contains("string.Equals(environment, \"null\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
-            Assert.Contains("string.Equals(environment, \"true\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
-            Assert.Contains("string.Equals(environment, \"false\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+            Assert.Contains("string.Equals(environment, \"null\", StringComparison.OrdinalIgnoreCase)",
+                registrationSource.Content);
+            Assert.Contains("string.Equals(environment, \"true\", StringComparison.OrdinalIgnoreCase)",
+                registrationSource.Content);
+            Assert.Contains("string.Equals(environment, \"false\", StringComparison.OrdinalIgnoreCase)",
+                registrationSource.Content);
         }
     }
 

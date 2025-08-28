@@ -1,10 +1,14 @@
+namespace IoCTools.Generator.Tests;
+
 using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime;
 using System.Text;
-using IoCTools.Abstractions.Annotations;
+
+using Abstractions.Annotations;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
@@ -13,8 +17,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-
-namespace IoCTools.Generator.Tests;
 
 /// <summary>
 ///     ULTIMATE SOURCE GENERATOR TEST HELPER
@@ -26,7 +28,8 @@ public static class SourceGeneratorTestHelper
     ///     Compiles source code with the IoCTools generator and returns results
     /// </summary>
     public static GeneratorTestResult CompileWithGenerator(string sourceCode,
-        bool includeSystemReferences = true)
+        bool includeSystemReferences = true,
+        Dictionary<string, string>? analyzerBuildProperties = null)
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(sourceCode,
             new CSharpParseOptions(LanguageVersion.Preview));
@@ -46,8 +49,8 @@ public static class SourceGeneratorTestHelper
         // Add essential system assemblies
         var essentialTypes = new[]
         {
-            typeof(TimeSpan), typeof(DateTime), typeof(decimal), typeof(Attribute),
-            typeof(IEnumerable<>), typeof(GCSettings)
+            typeof(TimeSpan), typeof(DateTime), typeof(decimal), typeof(Attribute), typeof(IEnumerable<>),
+            typeof(GCSettings)
         };
 
         foreach (var type in essentialTypes)
@@ -60,12 +63,15 @@ public static class SourceGeneratorTestHelper
             }
         }
 
-        // Add IoCTools references
+        // Add IoCTools references - CRITICAL: Include ALL essential attributes
         var iocToolsTypes = new[]
         {
-            typeof(ServiceAttribute),
-            typeof(IServiceCollection),
-            typeof(ServiceCollectionServiceExtensions),
+            typeof(ScopedAttribute), typeof(SingletonAttribute), typeof(TransientAttribute), typeof(InjectAttribute),
+            typeof(InjectConfigurationAttribute), typeof(ConditionalServiceAttribute), typeof(ExternalServiceAttribute),
+            typeof(RegisterAsAllAttribute),
+            typeof(RegisterAsAttribute<object>), // CRITICAL FIX: Add RegisterAs generic attribute variants
+            typeof(RegisterAsAttribute<object, object>), typeof(RegisterAsAttribute<object, object, object>),
+            typeof(SkipRegistrationAttribute), typeof(IServiceCollection), typeof(ServiceCollectionServiceExtensions),
             typeof(ServiceCollectionContainerBuilderExtensions)
         };
 
@@ -80,12 +86,7 @@ public static class SourceGeneratorTestHelper
         }
 
         // Add additional optional references
-        var optionalTypes = new[]
-        {
-            typeof(BackgroundService),
-            typeof(Task),
-            typeof(CancellationToken)
-        };
+        var optionalTypes = new[] { typeof(BackgroundService), typeof(Task), typeof(CancellationToken) };
 
         foreach (var type in optionalTypes)
             try
@@ -103,19 +104,12 @@ public static class SourceGeneratorTestHelper
             }
 
         // Add configuration and additional assembly references
-        var configTypes = new[]
-        {
-            typeof(IConfiguration),
-            typeof(IOptions<>),
-            typeof(ILogger<>)
-        };
+        var configTypes = new[] { typeof(IConfiguration), typeof(IOptions<>), typeof(ILogger<>) };
 
         // Add data annotations types
         var dataAnnotationTypes = new[]
         {
-            typeof(RequiredAttribute),
-            typeof(RangeAttribute),
-            typeof(StringLengthAttribute)
+            typeof(RequiredAttribute), typeof(RangeAttribute), typeof(StringLengthAttribute)
         };
 
         foreach (var type in configTypes)
@@ -151,15 +145,9 @@ public static class SourceGeneratorTestHelper
         // Add additional assemblies by name
         var additionalAssemblies = new[]
         {
-            "netstandard",
-            "System.Runtime",
-            "System.Collections.Concurrent",
-            "System.Collections.Specialized",
-            "System.Collections.Immutable",
-            "Microsoft.Extensions.Configuration.Binder",
-            "System.ComponentModel.Primitives",
-            "System.ComponentModel",
-            "System.ComponentModel.DataAnnotations"
+            "netstandard", "System.Runtime", "System.Collections.Concurrent", "System.Collections.Specialized",
+            "System.Collections.Immutable", "Microsoft.Extensions.Configuration.Binder",
+            "System.ComponentModel.Primitives", "System.ComponentModel", "System.ComponentModel.DataAnnotations"
         };
 
         foreach (var assemblyName in additionalAssemblies)
@@ -181,14 +169,8 @@ public static class SourceGeneratorTestHelper
         // Add references for common external assembly types used in tests
         var externalTypes = new[]
         {
-            typeof(Uri),
-            typeof(TextWriter),
-            typeof(Console),
-            typeof(Path),
-            typeof(Directory),
-            typeof(File),
-            typeof(Activator),
-            typeof(Environment)
+            typeof(Uri), typeof(TextWriter), typeof(Console), typeof(Path), typeof(Directory), typeof(File),
+            typeof(Activator), typeof(Environment)
         };
 
         foreach (var type in externalTypes)
@@ -211,11 +193,7 @@ public static class SourceGeneratorTestHelper
             // Add comprehensive system references
             var systemAssemblies = new[]
             {
-                "System.Runtime",
-                "System.Collections",
-                "System.Private.CoreLib",
-                "System.Linq",
-                "netstandard"
+                "System.Runtime", "System.Collections", "System.Private.CoreLib", "System.Linq", "netstandard"
             };
 
             foreach (var assemblyName in systemAssemblies)
@@ -246,8 +224,13 @@ public static class SourceGeneratorTestHelper
 
         // Run the source generator
         var generator = new DependencyInjectionGenerator();
+        var additionalTexts = new List<AdditionalText>();
+        if (analyzerBuildProperties is not null && analyzerBuildProperties.Count > 0)
+            additionalTexts.Add(CreateEditorConfig(analyzerBuildProperties));
+
         var driver = CSharpGeneratorDriver.Create(new[] { generator.AsSourceGenerator() },
-            parseOptions: new CSharpParseOptions(LanguageVersion.Preview));
+            additionalTexts.ToArray(),
+            new CSharpParseOptions(LanguageVersion.Preview));
 
         driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);
 
@@ -283,7 +266,7 @@ public static class SourceGeneratorTestHelper
             MetadataReference.CreateFromFile(typeof(IEnumerable<>).Assembly.Location),
 
             // IoCTools references
-            MetadataReference.CreateFromFile(typeof(ServiceAttribute).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(ScopedAttribute).Assembly.Location),
 
             // DI references
             MetadataReference.CreateFromFile(typeof(IServiceCollection).Assembly.Location),
@@ -343,11 +326,10 @@ public static class SourceGeneratorTestHelper
     {
         var usings = new List<string>
         {
-            "using IoCTools.Abstractions.Annotations;",
-            "using System.Collections.Generic;"
+            "using IoCTools.Abstractions.Annotations;", "using System.Collections.Generic;"
         };
 
-        var classAttributes = attributes != null ? string.Join("\n", attributes.Select(a => $"[{a}]")) : "[Service]";
+        var classAttributes = attributes != null ? string.Join("\n", attributes.Select(a => $"[{a}]")) : "[Scoped]";
         var baseClause = baseClass != null ? $" : {baseClass}" : "";
 
         var dependencyFields = dependencies != null
@@ -658,10 +640,8 @@ public partial class {className}{baseClause}
     ///     Sets the ASPNETCORE_ENVIRONMENT variable for testing
     /// </summary>
     /// <param name="environment">Environment name (Development, Staging, Production, etc.)</param>
-    public static void SetAspNetCoreEnvironment(string environment)
-    {
+    public static void SetAspNetCoreEnvironment(string environment) =>
         SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", environment);
-    }
 
     /// <summary>
     ///     Tests conditional service registration based on environment
@@ -710,16 +690,27 @@ public partial class {className}{baseClause}
     /// <param name="msBuildProperties">MSBuild properties to simulate</param>
     /// <returns>Generator test result with simulated MSBuild context</returns>
     public static GeneratorTestResult CompileWithMSBuildProperties(string sourceCode,
-        Dictionary<string, string> msBuildProperties)
-    {
-        var syntaxTree = CSharpSyntaxTree.ParseText(sourceCode,
-            new CSharpParseOptions(LanguageVersion.Preview));
+        Dictionary<string, string> msBuildProperties) =>
+        // Reuse the rich setup that includes logging/config/etc and pass properties via .editorconfig
+        CompileWithGenerator(sourceCode, true, msBuildProperties);
 
-        var references = GetStandardReferences();
+    /// <summary>
+    ///     Compiles multiple source files with optional additional texts (e.g., custom .editorconfig content)
+    /// </summary>
+    public static GeneratorTestResult CompileWithAdditionalTexts(
+        Dictionary<string, string> sources,
+        List<AdditionalText>? additionalTexts = null,
+        bool includeSystemReferences = true)
+    {
+        var trees = new List<SyntaxTree>();
+        foreach (var kvp in sources)
+            trees.Add(CSharpSyntaxTree.ParseText(kvp.Value, new CSharpParseOptions(LanguageVersion.Preview), kvp.Key));
+
+        var refs = GetStandardReferences();
         var compilation = CSharpCompilation.Create(
             "TestAssembly",
-            new[] { syntaxTree },
-            references,
+            trees,
+            refs,
             new CSharpCompilationOptions(
                 OutputKind.DynamicallyLinkedLibrary,
                 allowUnsafe: false,
@@ -727,22 +718,21 @@ public partial class {className}{baseClause}
 
         var generator = new DependencyInjectionGenerator();
         var driver = CSharpGeneratorDriver.Create(new[] { generator.AsSourceGenerator() },
-            parseOptions: new CSharpParseOptions(LanguageVersion.Preview));
-
-        // Create additional files for MSBuild properties
-        var additionalFiles = msBuildProperties.Select(kvp =>
-                new TestAdditionalFile($"{kvp.Key}.props", $"<Property>{kvp.Value}</Property>"))
-            .ToList<AdditionalText>();
+            additionalTexts?.ToArray() ?? Array.Empty<AdditionalText>(),
+            new CSharpParseOptions(LanguageVersion.Preview));
 
         driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);
 
         var generatedSources = new List<GeneratedSource>();
-        foreach (var tree in outputCompilation.SyntaxTrees.Skip(1))
+        foreach (var tree in outputCompilation.SyntaxTrees.Skip(trees.Count))
             generatedSources.Add(new GeneratedSource(tree.FilePath, tree.ToString()));
 
         return new GeneratorTestResult(outputCompilation, generatedSources,
             diagnostics.ToList(), outputCompilation.GetDiagnostics().ToList());
     }
+
+    public static AdditionalText CreateEditorConfigRaw(string content) =>
+        new TestAdditionalFile("/AnalyzerConfig/.editorconfig", content);
 
     /// <summary>
     ///     Tests different diagnostic severity configurations
@@ -834,6 +824,28 @@ public partial class {className}{baseClause}
     #endregion
 
     #region Performance Testing Infrastructure
+
+    private static AdditionalText CreateEditorConfig(Dictionary<string, string> buildProperties)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("root = true");
+        sb.AppendLine("is_global = true");
+        foreach (var kvp in buildProperties)
+        {
+            var key = kvp.Key.StartsWith("build_property.") ? kvp.Key : $"build_property.{kvp.Key}";
+            sb.AppendLine($"{key} = {kvp.Value}");
+        }
+
+        sb.AppendLine();
+        sb.AppendLine("[*.cs]");
+        foreach (var kvp in buildProperties)
+        {
+            var key = kvp.Key.StartsWith("build_property.") ? kvp.Key : $"build_property.{kvp.Key}";
+            sb.AppendLine($"{key} = {kvp.Value}");
+        }
+
+        return new TestAdditionalFile("/AnalyzerConfig/.editorconfig", sb.ToString());
+    }
 
     /// <summary>
     ///     Measures source generation performance
@@ -937,7 +949,7 @@ public partial class {className}{baseClause}
             CompilationErrorType.SyntaxError => validSourceCode.Replace("{", "{ invalid syntax here"),
             CompilationErrorType.MissingUsing =>
                 validSourceCode.Replace("using IoCTools.Abstractions.Annotations;", ""),
-            CompilationErrorType.InvalidAttribute => validSourceCode.Replace("[Service]", "[NonExistentAttribute]"),
+            CompilationErrorType.InvalidAttribute => validSourceCode.Replace("[Scoped]", "[NonExistentAttribute]"),
             CompilationErrorType.MissingPartial => validSourceCode.Replace("partial class", "class"),
             _ => validSourceCode
         };
@@ -1012,15 +1024,15 @@ public record GeneratorTestResult(
         {
             // Handle both non-generic and generic class names
             // For "ValueTypeService", match both "ValueTypeService" and "ValueTypeService<T>"
-            var hasPartialClass = s.Content.Contains($"partial class {className}") || 
+            var hasPartialClass = s.Content.Contains($"partial class {className}") ||
                                   s.Content.Contains($"partial class {className}<") ||
                                   s.Content.Contains($"partial record {className}") ||
                                   s.Content.Contains($"partial record {className}<");
-            
+
             // For constructor matching, look for the class name followed by either "(" or "<" then later "("
-            var hasConstructor = s.Content.Contains($"{className}(") || 
+            var hasConstructor = s.Content.Contains($"{className}(") ||
                                  (s.Content.Contains($"{className}<") && s.Content.Contains("("));
-            
+
             return hasPartialClass && hasConstructor;
         });
     }
@@ -1029,8 +1041,10 @@ public record GeneratorTestResult(
     {
         return GeneratedSources.FirstOrDefault(s =>
             s.Content.Contains("ServiceCollectionExtensions") ||
+            s.Content.Contains("GeneratedServiceCollectionExtensions") ||
             s.Content.Contains("AddIoCTools") ||
-            s.Content.Contains("RegisteredServices"));
+            s.Content.Contains("RegisteredServices") ||
+            s.Content.Contains("IServiceCollection services"));
     }
 
     public List<Diagnostic> GetDiagnosticsByCode(string code)

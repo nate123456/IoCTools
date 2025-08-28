@@ -1,8 +1,9 @@
+namespace IoCTools.Generator.Tests;
+
 using System.Diagnostics;
 using System.Text;
-using Microsoft.CodeAnalysis;
 
-namespace IoCTools.Generator.Tests;
+using Microsoft.CodeAnalysis;
 
 /// <summary>
 ///     COMPREHENSIVE ADVANCED GENERIC LIFETIME VALIDATION TESTS
@@ -40,32 +41,32 @@ public interface IService<T> { }
 public interface IFactory<T> { }
 public interface IValidator<T> { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DatabaseContext { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class Repository<TEntity, TKey> : IRepository<TEntity, TKey> 
     where TEntity : class
 {
     [Inject] private readonly DatabaseContext _context;
 }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class Service<T> : IService<T> where T : class
 {
     [Inject] private readonly IRepository<T, int> _repository;
     [Inject] private readonly IValidator<T> _validator;
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class Factory<T> : IFactory<T> where T : class, new() { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class Validator<T> : IValidator<T> { }
 
 public class User { public User() { } }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class ComplexOrchestrator
 {
     [Inject] private readonly IService<User> _userService;
@@ -110,7 +111,7 @@ public interface IRepository<TEntity, TKey>
     TEntity GetById(TKey id);
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class UserRepository<TEntity, TKey> : IRepository<TEntity, TKey>
     where TEntity : class
     where TKey : struct
@@ -118,7 +119,7 @@ public partial class UserRepository<TEntity, TKey> : IRepository<TEntity, TKey>
     public TEntity GetById(TKey id) => default(TEntity);
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class CacheService
 {
     [Inject] private readonly IRepository<string, int> _userRepository;
@@ -147,7 +148,7 @@ public interface IService<T1, T2, T3>
     void Process(T1 first, T2 second, T3 third);
 }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class ProcessorService<T1, T2, T3> : IService<T1, T2, T3>
     where T1 : class
     where T2 : struct
@@ -156,7 +157,7 @@ public partial class ProcessorService<T1, T2, T3> : IService<T1, T2, T3>
     public void Process(T1 first, T2 second, T3 third) { }
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class OrchestrationService
 {
     [Inject] private readonly IService<string, int, DateTime> _processor;
@@ -183,13 +184,13 @@ namespace TestNamespace;
 public interface IRepository<T> where T : class { }
 public interface ICache<T> { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class Repository<T> : IRepository<T> where T : class { }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class Cache<T> : ICache<T> { }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class BusinessService<T> where T : class
 {
     [Inject] private readonly IRepository<T> _openScoped;
@@ -220,7 +221,7 @@ public interface IValidatable { }
 
 public interface IEntityRepository<T> where T : class, IEntity, IValidatable { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class EntityRepository<T> : IEntityRepository<T> 
     where T : class, IEntity, IValidatable
 {
@@ -228,7 +229,7 @@ public partial class EntityRepository<T> : IEntityRepository<T>
 
 public class User : IEntity, IValidatable { }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class UserService
 {
     [Inject] private readonly IEntityRepository<User> _userRepository;
@@ -261,12 +262,12 @@ public interface IHandler<TCommand> where TCommand : ICommand<object, object> { 
 
 public class UserCommand : ICommand<string, bool> { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class UserCommandHandler : IHandler<UserCommand>
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class CommandOrchestrator
 {
     [Inject] private readonly IHandler<UserCommand> _userHandler;
@@ -293,22 +294,22 @@ public interface IProcessor<T> { }
 public interface IValidator<T> { }
 public interface IHandler<T> { }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class Level1Processor<T> : IProcessor<T> { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class Level2Validator<T> : IValidator<IProcessor<T>> 
 {
     [Inject] private readonly IProcessor<T> _processor;
 }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class Level3Handler<T> : IHandler<IValidator<IProcessor<T>>>
 {
     [Inject] private readonly IValidator<IProcessor<T>> _validator;
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class DeepNestedService
 {
     [Inject] private readonly IHandler<IValidator<IProcessor<string>>> _deepHandler;
@@ -335,16 +336,16 @@ namespace TestNamespace;
 public interface IService<T> { }
 public interface IProcessor<T> { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class ServiceA<T> : IService<T> { }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class ServiceB<T> : IService<T> { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class ProcessorA<T> : IProcessor<T> { }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class CollectionDependentService
 {
     [Inject] private readonly IEnumerable<IService<string>> _services;
@@ -372,19 +373,19 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class BaseService<T>
 {
     [Inject] private readonly IComparer<T> _comparer;
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class MiddleService<T> : BaseService<T>
 {
     [Inject] private readonly IEqualityComparer<T> _equalityComparer;
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class ConcreteService : MiddleService<string>
 {
     [Inject] private readonly IEnumerable<string> _items;
@@ -409,22 +410,22 @@ namespace TestNamespace;
 
 public interface IRepository<T> { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DatabaseContext { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class GenericRepository<T> : IRepository<T>
 {
     [Inject] private readonly DatabaseContext _context;
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class BaseService<T>
 {
     [Inject] private readonly IRepository<T> _repository;
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class UserService : BaseService<string>
 {
     [Inject] private readonly IRepository<int> _intRepository;
@@ -449,10 +450,10 @@ namespace TestNamespace;
 public interface IEntity { }
 public interface IValidatable { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DatabaseContext { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class EntityService<T> 
     where T : class, IEntity, IValidatable, new()
 {
@@ -464,7 +465,7 @@ public class User : IEntity, IValidatable
     public User() { }
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class UserService : EntityService<User>
 {
 }";
@@ -491,10 +492,10 @@ namespace TestNamespace;
 
 public interface IRepository<T> { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class Repository<T> : IRepository<T> { }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class BusinessService
 {
     [Inject] private readonly IRepository<string> _stringRepo;
@@ -522,13 +523,13 @@ namespace TestNamespace;
 public interface IProcessor<T> { }
 public interface ICache<T> { }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class Processor<T> : IProcessor<T> { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class Cache<T> : ICache<T> { }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class ComplexService
 {
     [Inject] private readonly IProcessor<List<string>> _listProcessor;
@@ -556,19 +557,19 @@ namespace TestNamespace;
 public interface ICovariant<out T> { T Get(); }
 public interface IContravariant<in T> { void Set(T value); }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class CovariantService<T> : ICovariant<T> 
 {
     public T Get() => default(T);
 }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class ContravariantService<T> : IContravariant<T> 
 {
     public void Set(T value) { }
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class VarianceService
 {
     [Inject] private readonly ICovariant<string> _covariant;
@@ -598,10 +599,10 @@ namespace TestNamespace;
 
 public interface IValueProcessor<T> where T : struct { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class ValueProcessor<T> : IValueProcessor<T> where T : struct { }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class MathService
 {
     [Inject] private readonly IValueProcessor<int> _intProcessor;
@@ -630,7 +631,7 @@ public interface IValidatable { }
 public interface IEntityService<T> 
     where T : class, IEntity, IValidatable, new() { }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class EntityService<T> : IEntityService<T> 
     where T : class, IEntity, IValidatable, new() { }
 
@@ -639,7 +640,7 @@ public class User : IEntity, IValidatable
     public User() { }
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class UserManager
 {
     [Inject] private readonly IEntityService<User> _userService;
@@ -663,10 +664,10 @@ namespace TestNamespace;
 
 public interface IUnmanagedProcessor<T> where T : unmanaged { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class UnmanagedProcessor<T> : IUnmanagedProcessor<T> where T : unmanaged { }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class NativeService
 {
     [Inject] private readonly IUnmanagedProcessor<int> _intProcessor;
@@ -700,13 +701,13 @@ public interface IFactory<T>
 
 public interface IService<T> { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class ServiceFactory<T> : IFactory<IService<T>>
 {
     public IService<T> Create() => default(IService<T>);
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class FactoryConsumer
 {
     [Inject] private readonly IFactory<IService<string>> _stringServiceFactory;
@@ -729,14 +730,14 @@ using System;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class GenericFactoryService<T> where T : new()
 {
     [Inject] private readonly Func<T> _factory;
     [Inject] private readonly Func<string, T> _parameterizedFactory;
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class FactoryOrchestrator
 {
     [Inject] private readonly GenericFactoryService<DateTime> _dateFactory;
@@ -764,13 +765,13 @@ public interface IConditionalFactory<T> where T : class
     T CreateIfCondition(bool condition);
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class ConditionalFactory<T> : IConditionalFactory<T> where T : class, new()
 {
     public T CreateIfCondition(bool condition) => condition ? new T() : null;
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class ConditionalService
 {
     [Inject] private readonly IConditionalFactory<string> _stringFactory;
@@ -800,13 +801,13 @@ namespace TestNamespace;
 public interface IHandler<T> { }
 public interface ICommand<T> { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class CommandHandlerA<T> : IHandler<ICommand<T>> { }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class CommandHandlerB<T> : IHandler<ICommand<T>> { }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class CommandDispatcher
 {
     [Inject] private readonly IEnumerable<IHandler<ICommand<string>>> _stringHandlers;
@@ -830,13 +831,13 @@ namespace TestNamespace;
 
 public interface IProcessor<T> { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class ProcessorA<T> : IProcessor<T> { }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class ProcessorB<T> : IProcessor<T> { }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class ArrayDependentService
 {
     [Inject] private readonly IProcessor<string>[] _stringProcessors;
@@ -862,10 +863,10 @@ namespace TestNamespace;
 
 public interface IService<T> { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class ServiceImpl<T> : IService<T> { }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class LazyService
 {
     [Inject] private readonly Lazy<IEnumerable<IService<string>>> _lazyServices;
@@ -906,13 +907,13 @@ namespace TestNamespace;");
             sourceCodeBuilder.AppendLine($@"
 public interface IService{i}<T> {{ }}
 
-[Service(Lifetime.{lifetime})]
+[{lifetime}]
 public partial class Service{i}<T> : IService{i}<T> {{ }}");
         }
 
         // Create services with complex generic dependencies
         sourceCodeBuilder.AppendLine(@"
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class ComplexGenericService
 {");
 
@@ -947,7 +948,7 @@ using System.Threading.Tasks;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class ComplexGenericService<T1, T2, T3, T4, T5>
     where T1 : class
     where T2 : struct
@@ -960,7 +961,7 @@ public partial class ComplexGenericService<T1, T2, T3, T4, T5>
     [Inject] private readonly IEnumerable<Func<T1, Task<Dictionary<T2, T3>>>> _complexEnumerable;
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class PerformanceTestService
 {
     [Inject] private readonly ComplexGenericService<string, int, DateTime, List<string>, Dictionary<string, int>> _complexService;
@@ -993,7 +994,7 @@ namespace TestNamespace;
 
 public interface IProcessor<T> { }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class UnresolvableService<T> where T : class
 {
     [Inject] private readonly IProcessor<T> _processor; // No implementation available
@@ -1017,13 +1018,13 @@ namespace TestNamespace;
 public interface IServiceA<T> { }
 public interface IServiceB<T> { }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class ServiceA<T> : IServiceA<T>
 {
     [Inject] private readonly IServiceB<T> _serviceB;
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class ServiceB<T> : IServiceB<T>
 {
     [Inject] private readonly IServiceA<T> _serviceA;
@@ -1049,7 +1050,7 @@ namespace TestNamespace;
 
 public interface IMissingService<T> { }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class DependentService
 {
     [Inject] private readonly IMissingService<string> _missingService;
@@ -1073,7 +1074,7 @@ namespace TestNamespace;
 // Invalid constraint combination: struct and class
 public interface IInvalidConstraints<T> where T : struct, class { }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class InvalidConstraintService
 {
     [Inject] private readonly IInvalidConstraints<int> _invalid;
@@ -1108,17 +1109,17 @@ public interface IRequestHandler<TRequest, TResponse>
 public class GetUserQuery : IRequest<string> { }
 public class CreateUserCommand : IRequest<bool> { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class GetUserQueryHandler : IRequestHandler<GetUserQuery, string>
 {
 }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class CreateUserCommandHandler : IRequestHandler<CreateUserCommand, bool>
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class MediatrService
 {
     [Inject] private readonly IRequestHandler<GetUserQuery, string> _getUserHandler;
@@ -1149,16 +1150,16 @@ public interface IUnitOfWork { }
 public class User : IEntity { }
 public class Order : IEntity { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DatabaseContext { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class UnitOfWork : IUnitOfWork 
 {
     [Inject] private readonly DatabaseContext _context;
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class Repository<TEntity> : IRepository<TEntity> 
     where TEntity : class, IEntity
 {
@@ -1166,7 +1167,7 @@ public partial class Repository<TEntity> : IRepository<TEntity>
     [Inject] private readonly IUnitOfWork _unitOfWork;
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class BusinessService
 {
     [Inject] private readonly IRepository<User> _userRepository;
@@ -1193,7 +1194,7 @@ public interface IDomainService<TEntity> { }
 public interface IBusinessRules<TEntity> { }
 public interface IValidator<TEntity> { }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class DomainService<TEntity> : IDomainService<TEntity> 
     where TEntity : class
 {
@@ -1201,17 +1202,17 @@ public partial class DomainService<TEntity> : IDomainService<TEntity>
     [Inject] private readonly IValidator<TEntity> _validator;
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class BusinessRules<TEntity> : IBusinessRules<TEntity> 
     where TEntity : class { }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class Validator<TEntity> : IValidator<TEntity> 
     where TEntity : class { }
 
 public class Product { }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class ProductManager
 {
     [Inject] private readonly IDomainService<Product> _productService;
@@ -1240,20 +1241,20 @@ public interface IEventDispatcher { }
 public class UserCreatedEvent : IEvent { }
 public class OrderPlacedEvent : IEvent { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class UserCreatedEventHandler : IEventHandler<UserCreatedEvent> { }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class OrderPlacedEventHandler : IEventHandler<OrderPlacedEvent> { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class EventDispatcher : IEventDispatcher
 {
     [Inject] private readonly IEnumerable<IEventHandler<UserCreatedEvent>> _userHandlers;
     [Inject] private readonly IEnumerable<IEventHandler<OrderPlacedEvent>> _orderHandlers;
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class EventOrchestrator
 {
     [Inject] private readonly IEventDispatcher _dispatcher;
@@ -1280,7 +1281,7 @@ using System.Collections.Generic;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class ComplexGenericService<T1, T2, T3, T4, T5>
     where T1 : class
     where T2 : struct
@@ -1290,7 +1291,7 @@ public partial class ComplexGenericService<T1, T2, T3, T4, T5>
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class PerformanceTestService
 {
     [Inject] private readonly ComplexGenericService<string, int, DateTime, List<string>, Dictionary<string, int>> _complexService;
@@ -1319,12 +1320,12 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class SimpleGenericService<T>
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class TestService
 {
     [Inject] private readonly SimpleGenericService<string> _service;

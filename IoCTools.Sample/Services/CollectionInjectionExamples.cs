@@ -1,29 +1,35 @@
-using Microsoft.Extensions.Logging;
-using IoCTools.Abstractions.Annotations;
-using IoCTools.Abstractions.Enumerations;
-using IoCTools.Sample.Interfaces;
-
 namespace IoCTools.Sample.Services;
+
+using System.Diagnostics;
+
+using Abstractions.Annotations;
+
+using Interfaces;
+
+using Microsoft.Extensions.Logging;
 
 // ===== COLLECTION INJECTION EXAMPLES =====
 
 // === 1. MULTIPLE IMPLEMENTATIONS WITH IENUMERABLE<T> ===
 
 /// <summary>
-/// Collection notification service interface for collection injection examples
+///     Collection notification service interface for collection injection examples
 /// </summary>
 public interface ICollectionNotificationService
 {
-    Task<bool> SendNotificationAsync(string recipient, string message);
     string NotificationType { get; }
     int Priority { get; }
+
+    Task<bool> SendNotificationAsync(string recipient,
+        string message);
+
     Task<bool> IsAvailableAsync();
 }
 
 /// <summary>
-/// Email notification implementation
+///     Email notification implementation
 /// </summary>
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class CollectionEmailNotificationService : ICollectionNotificationService
 {
     [Inject] private readonly ILogger<CollectionEmailNotificationService> _logger;
@@ -31,7 +37,8 @@ public partial class CollectionEmailNotificationService : ICollectionNotificatio
     public string NotificationType => "Email";
     public int Priority => 1; // High priority
 
-    public async Task<bool> SendNotificationAsync(string recipient, string message)
+    public async Task<bool> SendNotificationAsync(string recipient,
+        string message)
     {
         _logger.LogInformation("Sending email notification to {Recipient}: {Message}", recipient, message);
         await Task.Delay(50); // Simulate email sending
@@ -46,9 +53,9 @@ public partial class CollectionEmailNotificationService : ICollectionNotificatio
 }
 
 /// <summary>
-/// SMS notification implementation
+///     SMS notification implementation
 /// </summary>
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class CollectionSmsNotificationService : ICollectionNotificationService
 {
     [Inject] private readonly ILogger<CollectionSmsNotificationService> _logger;
@@ -56,7 +63,8 @@ public partial class CollectionSmsNotificationService : ICollectionNotificationS
     public string NotificationType => "SMS";
     public int Priority => 2; // Medium priority
 
-    public async Task<bool> SendNotificationAsync(string recipient, string message)
+    public async Task<bool> SendNotificationAsync(string recipient,
+        string message)
     {
         _logger.LogInformation("Sending SMS notification to {Recipient}: {Message}", recipient, message);
         await Task.Delay(30); // Simulate SMS sending
@@ -71,9 +79,9 @@ public partial class CollectionSmsNotificationService : ICollectionNotificationS
 }
 
 /// <summary>
-/// Push notification implementation
+///     Push notification implementation
 /// </summary>
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class CollectionPushNotificationService : ICollectionNotificationService
 {
     [Inject] private readonly ILogger<CollectionPushNotificationService> _logger;
@@ -81,7 +89,8 @@ public partial class CollectionPushNotificationService : ICollectionNotification
     public string NotificationType => "Push";
     public int Priority => 3; // Low priority
 
-    public async Task<bool> SendNotificationAsync(string recipient, string message)
+    public async Task<bool> SendNotificationAsync(string recipient,
+        string message)
     {
         _logger.LogInformation("Sending push notification to {Recipient}: {Message}", recipient, message);
         await Task.Delay(20); // Simulate push notification
@@ -96,9 +105,9 @@ public partial class CollectionPushNotificationService : ICollectionNotification
 }
 
 /// <summary>
-/// Slack notification implementation
+///     Slack notification implementation
 /// </summary>
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class CollectionSlackNotificationService : ICollectionNotificationService
 {
     [Inject] private readonly ILogger<CollectionSlackNotificationService> _logger;
@@ -106,7 +115,8 @@ public partial class CollectionSlackNotificationService : ICollectionNotificatio
     public string NotificationType => "Slack";
     public int Priority => 4; // Lowest priority
 
-    public async Task<bool> SendNotificationAsync(string recipient, string message)
+    public async Task<bool> SendNotificationAsync(string recipient,
+        string message)
     {
         _logger.LogInformation("Sending Slack notification to {Recipient}: {Message}", recipient, message);
         await Task.Delay(40); // Simulate Slack API call
@@ -121,18 +131,20 @@ public partial class CollectionSlackNotificationService : ICollectionNotificatio
 }
 
 /// <summary>
-/// Notification manager that uses IEnumerable<INotificationService> to send notifications through all available channels
+///     Notification manager that uses IEnumerable
+///     <INotificationService> to send notifications through all available channels
 /// </summary>
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class NotificationManager
 {
-    [Inject] private readonly IEnumerable<ICollectionNotificationService> _notificationServices;
     [Inject] private readonly ILogger<NotificationManager> _logger;
+    [Inject] private readonly IEnumerable<ICollectionNotificationService> _notificationServices;
 
     /// <summary>
-    /// Sends notification through all available services
+    ///     Sends notification through all available services
     /// </summary>
-    public async Task<NotificationResult> SendToAllAsync(string recipient, string message)
+    public async Task<NotificationResult> SendToAllAsync(string recipient,
+        string message)
     {
         _logger.LogInformation("Sending notification to all available services for {Recipient}", recipient);
 
@@ -149,7 +161,8 @@ public partial class NotificationManager
                 }
 
                 var success = await service.SendNotificationAsync(recipient, message);
-                return new ServiceResult(service.NotificationType, success, success ? "Sent successfully" : "Failed to send");
+                return new ServiceResult(service.NotificationType, success,
+                    success ? "Sent successfully" : "Failed to send");
             }
             catch (Exception ex)
             {
@@ -161,15 +174,17 @@ public partial class NotificationManager
         results = (await Task.WhenAll(tasks)).ToList();
 
         var successCount = results.Count(r => r.Success);
-        _logger.LogInformation("Notification sent via {SuccessCount}/{TotalCount} services", successCount, results.Count);
+        _logger.LogInformation("Notification sent via {SuccessCount}/{TotalCount} services", successCount,
+            results.Count);
 
         return new NotificationResult(recipient, message, results, successCount > 0);
     }
 
     /// <summary>
-    /// Sends notification through the first available service (fail-fast pattern)
+    ///     Sends notification through the first available service (fail-fast pattern)
     /// </summary>
-    public async Task<ServiceResult> SendToFirstAvailableAsync(string recipient, string message)
+    public async Task<ServiceResult> SendToFirstAvailableAsync(string recipient,
+        string message)
     {
         _logger.LogInformation("Sending notification via first available service for {Recipient}", recipient);
 
@@ -177,7 +192,6 @@ public partial class NotificationManager
         var orderedServices = _notificationServices.OrderBy(s => s.Priority);
 
         foreach (var service in orderedServices)
-        {
             try
             {
                 var isAvailable = await service.IsAvailableAsync();
@@ -190,22 +204,23 @@ public partial class NotificationManager
                 var success = await service.SendNotificationAsync(recipient, message);
                 if (success)
                 {
-                    _logger.LogInformation("Notification sent successfully via {ServiceType}", service.NotificationType);
+                    _logger.LogInformation("Notification sent successfully via {ServiceType}",
+                        service.NotificationType);
                     return new ServiceResult(service.NotificationType, true, "Sent successfully");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Error sending notification via {ServiceType}, trying next", service.NotificationType);
+                _logger.LogWarning(ex, "Error sending notification via {ServiceType}, trying next",
+                    service.NotificationType);
             }
-        }
 
         _logger.LogError("Failed to send notification via any available service");
         return new ServiceResult("None", false, "All services failed or unavailable");
     }
 
     /// <summary>
-    /// Gets statistics about available notification services
+    ///     Gets statistics about available notification services
     /// </summary>
     public async Task<NotificationStatistics> GetServiceStatisticsAsync()
     {
@@ -227,20 +242,20 @@ public partial class NotificationManager
 // === 2. ILIST<T> AND IREADONLYLIST<T> INJECTION ===
 
 /// <summary>
-/// Data processor interface for chain processing
+///     Data processor interface for chain processing
 /// </summary>
 public interface IProcessor
 {
-    Task<CollectionProcessingResult> ProcessAsync(CollectionProcessingData data);
     string ProcessorName { get; }
     int Order { get; }
+    Task<CollectionProcessingResult> ProcessAsync(CollectionProcessingData data);
     bool CanProcess(CollectionProcessingData data);
 }
 
 /// <summary>
-/// First processor in the chain
+///     First processor in the chain
 /// </summary>
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class ValidationProcessor : IProcessor
 {
     [Inject] private readonly ILogger<ValidationProcessor> _logger;
@@ -254,20 +269,18 @@ public partial class ValidationProcessor : IProcessor
     {
         _logger.LogInformation("Validating data with ID: {Id}", data.Id);
         await Task.Delay(10);
-        
+
         if (string.IsNullOrEmpty(data.Content) || data.Content.Length > 1000)
-        {
             return CollectionProcessingResult.CreateFailure("Validation failed");
-        }
 
         return CollectionProcessingResult.CreateSuccess($"Validated: {data.Content}");
     }
 }
 
 /// <summary>
-/// Second processor in the chain
+///     Second processor in the chain
 /// </summary>
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class TransformationProcessor : IProcessor
 {
     [Inject] private readonly ILogger<TransformationProcessor> _logger;
@@ -281,16 +294,16 @@ public partial class TransformationProcessor : IProcessor
     {
         _logger.LogInformation("Transforming data with ID: {Id}", data.Id);
         await Task.Delay(20);
-        
+
         var transformed = data.Content.ToUpperInvariant();
         return CollectionProcessingResult.CreateSuccess($"Transformed: {transformed}");
     }
 }
 
 /// <summary>
-/// Third processor in the chain
+///     Third processor in the chain
 /// </summary>
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class EnrichmentProcessor : IProcessor
 {
     [Inject] private readonly ILogger<EnrichmentProcessor> _logger;
@@ -304,23 +317,23 @@ public partial class EnrichmentProcessor : IProcessor
     {
         _logger.LogInformation("Enriching data with ID: {Id}", data.Id);
         await Task.Delay(15);
-        
+
         var enriched = $"{data.Content} [Enriched with {data.Metadata?.Count ?? 0} metadata items]";
         return CollectionProcessingResult.CreateSuccess(enriched);
     }
 }
 
 /// <summary>
-/// Processing chain service that uses IList<IProcessor> for ordered processing
+///     Processing chain service that uses IList<IProcessor> for ordered processing
 /// </summary>
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class ProcessorChain
 {
-    [Inject] private readonly IList<IProcessor> _processors;
     [Inject] private readonly ILogger<ProcessorChain> _logger;
+    [Inject] private readonly IList<IProcessor> _processors;
 
     /// <summary>
-    /// Processes data through the entire chain in order
+    ///     Processes data through the entire chain in order
     /// </summary>
     public async Task<ChainResult> ProcessChainAsync(CollectionProcessingData data)
     {
@@ -344,7 +357,8 @@ public partial class ProcessorChain
 
             if (!result.Success)
             {
-                _logger.LogError("Processor {ProcessorName} failed: {Message}", processor.ProcessorName, result.Message);
+                _logger.LogError("Processor {ProcessorName} failed: {Message}", processor.ProcessorName,
+                    result.Message);
                 break;
             }
 
@@ -358,28 +372,28 @@ public partial class ProcessorChain
     }
 
     /// <summary>
-    /// Gets information about the processor chain
+    ///     Gets information about the processor chain
     /// </summary>
     public ChainInfo GetChainInfo()
     {
         var orderedProcessors = _processors.OrderBy(p => p.Order).ToList();
         var processorInfos = orderedProcessors.Select(p => new ProcessorInfo(p.ProcessorName, p.Order)).ToList();
-        
+
         return new ChainInfo(processorInfos.Count, processorInfos);
     }
 }
 
 /// <summary>
-/// Read-only aggregator service that uses IReadOnlyList<IProcessor> for analysis
+///     Read-only aggregator service that uses IReadOnlyList<IProcessor> for analysis
 /// </summary>
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class ProcessorAnalyzer
 {
-    [Inject] private readonly IReadOnlyList<IProcessor> _processors;
     [Inject] private readonly ILogger<ProcessorAnalyzer> _logger;
+    [Inject] private readonly IReadOnlyList<IProcessor> _processors;
 
     /// <summary>
-    /// Analyzes all processors without modifying them
+    ///     Analyzes all processors without modifying them
     /// </summary>
     public async Task<AnalysisReport> AnalyzeProcessorsAsync()
     {
@@ -411,15 +425,17 @@ public partial class ProcessorAnalyzer
         var activeProcessors = analysisResults.Count(a => a.CanProcessSample);
         var averageTime = analysisResults.Where(a => a.ProcessingTimeMs > 0).Average(a => a.ProcessingTimeMs);
 
-        return new AnalysisReport(totalProcessors, activeProcessors, averageTime, analysisResults.OrderBy(a => a.Order));
+        return new AnalysisReport(totalProcessors, activeProcessors, averageTime,
+            analysisResults.OrderBy(a => a.Order));
     }
 
-    private async Task<double> MeasureProcessingTimeAsync(IProcessor processor, CollectionProcessingData data)
+    private async Task<double> MeasureProcessingTimeAsync(IProcessor processor,
+        CollectionProcessingData data)
     {
         if (!processor.CanProcess(data))
             return 0;
 
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var stopwatch = Stopwatch.StartNew();
         try
         {
             await processor.ProcessAsync(data);
@@ -437,19 +453,19 @@ public partial class ProcessorAnalyzer
 // === 3. GENERIC COLLECTION INJECTION ===
 
 /// <summary>
-/// Generic validator interface for different entity types
+///     Generic validator interface for different entity types
 /// </summary>
 public interface IValidator<T> where T : class
 {
-    Task<ValidationResult> ValidateAsync(T entity);
     string ValidatorName { get; }
     int Severity { get; } // 1 = Error, 2 = Warning, 3 = Info
+    Task<ValidationResult> ValidateAsync(T entity);
 }
 
 /// <summary>
-/// User validator implementation
+///     User validator implementation
 /// </summary>
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class UserValidator : IValidator<User>
 {
     [Inject] private readonly ILogger<UserValidator> _logger;
@@ -475,9 +491,9 @@ public partial class UserValidator : IValidator<User>
 }
 
 /// <summary>
-/// User business rules validator
+///     User business rules validator
 /// </summary>
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class UserBusinessValidator : IValidator<User>
 {
     [Inject] private readonly ILogger<UserBusinessValidator> _logger;
@@ -503,9 +519,9 @@ public partial class UserBusinessValidator : IValidator<User>
 }
 
 /// <summary>
-/// Order validator implementation
+///     Order validator implementation
 /// </summary>
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class OrderValidator : IValidator<Order>
 {
     [Inject] private readonly ILogger<OrderValidator> _logger;
@@ -531,21 +547,22 @@ public partial class OrderValidator : IValidator<Order>
 }
 
 /// <summary>
-/// Comprehensive validation service that uses IEnumerable<IValidator<T>> for each entity type
+///     Comprehensive validation service that uses IEnumerable<IValidator<T>> for each entity type
 /// </summary>
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class ValidationService
 {
-    [Inject] private readonly IEnumerable<IValidator<User>> _userValidators;
-    [Inject] private readonly IEnumerable<IValidator<Order>> _orderValidators;
     [Inject] private readonly ILogger<ValidationService> _logger;
+    [Inject] private readonly IEnumerable<IValidator<Order>> _orderValidators;
+    [Inject] private readonly IEnumerable<IValidator<User>> _userValidators;
 
     /// <summary>
-    /// Validates a user entity using all available user validators
+    ///     Validates a user entity using all available user validators
     /// </summary>
     public async Task<ComprehensiveValidationResult> ValidateUserAsync(User user)
     {
-        _logger.LogInformation("Validating user {UserId} with {ValidatorCount} validators", user.Id, _userValidators.Count());
+        _logger.LogInformation("Validating user {UserId} with {ValidatorCount} validators", user.Id,
+            _userValidators.Count());
 
         var validationTasks = _userValidators.Select(async validator =>
         {
@@ -559,20 +576,21 @@ public partial class ValidationService
         var hasWarnings = validatorResults.Any(r => !r.IsValid && r.Severity == 2);
 
         return new ComprehensiveValidationResult(
-            EntityType: "User",
-            EntityId: user.Id.ToString(),
-            IsValid: !hasErrors,
-            HasWarnings: hasWarnings,
-            ValidatorResults: validatorResults.OrderBy(r => r.Severity)
+            "User",
+            user.Id.ToString(),
+            !hasErrors,
+            hasWarnings,
+            validatorResults.OrderBy(r => r.Severity)
         );
     }
 
     /// <summary>
-    /// Validates an order entity using all available order validators
+    ///     Validates an order entity using all available order validators
     /// </summary>
     public async Task<ComprehensiveValidationResult> ValidateOrderAsync(Order order)
     {
-        _logger.LogInformation("Validating order {OrderId} with {ValidatorCount} validators", order.Id, _orderValidators.Count());
+        _logger.LogInformation("Validating order {OrderId} with {ValidatorCount} validators", order.Id,
+            _orderValidators.Count());
 
         var validationTasks = _orderValidators.Select(async validator =>
         {
@@ -586,43 +604,40 @@ public partial class ValidationService
         var hasWarnings = validatorResults.Any(r => !r.IsValid && r.Severity == 2);
 
         return new ComprehensiveValidationResult(
-            EntityType: "Order",
-            EntityId: order.Id.ToString(),
-            IsValid: !hasErrors,
-            HasWarnings: hasWarnings,
-            ValidatorResults: validatorResults.OrderBy(r => r.Severity)
+            "Order",
+            order.Id.ToString(),
+            !hasErrors,
+            hasWarnings,
+            validatorResults.OrderBy(r => r.Severity)
         );
     }
 
     /// <summary>
-    /// Gets validation statistics for both entity types
+    ///     Gets validation statistics for both entity types
     /// </summary>
-    public ValidationStatistics GetValidationStatistics()
-    {
-        return new ValidationStatistics(
-            UserValidatorCount: _userValidators.Count(),
-            OrderValidatorCount: _orderValidators.Count(),
-            TotalValidators: _userValidators.Count() + _orderValidators.Count()
-        );
-    }
+    public ValidationStatistics GetValidationStatistics() => new(
+        _userValidators.Count(),
+        _orderValidators.Count(),
+        _userValidators.Count() + _orderValidators.Count()
+    );
 }
 
 // === 4. AGGREGATOR PATTERN WITH COLLECTIONS ===
 
 /// <summary>
-/// Data aggregator interface for combining results
+///     Data aggregator interface for combining results
 /// </summary>
 public interface IAggregator<T>
 {
-    Task<T> AggregateAsync(IEnumerable<T> items);
     string AggregatorName { get; }
     int Priority { get; }
+    Task<T> AggregateAsync(IEnumerable<T> items);
 }
 
 /// <summary>
-/// Sum aggregator for numeric data
+///     Sum aggregator for numeric data
 /// </summary>
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class SumAggregator : IAggregator<decimal>
 {
     [Inject] private readonly ILogger<SumAggregator> _logger;
@@ -639,9 +654,9 @@ public partial class SumAggregator : IAggregator<decimal>
 }
 
 /// <summary>
-/// Average aggregator for numeric data
+///     Average aggregator for numeric data
 /// </summary>
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class AverageAggregator : IAggregator<decimal>
 {
     [Inject] private readonly ILogger<AverageAggregator> _logger;
@@ -659,21 +674,22 @@ public partial class AverageAggregator : IAggregator<decimal>
 }
 
 /// <summary>
-/// Multi-aggregator service that uses all available aggregators
+///     Multi-aggregator service that uses all available aggregators
 /// </summary>
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class AggregatorService
 {
     [Inject] private readonly IReadOnlyList<IAggregator<decimal>> _aggregators;
     [Inject] private readonly ILogger<AggregatorService> _logger;
 
     /// <summary>
-    /// Performs all available aggregations on the data
+    ///     Performs all available aggregations on the data
     /// </summary>
     public async Task<AggregationReport> PerformAllAggregationsAsync(IEnumerable<decimal> data)
     {
         var dataList = data.ToList();
-        _logger.LogInformation("Performing {AggregatorCount} aggregations on {DataCount} items", _aggregators.Count, dataList.Count);
+        _logger.LogInformation("Performing {AggregatorCount} aggregations on {DataCount} items", _aggregators.Count,
+            dataList.Count);
 
         var aggregationTasks = _aggregators.Select(async aggregator =>
         {
@@ -684,14 +700,14 @@ public partial class AggregatorService
         var results = await Task.WhenAll(aggregationTasks);
 
         return new AggregationReport(
-            DataCount: dataList.Count,
-            AggregatorCount: _aggregators.Count,
-            Results: results.OrderBy(r => r.Priority)
+            dataList.Count,
+            _aggregators.Count,
+            results.OrderBy(r => r.Priority)
         );
     }
 
     /// <summary>
-    /// Gets the primary aggregation result (highest priority aggregator)
+    ///     Gets the primary aggregation result (highest priority aggregator)
     /// </summary>
     public async Task<decimal> GetPrimaryAggregationAsync(IEnumerable<decimal> data)
     {
@@ -704,26 +720,25 @@ public partial class AggregatorService
 // === 5. COLLECTION INJECTION WITH DIFFERENT LIFETIMES ===
 
 /// <summary>
-/// Provider interface for demonstrating lifetime mixing in collections
+///     Provider interface for demonstrating lifetime mixing in collections
 /// </summary>
 public interface IDataProvider
 {
-    Task<string> GetDataAsync(string key);
     string ProviderName { get; }
     string InstanceId { get; }
+    Task<string> GetDataAsync(string key);
 }
 
 /// <summary>
-/// Singleton data provider (shared instance)
+///     Singleton data provider (shared instance)
 /// </summary>
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class CachedDataProvider : IDataProvider
 {
     [Inject] private readonly ILogger<CachedDataProvider> _logger;
-    private readonly string _instanceId = Guid.NewGuid().ToString("N")[..8];
 
     public string ProviderName => "Cached";
-    public string InstanceId => _instanceId;
+    public string InstanceId { get; } = Guid.NewGuid().ToString("N")[..8];
 
     public async Task<string> GetDataAsync(string key)
     {
@@ -734,16 +749,15 @@ public partial class CachedDataProvider : IDataProvider
 }
 
 /// <summary>
-/// Scoped data provider (per-request instance)
+///     Scoped data provider (per-request instance)
 /// </summary>
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DatabaseDataProvider : IDataProvider
 {
     [Inject] private readonly ILogger<DatabaseDataProvider> _logger;
-    private readonly string _instanceId = Guid.NewGuid().ToString("N")[..8];
 
     public string ProviderName => "Database";
-    public string InstanceId => _instanceId;
+    public string InstanceId { get; } = Guid.NewGuid().ToString("N")[..8];
 
     public async Task<string> GetDataAsync(string key)
     {
@@ -754,16 +768,15 @@ public partial class DatabaseDataProvider : IDataProvider
 }
 
 /// <summary>
-/// Transient data provider (new instance each time)
+///     Transient data provider (new instance each time)
 /// </summary>
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class ApiDataProvider : IDataProvider
 {
     [Inject] private readonly ILogger<ApiDataProvider> _logger;
-    private readonly string _instanceId = Guid.NewGuid().ToString("N")[..8];
 
     public string ProviderName => "API";
-    public string InstanceId => _instanceId;
+    public string InstanceId { get; } = Guid.NewGuid().ToString("N")[..8];
 
     public async Task<string> GetDataAsync(string key)
     {
@@ -774,20 +787,21 @@ public partial class ApiDataProvider : IDataProvider
 }
 
 /// <summary>
-/// Service that demonstrates how different lifetime services work together in collections
+///     Service that demonstrates how different lifetime services work together in collections
 /// </summary>
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class MultiProviderService
 {
     [Inject] private readonly IEnumerable<IDataProvider> _dataProviders;
     [Inject] private readonly ILogger<MultiProviderService> _logger;
 
     /// <summary>
-    /// Retrieves data from all providers and shows lifetime behavior
+    ///     Retrieves data from all providers and shows lifetime behavior
     /// </summary>
     public async Task<MultiProviderResult> GetFromAllProvidersAsync(string key)
     {
-        _logger.LogInformation("Fetching data from {ProviderCount} providers for key: {Key}", _dataProviders.Count(), key);
+        _logger.LogInformation("Fetching data from {ProviderCount} providers for key: {Key}", _dataProviders.Count(),
+            key);
 
         var providerTasks = _dataProviders.Select(async provider =>
         {
@@ -801,7 +815,7 @@ public partial class MultiProviderService
     }
 
     /// <summary>
-    /// Demonstrates that instances maintain their lifetime behavior across multiple calls
+    ///     Demonstrates that instances maintain their lifetime behavior across multiple calls
     /// </summary>
     public async Task<LifetimeDemonstration> DemonstrateLifetimeBehaviorAsync()
     {
@@ -812,18 +826,14 @@ public partial class MultiProviderService
 
         // First call
         foreach (var provider in _dataProviders)
-        {
             call1Results.Add(new ProviderInstanceInfo(provider.ProviderName, provider.InstanceId));
-        }
 
         // Wait a bit
         await Task.Delay(50);
 
         // Second call - check if instance IDs changed
         foreach (var provider in _dataProviders)
-        {
             call2Results.Add(new ProviderInstanceInfo(provider.ProviderName, provider.InstanceId));
-        }
 
         return new LifetimeDemonstration(call1Results, call2Results);
     }
@@ -843,11 +853,17 @@ public record CollectionProcessingData(string Id, string Content, Dictionary<str
 
 public record CollectionProcessingResult(bool Success, string Message, string? ProcessedContent = null)
 {
-    public static CollectionProcessingResult CreateSuccess(string processedContent) => new(true, "Success", processedContent);
+    public static CollectionProcessingResult CreateSuccess(string processedContent) =>
+        new(true, "Success", processedContent);
+
     public static CollectionProcessingResult CreateFailure(string message) => new(false, message);
 }
 
-public record ChainResult(string DataId, bool Success, IEnumerable<CollectionProcessingResult> ProcessingResults, CollectionProcessingData FinalData);
+public record ChainResult(
+    string DataId,
+    bool Success,
+    IEnumerable<CollectionProcessingResult> ProcessingResults,
+    CollectionProcessingData FinalData);
 
 public record ProcessorInfo(string Name, int Order);
 
@@ -855,11 +871,20 @@ public record ChainInfo(int ProcessorCount, IEnumerable<ProcessorInfo> Processor
 
 public record ProcessorAnalysis(string ProcessorName, int Order, bool CanProcessSample, double ProcessingTimeMs);
 
-public record AnalysisReport(int TotalProcessors, int ActiveProcessors, double AverageProcessingTimeMs, IEnumerable<ProcessorAnalysis> ProcessorAnalyses);
+public record AnalysisReport(
+    int TotalProcessors,
+    int ActiveProcessors,
+    double AverageProcessingTimeMs,
+    IEnumerable<ProcessorAnalysis> ProcessorAnalyses);
 
 public record ValidatorResult(string ValidatorName, int Severity, bool IsValid, IEnumerable<string> Errors);
 
-public record ComprehensiveValidationResult(string EntityType, string EntityId, bool IsValid, bool HasWarnings, IEnumerable<ValidatorResult> ValidatorResults);
+public record ComprehensiveValidationResult(
+    string EntityType,
+    string EntityId,
+    bool IsValid,
+    bool HasWarnings,
+    IEnumerable<ValidatorResult> ValidatorResults);
 
 public record ValidationStatistics(int UserValidatorCount, int OrderValidatorCount, int TotalValidators);
 
@@ -873,7 +898,9 @@ public record MultiProviderResult(string Key, IEnumerable<ProviderResult> Result
 
 public record ProviderInstanceInfo(string ProviderName, string InstanceId);
 
-public record LifetimeDemonstration(IEnumerable<ProviderInstanceInfo> FirstCall, IEnumerable<ProviderInstanceInfo> SecondCall)
+public record LifetimeDemonstration(
+    IEnumerable<ProviderInstanceInfo> FirstCall,
+    IEnumerable<ProviderInstanceInfo> SecondCall)
 {
     public IEnumerable<string> GetLifetimeAnalysis()
     {
@@ -885,15 +912,11 @@ public record LifetimeDemonstration(IEnumerable<ProviderInstanceInfo> FirstCall,
         {
             var firstId = firstCallDict[providerName];
             var secondId = secondCallDict[providerName];
-            
+
             if (firstId == secondId)
-            {
                 analysis.Add($"{providerName}: Same instance ({firstId}) - Singleton or Scoped behavior");
-            }
             else
-            {
                 analysis.Add($"{providerName}: Different instances ({firstId} -> {secondId}) - Transient behavior");
-            }
         }
 
         return analysis;

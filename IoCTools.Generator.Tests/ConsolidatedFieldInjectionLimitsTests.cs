@@ -1,6 +1,6 @@
-using Microsoft.CodeAnalysis;
-
 namespace IoCTools.Generator.Tests;
+
+using Microsoft.CodeAnalysis;
 
 /// <summary>
 ///     CONSOLIDATED FIELD INJECTION ARCHITECTURAL LIMITS TESTS
@@ -16,6 +16,7 @@ public class ConsolidatedFieldInjectionLimitsTests
         // Arrange - Test patterns that DO work reliably
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace Test;
 
@@ -24,7 +25,8 @@ public interface IAnotherService { }
 public interface ILogger<T> { }
 
 // ✅ Basic private readonly fields - FULLY SUPPORTED
-[Service]
+
+[Scoped]
 public partial class BasicSupportedService
 {
     [Inject] private readonly ITestService _service;
@@ -32,7 +34,8 @@ public partial class BasicSupportedService
 }
 
 // ✅ DependsOn alternative - FULLY SUPPORTED
-[Service]
+
+[Scoped]
 [DependsOn<ITestService, IAnotherService>]
 public partial class DependsOnAlternative
 {
@@ -40,7 +43,8 @@ public partial class DependsOnAlternative
 }
 
 // ✅ Mixed patterns that work - FULLY SUPPORTED
-[Service]
+
+[Scoped]
 [DependsOn<IAnotherService>]
 public partial class MixedPatternService
 {
@@ -52,13 +56,13 @@ public partial class MixedPatternService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - These patterns should work perfectly
-        Assert.False(result.HasErrors, 
+        Assert.False(result.HasErrors,
             $"Supported patterns failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
 
         // Verify basic service works
         var basicConstructor = result.GetConstructorSource("BasicSupportedService");
         Assert.NotNull(basicConstructor);
-        
+
         Assert.Contains("ITestService service", basicConstructor.Content);
         Assert.Contains("ILogger<BasicSupportedService> logger", basicConstructor.Content);
         Assert.Contains("this._service = service;", basicConstructor.Content);
@@ -73,7 +77,7 @@ public partial class MixedPatternService
         // Verify mixed pattern works
         var mixedConstructor = result.GetConstructorSource("MixedPatternService");
         Assert.NotNull(mixedConstructor);
-        
+
         Assert.Contains("IAnotherService anotherService", mixedConstructor.Content); // DependsOn first
         Assert.Contains("ITestService injectField", mixedConstructor.Content); // Inject parameter uses field name
         Assert.Contains("this._injectField = injectField;", mixedConstructor.Content);
@@ -85,6 +89,7 @@ public partial class MixedPatternService
         // Arrange - Test patterns that are architectural limits
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace Test;
 
@@ -92,7 +97,8 @@ public interface ITestService { }
 public interface IAnotherService { }
 
 // ❌ ARCHITECTURAL LIMIT: Complex access modifier patterns
-[Service]
+
+[Scoped]
 public partial class ComplexAccessModifiers
 {
     [Inject] private readonly ITestService _privateService;           // This might work
@@ -104,7 +110,8 @@ public partial class ComplexAccessModifiers
 }
 
 // ❌ ARCHITECTURAL LIMIT: Static fields cannot be constructor-injected
-[Service]
+
+[Scoped]
 public partial class StaticFieldLimits
 {
     [Inject] private readonly ITestService _instanceField;     // This works
@@ -116,36 +123,36 @@ public partial class StaticFieldLimits
 
         // Assert - Document current architectural behavior
         // NOTE: These tests document limits rather than assert perfect behavior
-        
+
         var complexConstructor = result.GetConstructorSource("ComplexAccessModifiers");
         var staticConstructor = result.GetConstructorSource("StaticFieldLimits");
-        
+
         // Basic field injection should still work for simple cases
         if (complexConstructor != null)
         {
             // Private fields should work (this is supported)
             Assert.Contains("_privateService", complexConstructor.Content);
-            
+
             // Document: Complex access modifiers are architectural limits
             // The generator may handle some but not all combinations reliably
             var hasComplexModifiers = complexConstructor.Content.Contains("protectedService") ||
-                                    complexConstructor.Content.Contains("internalService") ||
-                                    complexConstructor.Content.Contains("publicService");
-                                    
+                                      complexConstructor.Content.Contains("internalService") ||
+                                      complexConstructor.Content.Contains("publicService");
+
             // This test DOCUMENTS the limitation rather than asserting perfect behavior
             // In production, users should prefer private readonly fields or use DependsOn
         }
-        
+
         if (staticConstructor != null)
         {
             // Instance fields should work
             Assert.Contains("ITestService instanceField", staticConstructor.Content);
             Assert.Contains("this._instanceField = instanceField;", staticConstructor.Content);
-            
+
             // Static fields should be ignored (cannot be constructor-injected)
             Assert.DoesNotContain("staticField", staticConstructor.Content);
         }
-        
+
         // The key insight: Some patterns work, others don't, users should use alternatives
         Assert.True(true, "Architectural limits documented - users should use supported patterns or alternatives");
     }
@@ -156,6 +163,7 @@ public partial class StaticFieldLimits
         // Arrange - Show how to work around architectural limits
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace Test;
 
@@ -164,7 +172,8 @@ public interface IProtectedDependency { }
 public interface IInternalDependency { }
 
 // ✅ WORKAROUND 1: Use DependsOn instead of complex field patterns
-[Service]
+
+[Scoped]
 [DependsOn<IComplexDependency, IProtectedDependency, IInternalDependency>]
 public partial class UsesDependsOnWorkaround
 {
@@ -173,7 +182,8 @@ public partial class UsesDependsOnWorkaround
 }
 
 // ✅ WORKAROUND 2: Simplify to private fields
-[Service]
+
+[Scoped]
 public partial class SimplifiedFieldAccess
 {
     [Inject] private readonly IComplexDependency _dependency1;
@@ -186,7 +196,8 @@ public partial class SimplifiedFieldAccess
 }
 
 // ✅ WORKAROUND 3: Manual constructor for the most complex cases
-[Service]
+
+[Scoped]
 public class ManualConstructorService
 {
     private readonly IComplexDependency _complexDep;
@@ -231,6 +242,7 @@ public class ManualConstructorService
         // Arrange - Inheritance + complex field access combinations
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace Test;
 
@@ -238,27 +250,21 @@ public interface IBaseService { }
 public interface IDerivedService { }
 
 // ❌ ARCHITECTURAL LIMIT: Complex inheritance + field access patterns
-[UnregisteredService]
 public abstract partial class BaseWithComplexFields
 {
     [Inject] protected readonly IBaseService _protectedBase;     // Complex access + inheritance
 }
-
-[Service]
 public partial class DerivedWithComplexFields : BaseWithComplexFields
 {
     [Inject] protected internal readonly IDerivedService _protectedInternal; // Complex access + inheritance
 }
 
 // ✅ RECOMMENDED: Simplified inheritance patterns
-[UnregisteredService]
 [DependsOn<IBaseService>]
 public abstract partial class SimplifiedBase
 {
     // Dependencies via constructor parameters
 }
-
-[Service]
 [DependsOn<IDerivedService>]
 public partial class SimplifiedDerived : SimplifiedBase
 {
@@ -271,13 +277,13 @@ public partial class SimplifiedDerived : SimplifiedBase
 
         // Assert - Document architectural behavior
         // Complex patterns may or may not work reliably - this is the architectural limit
-        
+
         var complexDerived = result.GetConstructorSource("DerivedWithComplexFields");
         var simplifiedDerived = result.GetConstructorSource("SimplifiedDerived");
 
         // TEST: Inheritance + Multiple DependsOn attributes
         // SimplifiedDerived inherits from SimplifiedBase and has its own DependsOn
-        
+
         if (simplifiedDerived == null)
         {
             // This could be an architectural limit with complex inheritance + DependsOn
@@ -285,7 +291,7 @@ public partial class SimplifiedDerived : SimplifiedBase
             var registrationSource = result.GetServiceRegistrationSource();
             Assert.NotNull(registrationSource);
             Assert.Contains("SimplifiedDerived", registrationSource.Content);
-            
+
             // Document this as a potential architectural limit
             Assert.True(true, "POTENTIAL LIMIT: Multiple inheritance levels with DependsOn attributes");
         }
@@ -302,9 +308,9 @@ public partial class SimplifiedDerived : SimplifiedBase
         {
             // If it works, document what works
             var hasInheritanceDeps = complexDerived.Content.Contains("IBaseService") ||
-                                   complexDerived.Content.Contains("IDerivedService");
+                                     complexDerived.Content.Contains("IDerivedService");
         }
-        
+
         // Key message: Use simplified patterns for reliable behavior
         Assert.True(true, "Inheritance limits documented - prefer simplified patterns");
     }
@@ -315,6 +321,7 @@ public partial class SimplifiedDerived : SimplifiedBase
         // This test provides clear guidance for developers encountering limits
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace Test;
 
@@ -323,7 +330,8 @@ public interface IService2 { }
 public interface IService3 { }
 
 // ✅ GOLD STANDARD: This pattern ALWAYS works
-[Service]
+
+[Scoped]
 public partial class GoldStandardPattern
 {
     [Inject] private readonly IService1 _service1;
@@ -332,7 +340,7 @@ public partial class GoldStandardPattern
 }
 
 // ✅ ALTERNATIVE: When you need more control
-[Service] 
+[Scoped] 
 [DependsOn<IService1, IService2, IService3>]
 public partial class ControlledPattern
 {
@@ -378,7 +386,7 @@ public partial class ControlledPattern
     {
         // This test exists purely to document the architectural limits in test form
         // It serves as executable documentation for developers
-        
+
         var architecturalLimitsSummary = @"
 ARCHITECTURAL LIMITS SUMMARY:
 
@@ -421,7 +429,7 @@ ARCHITECTURAL LIMITS SUMMARY:
         Assert.Contains("ARCHITECTURAL LIMITS SUMMARY", architecturalLimitsSummary);
         Assert.Contains("WORKAROUNDS (ALWAYS WORK)", architecturalLimitsSummary);
         Assert.Contains("RECOMMENDED MIGRATION", architecturalLimitsSummary);
-        
+
         // This test passes to confirm the limits are documented
         Assert.True(true, "Architectural limits clearly documented for developers");
     }

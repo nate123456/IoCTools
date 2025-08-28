@@ -1,5 +1,3 @@
-using Microsoft.CodeAnalysis;
-
 namespace IoCTools.Generator.Tests;
 
 /// <summary>
@@ -21,11 +19,11 @@ namespace Test;
 public interface ICacheProvider { }
 
 [ConditionalService(ConfigValue = ""Cache:Provider"", Equals = ""Redis"")]
-[Service]
+
 public partial class RedisCacheProvider : ICacheProvider { }
 
 [ConditionalService(ConfigValue = ""Cache:Provider"", Equals = ""Memory"")]
-[Service]
+
 public partial class MemoryCacheProvider : ICacheProvider { }
 ";
 
@@ -38,8 +36,12 @@ public partial class MemoryCacheProvider : ICacheProvider { }
         Assert.NotNull(registrationSource);
 
         // Should generate mutually exclusive configuration conditions
-        Assert.Contains("if (string.Equals(configuration[\"Cache:Provider\"], \"Redis\", StringComparison.OrdinalIgnoreCase))", registrationSource.Content);
-        Assert.Contains("else if (string.Equals(configuration[\"Cache:Provider\"], \"Memory\", StringComparison.OrdinalIgnoreCase))", registrationSource.Content);
+        Assert.Contains(
+            "if (string.Equals(configuration[\"Cache:Provider\"], \"Redis\", StringComparison.OrdinalIgnoreCase))",
+            registrationSource.Content);
+        Assert.Contains(
+            "else if (string.Equals(configuration[\"Cache:Provider\"], \"Memory\", StringComparison.OrdinalIgnoreCase))",
+            registrationSource.Content);
     }
 
     [Fact]
@@ -54,7 +56,7 @@ namespace Test;
 public interface IService { }
 
 [ConditionalService(ConfigValue = ""Features:Disabled"", NotEquals = ""true"")]
-[Service]
+
 public partial class EnabledService : IService { }
 ";
 
@@ -67,7 +69,8 @@ public partial class EnabledService : IService { }
         Assert.NotNull(registrationSource);
 
         // Should generate NOT equals condition with proper null handling
-        Assert.Contains("(configuration.GetValue<string>(\"Features:Disabled\") ?? \"\") != \"true\"", registrationSource.Content);
+        Assert.Contains("(configuration.GetValue<string>(\"Features:Disabled\") ?? \"\") != \"true\"",
+            registrationSource.Content);
     }
 
     [Fact]
@@ -82,7 +85,7 @@ namespace Test;
 public interface IService { }
 
 [ConditionalService(ConfigValue = ""App:Config\""WithQuotes"", Equals = ""Value\""WithQuotes"")]
-[Service]
+
 public partial class QuotedService : IService { }
 ";
 
@@ -111,7 +114,7 @@ namespace Test;
 public interface IService { }
 
 [ConditionalService(ConfigValue = ""Features:Provider"", NotEquals = ""None,Disabled"")]
-[Service]
+
 public partial class EnabledService : IService { }
 ";
 
@@ -144,7 +147,7 @@ namespace Test;
 public interface IAdvancedService { }
 
 [ConditionalService(Environment = ""Production"", ConfigValue = ""Features:Advanced"", Equals = ""enabled"")]
-[Service]
+
 public partial class ProductionAdvancedService : IAdvancedService { }
 ";
 
@@ -157,8 +160,11 @@ public partial class ProductionAdvancedService : IAdvancedService { }
         Assert.NotNull(registrationSource);
 
         // Should generate combined environment and configuration check with AND logic
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
-        Assert.Contains("string.Equals(configuration[\"Features:Advanced\"], \"enabled\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
+        Assert.Contains(
+            "string.Equals(configuration[\"Features:Advanced\"], \"enabled\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
         Assert.Contains("&&", registrationSource.Content);
     }
 
@@ -174,7 +180,7 @@ namespace Test;
 public interface ITestService { }
 
 [ConditionalService(Environment = ""Development,Testing"", ConfigValue = ""Features:TestMode"", Equals = ""true"")]
-[Service]
+
 public partial class TestModeService : ITestService { }
 ";
 
@@ -187,8 +193,12 @@ public partial class TestModeService : ITestService { }
         Assert.NotNull(registrationSource);
 
         // Should generate OR condition for environments AND configuration condition
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase) || string.Equals(environment, \"Testing\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
-        Assert.Contains("string.Equals(configuration[\"Features:TestMode\"], \"true\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains(
+            "string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase) || string.Equals(environment, \"Testing\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
+        Assert.Contains(
+            "string.Equals(configuration[\"Features:TestMode\"], \"true\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
         Assert.Contains("&&", registrationSource.Content);
     }
 
@@ -208,11 +218,11 @@ namespace Test;
 public interface IBooleanService { }
 
 [ConditionalService(ConfigValue = ""Features:BooleanFeature"", Equals = ""true"")]
-[Service]
+
 public partial class TrueService : IBooleanService { }
 
 [ConditionalService(ConfigValue = ""Features:BooleanFeature"", Equals = ""false"")]
-[Service]
+
 public partial class FalseService : IBooleanService { }
 ";
 
@@ -225,8 +235,12 @@ public partial class FalseService : IBooleanService { }
         Assert.NotNull(registrationSource);
 
         // Should treat boolean values as strings in comparison
-        Assert.Contains("string.Equals(configuration[\"Features:BooleanFeature\"], \"true\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
-        Assert.Contains("string.Equals(configuration[\"Features:BooleanFeature\"], \"false\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains(
+            "string.Equals(configuration[\"Features:BooleanFeature\"], \"true\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
+        Assert.Contains(
+            "string.Equals(configuration[\"Features:BooleanFeature\"], \"false\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
     }
 
     [Fact]
@@ -241,7 +255,7 @@ namespace Test;
 public interface INumericService { }
 
 [ConditionalService(ConfigValue = ""App:Version"", Equals = ""2"")]
-[Service]
+
 public partial class V2Service : INumericService { }
 ";
 
@@ -254,7 +268,8 @@ public partial class V2Service : INumericService { }
         Assert.NotNull(registrationSource);
 
         // Should treat numeric values as strings
-        Assert.Contains("string.Equals(configuration[\"App:Version\"], \"2\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains("string.Equals(configuration[\"App:Version\"], \"2\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
     }
 
     [Fact]
@@ -269,7 +284,7 @@ namespace Test;
 public interface IEmptyService { }
 
 [ConditionalService(ConfigValue = ""App:EmptyConfig"", Equals = """")]
-[Service]
+
 public partial class EmptyValueService : IEmptyService { }
 ";
 
@@ -282,7 +297,8 @@ public partial class EmptyValueService : IEmptyService { }
         Assert.NotNull(registrationSource);
 
         // Should handle empty string comparison properly
-        Assert.Contains("string.Equals(configuration[\"App:EmptyConfig\"], \"\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains("string.Equals(configuration[\"App:EmptyConfig\"], \"\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
     }
 
     #endregion
@@ -301,7 +317,7 @@ namespace Test;
 public interface INestedService { }
 
 [ConditionalService(ConfigValue = ""App:Features:Database:Provider"", Equals = ""SqlServer"")]
-[Service]
+
 public partial class SqlServerService : INestedService { }
 ";
 
@@ -314,7 +330,9 @@ public partial class SqlServerService : INestedService { }
         Assert.NotNull(registrationSource);
 
         // Should handle nested configuration keys properly
-        Assert.Contains("string.Equals(configuration[\"App:Features:Database:Provider\"], \"SqlServer\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains(
+            "string.Equals(configuration[\"App:Features:Database:Provider\"], \"SqlServer\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
     }
 
     [Fact]
@@ -329,11 +347,11 @@ namespace Test;
 public interface ICaseSensitiveService { }
 
 [ConditionalService(ConfigValue = ""App:CaseTest"", Equals = ""UPPERCASE"")]
-[Service]
+
 public partial class UppercaseService : ICaseSensitiveService { }
 
 [ConditionalService(ConfigValue = ""App:CaseTest"", Equals = ""lowercase"")]
-[Service]
+
 public partial class LowercaseService : ICaseSensitiveService { }
 ";
 
@@ -346,8 +364,12 @@ public partial class LowercaseService : ICaseSensitiveService { }
         Assert.NotNull(registrationSource);
 
         // Should be case-insensitive comparison (using StringComparison.OrdinalIgnoreCase)
-        Assert.Contains("string.Equals(configuration[\"App:CaseTest\"], \"UPPERCASE\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
-        Assert.Contains("string.Equals(configuration[\"App:CaseTest\"], \"lowercase\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains(
+            "string.Equals(configuration[\"App:CaseTest\"], \"UPPERCASE\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
+        Assert.Contains(
+            "string.Equals(configuration[\"App:CaseTest\"], \"lowercase\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
     }
 
     #endregion

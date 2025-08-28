@@ -1,7 +1,8 @@
-using System.Text.RegularExpressions;
-using Microsoft.CodeAnalysis;
-
 namespace IoCTools.Generator.Tests;
+
+using System.Text.RegularExpressions;
+
+using Microsoft.CodeAnalysis;
 
 /// <summary>
 ///     Comprehensive tests for redundancy detection in dependency declarations.
@@ -20,8 +21,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 public interface IService1 { }
-
-[Service]
 [DependsOn<IService1, IService1>] // Duplicate within same attribute
 public partial class TestService
 {
@@ -56,8 +55,6 @@ namespace Test;
 
 public interface IService1 { }
 public interface IService2 { }
-
-[Service]
 [DependsOn<IService1>]
 [DependsOn<IService1, IService2>] // IService1 is duplicate
 public partial class TestService
@@ -93,8 +90,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 public interface ILogger { }
-
-[Service]
 [DependsOn<ILogger>] // Conflicts with Inject field
 public partial class TestService
 {
@@ -134,8 +129,6 @@ namespace Test;
 
 public interface IUserService { }
 public interface INonImplemented { } // Not implemented by class
-
-[Service]
 [RegisterAsAll]
 [SkipRegistration<INonImplemented>] // Not an interface we implement
 public partial class UserService : IUserService
@@ -174,8 +167,6 @@ namespace Test;
 
 public interface IService1 { }
 public interface IService2 { }
-
-[Service]
 [DependsOn<IService1>]
 [DependsOn<IService1, IService2>] // IService1 is duplicate but should be auto-removed
 public partial class TestService
@@ -201,7 +192,7 @@ public partial class TestService
         // Verify both service types appear in parameters (deduplication worked)
         var service1Count = Regex.Matches(content, @"\bIService1\b").Count;
         var service2Count = Regex.Matches(content, @"\bIService2\b").Count;
-        
+
         // Each service type should appear (at least in parameter declarations)
         Assert.True(service1Count > 0, "IService1 should appear in constructor");
         Assert.True(service2Count > 0, "IService2 should appear in constructor");
@@ -222,8 +213,6 @@ namespace Test;
 
 public interface ILogger { }
 public interface IService { }
-
-[Service]
 [DependsOn<ILogger, IService>] // ILogger conflicts with Inject, IService is unique
 public partial class TestService
 {
@@ -269,8 +258,6 @@ public interface ILogger { }
 public interface IService { }
 public interface IUserService { }
 public interface INonImplemented { }
-
-[Service]
 [RegisterAsAll]
 [DependsOn<ILogger, ILogger>] // IOC008: Duplicate in same attribute
 [DependsOn<IService>] 
@@ -328,13 +315,10 @@ public interface IService { }
 public interface IUserService { }
 
 // Add implementations to avoid IOC001 warnings
-[Service]
+[Scoped]
 public partial class LoggerImpl : ILogger { }
-
-[Service]
+[Scoped]
 public partial class ServiceImpl : IService { }
-
-[Service]
 [RegisterAsAll]
 [DependsOn<IService>]
 [SkipRegistration<IUserService>] // Valid - this interface is implemented
@@ -384,8 +368,6 @@ namespace Test;
 
 public interface ILogger { }
 public interface IMissingService { } // No implementation exists
-
-[Service]
 [DependsOn<ILogger>]
 [DependsOn<ILogger, IMissingService>] // ILogger duplicate + missing service
 public partial class TestService
@@ -407,7 +389,7 @@ public partial class TestService
     }
 
     [Fact]
-    public void CrossDiagnosticInteraction_RedundancyWithUnregisteredService_GeneratesIOC002AndIOC008()
+    public void CrossDiagnosticInteraction_RedundancyWithUnmanagedService_GeneratesIOC002AndIOC008()
     {
         // Test redundancy with IOC002 (Implementation not registered) scenarios
         var source = @"
@@ -419,8 +401,6 @@ public interface ILogger { }
 
 // Implementation exists but not registered as service
 public class LoggerImpl : ILogger { }
-
-[Service]
 [DependsOn<ILogger, ILogger>] // Duplicate within same attribute
 public partial class TestService
 {
@@ -449,15 +429,13 @@ namespace Test;
 
 public interface IServiceA { }
 public interface IServiceB { }
-
-[Service]
 [DependsOn<IServiceB>] // Creates potential circular dependency
 public partial class ServiceA : IServiceA
 {
     [Inject] private readonly IServiceB _serviceB; // Conflicts with DependsOn
 }
 
-[Service] 
+[Scoped] 
 [DependsOn<IServiceA>]
 public partial class ServiceB : IServiceB
 {
@@ -487,8 +465,6 @@ namespace Test;
 public interface IUserService { }
 public interface IAdminService { }
 public interface INonExistentService { } // Not implemented by class
-
-[Service]
 [RegisterAsAll]
 [SkipRegistration<INonExistentService>] // Unnecessary - not implemented anyway
 [SkipRegistration<IAdminService>] // Valid skip
@@ -528,8 +504,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 {interfaces}
-
-[Service]
 [DependsOn<{duplicateTypes}>] // Contains duplicates IService5 and IService10
 public partial class TestService
 {{
@@ -558,8 +532,6 @@ namespace Test;
 public interface IService1 { }
 public interface IService2 { }
 public interface IService3 { }
-
-[Service]
 [DependsOn<IService1>] // Single type
 [DependsOn<IService1, IService2>] // Multiple types with duplicate IService1
 [DependsOn<IService2, IService3>] // Multiple types with duplicate IService2
@@ -589,8 +561,6 @@ namespace Test;
 public interface IServiceA { }
 public interface IServiceB { }
 public interface IServiceC { }
-
-[Service]
 [DependsOn<IServiceA, IServiceB, IServiceA, IServiceC, IServiceB, IServiceA>] // Multiple complex duplicates
 public partial class TestService
 {
@@ -622,22 +592,16 @@ namespace Test;
 
 public interface ILogger { }
 public interface IService { }
-
-[Service]
 public partial class BaseService
 {
     [Inject] protected readonly ILogger _logger; // Base class has Inject
 }
-
-[Service]
 [DependsOn<ILogger, IService>] // Derived class has DependsOn with same type
 public partial class DerivedService : BaseService
 {
 }";
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-
-
         var ioc007Diagnostics = result.GetDiagnosticsByCode("IOC007");
         Assert.Single(ioc007Diagnostics);
         Assert.Contains("ILogger", ioc007Diagnostics[0].GetMessage());
@@ -661,21 +625,17 @@ namespace Test;
 public interface ILogger { }
 public interface IRepository { }
 public interface IService { }
-
-[Service]
 public partial class BaseService
 {
     [Inject] protected readonly ILogger _logger;
 }
 
-[Service] 
+[Scoped] 
 [DependsOn<IRepository>]
 public partial class MiddleService : BaseService
 {
     [Inject] protected readonly ILogger _duplicateLogger; // Same type as base
 }
-
-[Service]
 [DependsOn<ILogger, IService>] // Conflicts with inherited Inject fields
 public partial class DerivedService : MiddleService
 {
@@ -701,14 +661,10 @@ namespace Test;
 
 public interface ILogger { }
 public interface IConfig { }
-
-[Service]
 public abstract partial class AbstractService
 {
     [Inject] protected readonly ILogger _logger;
 }
-
-[Service]
 [DependsOn<ILogger>] // Redundant with inherited Inject
 [DependsOn<IConfig>] // Valid - not inherited
 public partial class ConcreteService : AbstractService
@@ -743,8 +699,6 @@ namespace Test;
 public class User { }
 public class Product { }
 public interface IRepository<T> { }
-
-[Service]
 [DependsOn<IRepository<User>>]
 [DependsOn<IRepository<User>, IRepository<Product>>] // Duplicate IRepository<User>
 public partial class TestService
@@ -780,7 +734,7 @@ namespace Test
     using Services;
     using LoggerUtil = Utilities.ILogger;
     
-    [Service]
+    
     [DependsOn<ILogger>] // Test.Services.ILogger
     [DependsOn<LoggerUtil>] // Test.Utilities.ILogger - should NOT be detected as duplicate
     public partial class TestService
@@ -812,8 +766,6 @@ namespace Test;
 
 public interface IExternalService { }
 public interface IInternalService { }
-
-[Service]
 [DependsOn<IExternalService>(external: true)] // External dependency
 [DependsOn<IExternalService, IInternalService>] // Duplicate external + internal
 public partial class TestService
@@ -847,8 +799,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 public interface IService { }
-
-[Service]
 [DependsOn<IService>] // Valid
 public partial class TestService
 {
@@ -880,16 +830,10 @@ public interface IService2 { }
 public interface IService3 { }
 
 // Add implementations to avoid IOC001 warnings and enable constructor generation
-[Service]
+
 public partial class Service1Impl : IService1 { }
-
-[Service]
 public partial class Service2Impl : IService2 { }
-
-[Service]
 public partial class Service3Impl : IService3 { }
-
-[Service]
 [DependsOn<IService1, IService1, IService2>] // 1 duplicate
 [DependsOn<IService2, IService3>] // 1 duplicate (IService2)
 public partial class TestService
@@ -912,11 +856,9 @@ public partial class TestService
         // Count unique service parameters (should be 3 despite duplicates)
         var uniqueServices = new[] { "IService1", "IService2", "IService3" };
         foreach (var service in uniqueServices)
-        {
             // Check that each service type appears in the constructor parameters
             // Don't be specific about parameter naming - just verify the service types are present
             Assert.Contains(service, constructorSource.Content);
-        }
     }
 
     #endregion
@@ -937,8 +879,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 {interfaces}
-
-[Service]
 {dependsOnAttributes}
 public partial class TestService
 {{
@@ -970,8 +910,6 @@ namespace Test;
 
 public interface IService1 {{ }}
 public interface IService2 {{ }}
-
-[Service]
 [DependsOn<{duplicatePattern}>] // Massive duplication of IService1
 public partial class TestService
 {{
@@ -1007,8 +945,6 @@ namespace Test;
 public interface IService1 { }
 public interface IService2 { }
 public interface IService3 { }
-
-[Service]
 [DependsOn<IService1>(external: true)] // External parameter
 [DependsOn<IService1, IService2>(namingConvention: NamingConvention.CamelCase)] // With naming convention
 [DependsOn<IService2, IService3>] // Standard
@@ -1033,5 +969,4 @@ public partial class TestService
     }
 
     #endregion
-
 }

@@ -18,8 +18,6 @@ using Microsoft.Extensions.Configuration;
 using System;
 
 namespace Test;
-
-[Service]
 public partial class DefaultValueService
 {
     [InjectConfiguration(""Database:Timeout"", DefaultValue = 30)] private readonly int _timeout;
@@ -61,8 +59,6 @@ using IoCTools.Abstractions.Annotations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
-
-[Service]
 public partial class NestedKeyService
 {
     [InjectConfiguration(""Database:Connection:Primary"")] private readonly string _primaryConnection;
@@ -112,8 +108,6 @@ public class StaticSettings
     public string Version { get; set; } = string.Empty;
     public string Environment { get; set; } = string.Empty;
 }
-
-[Service]
 public partial class ReloadingConfigService
 {
     [InjectConfiguration] private readonly IOptionsSnapshot<ReloadableSettings> _reloadableSettings;
@@ -150,6 +144,7 @@ public partial class ReloadingConfigService
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
@@ -161,7 +156,7 @@ public class EmailSettings
     public int SmtpPort { get; set; }
 }
 
-[Service]
+[Scoped]
 public partial class ConfigurationService
 {
     [InjectConfiguration(""Database:ConnectionString"")] private readonly string _connectionString;
@@ -179,7 +174,8 @@ public partial class ConfigurationService
         Assert.NotNull(registrationSource);
 
         // Should register the service itself with direct registration (not factory pattern to avoid infinite recursion)
-        Assert.Contains("AddScoped<global::Test.ConfigurationService, global::Test.ConfigurationService>()", registrationSource.Content);
+        Assert.Contains("AddScoped<global::Test.ConfigurationService, global::Test.ConfigurationService>()",
+            registrationSource.Content);
 
         // Should include configuration setup for options if needed
         // This would be implementation-specific behavior
@@ -200,15 +196,11 @@ using Microsoft.Extensions.Configuration;
 namespace Test;
 
 public interface IBaseService { }
-
-[Service]
 public partial class BaseConfigService
 {
     [InjectConfiguration(""Base:Setting"")] protected readonly string _baseSetting;
     [Inject] protected readonly IBaseService _baseService;
 }
-
-[Service]
 public partial class DerivedConfigService : BaseConfigService
 {
     [InjectConfiguration(""Derived:Setting"")] private readonly string _derivedSetting;
@@ -285,7 +277,7 @@ public class DatabaseSettings
     public bool EnableRetry { get; set; }
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class EmailService : IEmailService
 {
     [InjectConfiguration] private readonly EmailSettings _emailSettings;
@@ -293,8 +285,6 @@ public partial class EmailService : IEmailService
     [InjectConfiguration(""Email:ApiKey"")] private readonly string _apiKey;
     [Inject] private readonly ILogger<EmailService> _logger;
 }
-
-[Service]
 public partial class CompleteIntegrationService
 {
     // Regular DI
@@ -372,8 +362,6 @@ using IoCTools.Abstractions.Annotations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
-
-[Service]
 public partial class BasicStringConfigService
 {
     [InjectConfiguration(""Database:ConnectionString"")] private readonly string _connectionString;
@@ -408,8 +396,6 @@ using Microsoft.Extensions.Configuration;
 using System;
 
 namespace Test;
-
-[Service]
 public partial class PrimitiveConfigService
 {
     [InjectConfiguration(""Cache:TTL"")] private readonly TimeSpan _cacheTtl;
@@ -446,8 +432,6 @@ using Microsoft.Extensions.Configuration;
 using System;
 
 namespace Test;
-
-[Service]
 public partial class NullableConfigService
 {
     [InjectConfiguration(""Optional:DatabaseUrl"")] private readonly string? _databaseUrl;
@@ -496,8 +480,6 @@ public class EmailSettings
     public int SmtpPort { get; set; }
     public string ApiKey { get; set; } = string.Empty;
 }
-
-[Service]
 public partial class SectionBindingService
 {
     [InjectConfiguration] private readonly DatabaseSettings _databaseSettings;
@@ -539,8 +521,6 @@ public class CacheConfig
     public int TTL { get; set; }
     public string Provider { get; set; } = string.Empty;
 }
-
-[Service]
 public partial class CustomSectionService
 {
     [InjectConfiguration(""Application"")] private readonly AppSettings _appSettings;
@@ -585,8 +565,6 @@ public class DatabaseSettings
     public string ConnectionString { get; set; } = string.Empty;
     public int Timeout { get; set; }
 }
-
-[Service]
 public partial class OptionsPatternService
 {
     [InjectConfiguration] private readonly IOptions<EmailSettings> _emailOptions;
@@ -623,8 +601,6 @@ public class LiveSettings
     public int RefreshInterval { get; set; }
     public bool EnableHotReload { get; set; }
 }
-
-[Service]
 public partial class OptionsMonitorService
 {
     [InjectConfiguration] private readonly IOptionsMonitor<LiveSettings> _liveSettings;
@@ -665,8 +641,6 @@ public class EmailSettings
     public string SmtpHost { get; set; } = string.Empty;
     public int SmtpPort { get; set; }
 }
-
-[Service]
 public partial class MixedInjectionService
 {
     [Inject] private readonly IEmailService _emailService;
@@ -716,8 +690,6 @@ namespace Test;
 
 public interface IEmailService { }
 public interface IUserService { }
-
-[Service]
 [DependsOn<IEmailService, IUserService>]
 public partial class CombinedAttributeService
 {
@@ -728,8 +700,6 @@ public partial class CombinedAttributeService
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-
-
         // Assert
         Assert.False(result.HasErrors);
 
@@ -767,8 +737,6 @@ using IoCTools.Abstractions.Annotations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
-
-[Service]
 public partial class ValidationTestService
 {
     [InjectConfiguration("""")] private readonly string _emptyKey;
@@ -803,8 +771,6 @@ public class ComplexType
 {
     public string Value { get; set; } = string.Empty;
 }
-
-[Service]
 public partial class TypeConversionService
 {
     [InjectConfiguration(""InvalidNumber"")] private readonly int _invalidNumber;
@@ -844,8 +810,6 @@ using Microsoft.Extensions.Configuration;
 using System.Collections.Generic;
 
 namespace Test;
-
-[Service]
 public partial class ArrayConfigService
 {
     [InjectConfiguration(""AllowedHosts"")] private readonly string[] _allowedHosts;
@@ -886,8 +850,6 @@ public class ServerConfig
     public string Host { get; set; } = string.Empty;
     public int Port { get; set; }
 }
-
-[Service]
 public partial class ComplexCollectionService
 {
     [InjectConfiguration(""Servers"")] private readonly List<ServerConfig> _servers;
@@ -929,26 +891,18 @@ public interface INotificationHandler
 {
     void Handle(string message);
 }
-
-[Service]
 public partial class EmailNotificationHandler : INotificationHandler
 {
     public void Handle(string message) { }
 }
-
-[Service]
 public partial class SmsNotificationHandler : INotificationHandler
 {
     public void Handle(string message) { }
 }
-
-[Service]
 public partial class PushNotificationHandler : INotificationHandler
 {
     public void Handle(string message) { }
 }
-
-[Service]
 public partial class NotificationService
 {
     [Inject] private readonly IEnumerable<INotificationHandler> _handlers;
@@ -1009,6 +963,7 @@ public class NotificationSettings
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 using System.Collections.Generic;
 
@@ -1017,12 +972,11 @@ namespace Test;
 public interface IDataProcessor { }
 public interface IValidator { }
 
-[Service] public partial class JsonProcessor : IDataProcessor { }
-[Service] public partial class XmlProcessor : IDataProcessor { }
-[Service] public partial class EmailValidator : IValidator { }
-[Service] public partial class PhoneValidator : IValidator { }
-
-[Service]
+[Scoped] public partial class JsonProcessor : IDataProcessor { }
+[Scoped] public partial class XmlProcessor : IDataProcessor { }
+[Scoped] public partial class EmailValidator : IValidator { }
+[Scoped] public partial class PhoneValidator : IValidator { }
+[Scoped]
 public partial class DataProcessingService
 {
     [Inject] private readonly IEnumerable<IDataProcessor> _processors;
@@ -1076,6 +1030,7 @@ public class ProcessingSettings
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 using System.Collections.Generic;
 
@@ -1087,33 +1042,30 @@ public interface IMultipleService { }
 
 // No implementations for IEmptyService (empty scenario)
 
-[Service] 
+[Scoped] 
 public partial class SingleImplementation : ISingleService { }
 
-[Service] 
+[Scoped] 
 public partial class FirstMultiple : IMultipleService { }
 
-[Service] 
+[Scoped] 
 public partial class SecondMultiple : IMultipleService { }
 
-[Service] 
+[Scoped] 
 public partial class ThirdMultiple : IMultipleService { }
-
-[Service]
+[Scoped]
 public partial class EmptyIEnumerableService
 {
     [Inject] private readonly IEnumerable<IEmptyService> _emptyServices;
     [InjectConfiguration(""Empty:Config"")] private readonly string _emptyConfig;
 }
-
-[Service]
+[Scoped]
 public partial class SingleIEnumerableService
 {
     [Inject] private readonly IEnumerable<ISingleService> _singleServices;
     [InjectConfiguration(""Single:Settings"")] private readonly List<string> _singleSettings;
 }
-
-[Service]
+[Scoped]
 public partial class MultipleIEnumerableService
 {
     [Inject] private readonly IEnumerable<IMultipleService> _multipleServices;
@@ -1184,6 +1136,8 @@ public class ServiceSettings
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 using System.Collections.Generic;
 
@@ -1197,19 +1151,19 @@ public class UserDto { }
 public class Product { }
 public class ProductDto { }
 
-[Service] 
+[Scoped] 
 public partial class UserRepository : IRepository<User> { }
 
-[Service] 
+[Scoped] 
 public partial class ProductRepository : IRepository<Product> { }
 
-[Service] 
+[Scoped] 
 public partial class UserService : IService<User, UserDto> { }
 
-[Service] 
+[Scoped] 
 public partial class ProductService : IService<Product, ProductDto> { }
 
-[Service]
+[Scoped]
 public partial class GenericIEnumerableService
 {
     [Inject] private readonly IEnumerable<IRepository<User>> _userRepositories;
@@ -1266,7 +1220,8 @@ public class GenericConfiguration
     // ARCHITECTURAL LIMIT: Complex configuration injection error handling is an architectural limit
     // See ARCHITECTURAL_LIMITS.md for details
     // [Fact] - DISABLED: Architectural limit
-    public void ConfigurationInjection_InvalidIEnumerableConfigCombinations_HandlesGracefully_DISABLED_ArchitecturalLimit()
+    public void
+        ConfigurationInjection_InvalidIEnumerableConfigCombinations_HandlesGracefully_DISABLED_ArchitecturalLimit()
     {
         // Arrange - Test edge cases and potential error scenarios
         var source = @"
@@ -1279,11 +1234,11 @@ namespace Test;
 
 public interface IProcessor { }
 
-[Service] 
+[Scoped] 
 public partial class ValidProcessor : IProcessor { }
 
 // Test service with mixed configuration patterns that should still work
-[Service]
+
 public partial class EdgeCaseService
 {
     [Inject] private readonly IEnumerable<IProcessor> _processors;
@@ -1310,7 +1265,7 @@ public class EdgeSettings
 }
 
 // Test service with potentially problematic but valid scenarios
-[Service]
+
 public partial class ComplexEdgeCaseService
 {
     [Inject] private readonly IEnumerable<IProcessor> _processors1;
@@ -1383,8 +1338,6 @@ using IoCTools.Abstractions.Annotations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
-
-[Service]
 public class NonPartialConfigService  // Missing 'partial' keyword
 {
     [InjectConfiguration(""Database:ConnectionString"")] private readonly string _connectionString;
@@ -1410,8 +1363,6 @@ using IoCTools.Abstractions.Annotations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
-
-[Service]
 public partial class StaticConfigService
 {
     [InjectConfiguration(""Database:ConnectionString"")] private readonly string _connectionString;  // Valid
@@ -1444,8 +1395,6 @@ using Microsoft.Extensions.Configuration;
 using System.IO;
 
 namespace Test;
-
-[Service]
 public partial class UnsupportedTypeService
 {
     [InjectConfiguration(""File:Path"")] private readonly FileStream _fileStream;  // Unsupported for config
@@ -1482,8 +1431,6 @@ using IoCTools.Abstractions.Annotations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
-
-[Service]
 public partial class ManyConfigFieldsService
 {{
     {string.Join("\n    ", configFields)}
@@ -1556,14 +1503,11 @@ using IoCTools.Abstractions.Annotations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
-
-[Service]
 public partial class ConfigUnavailableService
 {
     [InjectConfiguration(""Database:ConnectionString"")] private readonly string _connectionString;
     [InjectConfiguration(""Cache:TTL"")] private readonly int _cacheTtl;
 }
-[UnregisteredService]
 public partial class ConfigTestContainer
 {
     [Inject] private readonly ConfigUnavailableService _service;
@@ -1598,8 +1542,6 @@ using IoCTools.Abstractions.Annotations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
-
-[Service]
 public partial class NullSafeConfigService
 {
     [InjectConfiguration(""App:Name"")] private readonly string _appName;
@@ -1610,8 +1552,6 @@ public class SafetyTestSettings
 {
     public string Value { get; set; } = string.Empty;
 }
-
-[Service]
 public partial class NullSafeSectionService
 {
     [InjectConfiguration] private readonly SafetyTestSettings _settings;
@@ -1657,16 +1597,12 @@ public class ProviderTestSettings
     public string DatabaseUrl { get; set; } = string.Empty;
     public List<string> Features { get; set; } = new();
 }
-
-[Service]
 public partial class ProviderExceptionService
 {
     [InjectConfiguration(""Database:Complex"")] private readonly ProviderTestSettings _complexConfig;
     [InjectConfiguration(""Security:ApiKeys"")] private readonly Dictionary<string, string> _apiKeys;
     [InjectConfiguration(""Timeouts:Connection"")] private readonly TimeSpan _connectionTimeout;
 }
-
-[Service]
 public partial class ProviderFallbackService
 {
     [InjectConfiguration(""Fallback:PrimaryEndpoint"")] private readonly string _primaryEndpoint;
@@ -1715,16 +1651,12 @@ public class JsonTestSettings
     public List<int> Numbers { get; set; } = new();
     public Dictionary<string, object> Metadata { get; set; } = new();
 }
-
-[Service]
 public partial class MalformedJsonService
 {
     [InjectConfiguration] private readonly JsonTestSettings _jsonSettings;
     [InjectConfiguration(""Complex:NestedJson"")] private readonly Dictionary<string, object> _nestedJson;
     [InjectConfiguration(""Arrays:StringArray"")] private readonly string[] _stringArray;
 }
-
-[Service]
 public partial class JsonResilienceService
 {
     [InjectConfiguration(""Resilient:SimpleValue"")] private readonly string _simpleValue;
@@ -1783,15 +1715,11 @@ public class NestedDefaultSettings
     public ComplexDefaultSettings Nested { get; set; } = new();
     public string[] Tags { get; set; } = { ""tag1"", ""tag2"" };
 }
-
-[Service]
 public partial class ComplexDefaultService
 {
     [InjectConfiguration] private readonly ComplexDefaultSettings _complexDefaults;
     [InjectConfiguration(""Custom:Nested"")] private readonly NestedDefaultSettings _nestedDefaults;
 }
-
-[Service]
 public partial class ObjectDefaultService
 {
     [InjectConfiguration(""Missing:ComplexObject"")] private readonly ComplexDefaultSettings _missingObject;
@@ -1840,8 +1768,6 @@ public class TypeConversionSettings
     public Guid InstanceId { get; set; } = Guid.Empty;
     public DateTimeOffset Created { get; set; } = DateTimeOffset.UtcNow;
 }
-
-[Service]
 public partial class TypeConversionService
 {
     [InjectConfiguration] private readonly TypeConversionSettings _conversionSettings;
@@ -1849,8 +1775,6 @@ public partial class TypeConversionService
     [InjectConfiguration(""Conversion:Endpoint"")] private readonly Uri _endpointValue;
     [InjectConfiguration(""Conversion:InstanceId"")] private readonly Guid _instanceIdValue;
 }
-
-[Service]
 public partial class NullableConversionService
 {
     [InjectConfiguration(""Optional:Duration"")] private readonly TimeSpan? _optionalDuration;
@@ -1913,16 +1837,12 @@ public class SpecializedConfigSettings : DerivedConfigSettings
     public bool SpecialFlag { get; set; } = true;
     public Dictionary<string, string> SpecialMap { get; set; } = new();
 }
-
-[Service]
 public partial class HierarchyConfigService
 {
     [InjectConfiguration] private readonly BaseConfigSettings _baseConfig;
     [InjectConfiguration] private readonly DerivedConfigSettings _derivedConfig;
     [InjectConfiguration] private readonly SpecializedConfigSettings _specializedConfig;
 }
-
-[Service]
 public partial class MixedHierarchyService
 {
     [InjectConfiguration(""Custom:Base"")] private readonly BaseConfigSettings _customBase;
@@ -1972,8 +1892,6 @@ public class NullableConfigSettings
     public int? OptionalCount { get; set; }
     public bool? OptionalFlag { get; set; }
 }
-
-[Service]
 public partial class NullVsMissingService
 {
     [InjectConfiguration(""Nullable:String"")] private readonly string? _nullableString;
@@ -1981,8 +1899,6 @@ public partial class NullVsMissingService
     [InjectConfiguration(""Nullable:Bool"")] private readonly bool? _nullableBool;
     [InjectConfiguration] private readonly NullableConfigSettings? _nullableSettings;
 }
-
-[Service]
 public partial class MissingConfigService
 {
     [InjectConfiguration(""Missing:RequiredString"")] private readonly string _requiredString;
@@ -2042,7 +1958,7 @@ public class ScenarioSettings
     public int MaxConnections { get; set; } = 100;
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class ReloadableSnapshotService
 {
     [InjectConfiguration] private readonly IOptionsSnapshot<ReloadableSettings> _reloadableSnapshot;
@@ -2050,7 +1966,7 @@ public partial class ReloadableSnapshotService
     [InjectConfiguration(""Direct:Value"")] private readonly string _directValue;
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class SingletonSnapshotService
 {
     [InjectConfiguration] private readonly IOptionsSnapshot<ReloadableSettings> _snapshot;
@@ -2106,15 +2022,11 @@ public class NotificationSettings
     public bool EnableEmailNotifications { get; set; } = true;
     public string NotificationEndpoint { get; set; } = string.Empty;
 }
-
-[Service]
 public partial class MonitoredConfigService
 {
     [InjectConfiguration] private readonly IOptionsMonitor<MonitoredSettings> _monitoredSettings;
     [InjectConfiguration] private readonly IOptionsMonitor<NotificationSettings> _notificationSettings;
 }
-
-[Service]
 public partial class MixedMonitoringService
 {
     [InjectConfiguration] private readonly IOptionsMonitor<MonitoredSettings> _monitored;
@@ -2177,7 +2089,7 @@ public class RuntimeSettings
     public string LogLevel { get; set; } = ""Information"";
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class HotReloadService
 {
     [InjectConfiguration] private readonly IOptionsSnapshot<HotReloadSettings> _hotReloadSettings;
@@ -2185,14 +2097,14 @@ public partial class HotReloadService
     [InjectConfiguration(""Runtime:CurrentMode"")] private readonly string _currentMode;
 }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class TransientHotReloadService
 {
     [InjectConfiguration] private readonly IOptionsSnapshot<HotReloadSettings> _settings;
     [InjectConfiguration(""Transient:Value"")] private readonly string _transientValue;
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class SingletonHotReloadService
 {
     [InjectConfiguration] private readonly IOptionsMonitor<HotReloadSettings> _monitoredSettings;
@@ -2253,16 +2165,12 @@ public class ServiceBehaviorSettings
     public string DefaultResponse { get; set; } = ""OK"";
     public int RetryCount { get; set; } = 3;
 }
-
-[Service]
 public partial class BehaviorImpactService
 {
     [InjectConfiguration] private readonly IOptionsSnapshot<BehaviorSettings> _behaviorSettings;
     [InjectConfiguration(""Service:Timeout"")] private readonly TimeSpan _serviceTimeout;
     [InjectConfiguration(""Service:MaxSize"")] private readonly int _maxSize;
 }
-
-[Service]
 public partial class ConsistentBehaviorService
 {
     [InjectConfiguration] private readonly IOptions<ServiceBehaviorSettings> _staticBehavior;
@@ -2331,16 +2239,12 @@ public class DeepNestedSettings
     public Dictionary<string, LargeConfigurationObject> Level2 {{ get; set; }} = new();
     public List<Dictionary<string, LargeConfigurationObject>> Level3 {{ get; set; }} = new();
 }}
-
-[Service]
 public partial class LargeObjectService
 {{
     [InjectConfiguration] private readonly LargeConfigurationObject _largeObject;
     [InjectConfiguration] private readonly DeepNestedSettings _deepNested;
     [InjectConfiguration] private readonly IOptions<LargeConfigurationObject> _largeObjectOptions;
 }}
-
-[Service]
 public partial class PerformanceTestService
 {{
     [InjectConfiguration] private readonly IOptionsSnapshot<LargeConfigurationObject> _snapshot;
@@ -2409,16 +2313,12 @@ public class CollectionMemorySettings
     public Dictionary<string, object> LargeMap {{ get; set; }} = new();
     public string[] LargeArray {{ get; set; }} = System.Array.Empty<string>();
 }}
-
-[Service]
 public partial class MemoryIntensiveService
 {{
     {string.Join("\n    ", memoryIntensiveFields)}
     {string.Join("\n    ", optionsFields)}
     [InjectConfiguration] private readonly CollectionMemorySettings _collectionMemory;
 }}
-
-[Service]
 public partial class MemoryOptimizedService
 {{
     [InjectConfiguration] private readonly IOptionsSnapshot<CollectionMemorySettings> _snapshot;
@@ -2482,8 +2382,6 @@ public class SecureSettings
     public string PrivateKey { get; set; } = string.Empty;
     public string Certificate { get; set; } = string.Empty;
 }
-
-[Service]
 public partial class SensitiveDataService
 {
     [InjectConfiguration(""Security:ApiKey"")] private readonly string _apiKey;
@@ -2491,8 +2389,6 @@ public partial class SensitiveDataService
     [InjectConfiguration(""Certificates:PrivateKey"")] private readonly string _privateKey;
     [InjectConfiguration] private readonly SensitiveSettings _sensitiveSettings;
 }
-
-[Service]
 public partial class SecureConfigurationService
 {
     [InjectConfiguration] private readonly SecureSettings _secureSettings;
@@ -2571,16 +2467,12 @@ public class ComplexValidatedSettings
     [RegularExpression(@""^[A-Z]{2,4}$"")]
     public string Code { get; set; } = string.Empty;
 }
-
-[Service]
 public partial class ValidationService
 {
     [InjectConfiguration] private readonly ValidatedSettings _validatedSettings;
     [InjectConfiguration] private readonly IOptions<ComplexValidatedSettings> _complexValidated;
     [InjectConfiguration(""Custom:Validated"")] private readonly ValidatedSettings _customValidated;
 }
-
-[Service]
 public partial class ValidationOptionsService
 {
     [InjectConfiguration] private readonly IOptionsSnapshot<ValidatedSettings> _snapshotValidated;
@@ -2641,16 +2533,12 @@ public class ProtectedSettings
     public string ProtectedValue { get; set; } = string.Empty;
     public List<string> ProtectedList { get; set; } = new();
 }
-
-[Service]
 public partial class EncryptedConfigService
 {
     [InjectConfiguration] private readonly EncryptedSettings _encryptedSettings;
     [InjectConfiguration(""Protected:Value"")] private readonly string _protectedValue;
     [InjectConfiguration(""Encrypted:ApiKey"")] private readonly string _encryptedApiKey;
 }
-
-[Service]
 public partial class ProtectedConfigService
 {
     [InjectConfiguration] private readonly IOptions<ProtectedSettings> _protectedOptions;
@@ -2718,16 +2606,12 @@ public class TenantSettings
     public string TenantId { get; set; } = string.Empty;
     public Dictionary<string, object> TenantConfig { get; set; } = new();
 }
-
-[Service]
 public partial class AccessControlService
 {
     [InjectConfiguration] private readonly AdminSettings _adminSettings;
     [InjectConfiguration] private readonly UserSettings _userSettings;
     [InjectConfiguration(""Tenant:CurrentId"")] private readonly string _tenantId;
 }
-
-[Service]
 public partial class RoleBasedConfigService
 {
     [InjectConfiguration] private readonly IOptions<AdminSettings> _adminOptions;
@@ -2805,8 +2689,6 @@ public class ConnectionPoolSettings
     public int ConnectionTimeout { get; set; } = 30;
     public int CommandTimeout { get; set; } = 30;
 }
-
-[Service]
 public partial class DatabaseConnectionService
 {
     [InjectConfiguration(""ConnectionStrings:DefaultConnection"")] private readonly string _defaultConnection;
@@ -2814,16 +2696,12 @@ public partial class DatabaseConnectionService
     [InjectConfiguration] private readonly DatabaseSettings _databaseSettings;
     [InjectConfiguration] private readonly ConnectionPoolSettings _poolSettings;
 }
-
-[Service]
 public partial class MultiDatabaseService
 {
     [InjectConfiguration] private readonly MultiDatabaseSettings _multiDbSettings;
     [InjectConfiguration] private readonly IOptions<DatabaseSettings> _primaryDbOptions;
     [InjectConfiguration(""Database:Secondary"")] private readonly DatabaseSettings _secondaryDb;
 }
-
-[Service]
 public partial class DatabaseConfigurationService
 {
     [InjectConfiguration] private readonly IOptionsSnapshot<DatabaseSettings> _dbSnapshot;
@@ -2903,8 +2781,6 @@ public class ExternalServiceSettings
     public string ClientSecret { get; set; } = string.Empty;
     public int TimeoutSeconds { get; set; } = 30;
 }
-
-[Service]
 public partial class ApiKeyService
 {
     [InjectConfiguration(""ApiKeys:Primary"")] private readonly string _primaryApiKey;
@@ -2912,16 +2788,12 @@ public partial class ApiKeyService
     [InjectConfiguration] private readonly ApiKeySettings _apiKeySettings;
     [InjectConfiguration] private readonly SecretSettings _secretSettings;
 }
-
-[Service]
 public partial class ExternalServiceClient
 {
     [InjectConfiguration] private readonly ExternalServiceSettings _serviceSettings;
     [InjectConfiguration(""External:PaymentGateway:ApiKey"")] private readonly string _paymentApiKey;
     [InjectConfiguration(""External:EmailService:ApiKey"")] private readonly string _emailApiKey;
 }
-
-[Service]
 public partial class SecureConfigurationService
 {
     [InjectConfiguration] private readonly IOptions<SecretSettings> _secretOptions;
@@ -2996,8 +2868,6 @@ public class FeatureFlagSettings
     public string FlagProvider { get; set; } = ""Configuration"";
     public int RefreshIntervalSeconds { get; set; } = 300;
 }
-
-[Service]
 public partial class EnvironmentConfigService
 {
     [InjectConfiguration] private readonly EnvironmentSettings _environmentSettings;
@@ -3005,8 +2875,6 @@ public partial class EnvironmentConfigService
     [InjectConfiguration(""Environment:IsProduction"")] private readonly bool _isProduction;
     [InjectConfiguration] private readonly DeploymentSettings _deploymentSettings;
 }
-
-[Service]
 public partial class FeatureFlagService
 {
     [InjectConfiguration] private readonly FeatureFlagSettings _featureFlagSettings;
@@ -3014,8 +2882,6 @@ public partial class FeatureFlagService
     [InjectConfiguration(""Features:EnableAdvancedSearch"")] private readonly bool _enableAdvancedSearch;
     [InjectConfiguration(""Features:MaxResults"")] private readonly int _maxResults;
 }
-
-[Service]
 public partial class MultiEnvironmentService
 {
     [InjectConfiguration] private readonly IOptions<EnvironmentSettings> _environmentOptions;
@@ -3096,24 +2962,18 @@ public class DistributedConfigSettings
     public string RedisConnection { get; set; } = string.Empty;
     public Dictionary<string, object> ProviderSettings { get; set; } = new();
 }
-
-[Service]
 public partial class KeyVaultConfigService
 {
     [InjectConfiguration] private readonly KeyVaultSettings _keyVaultSettings;
     [InjectConfiguration(""KeyVault:SecretName"")] private readonly string _secretFromVault;
     [InjectConfiguration(""Azure:KeyVault:Certificate"")] private readonly string _certificateFromVault;
 }
-
-[Service]
 public partial class CloudConfigService
 {
     [InjectConfiguration] private readonly CloudConfigSettings _cloudConfigSettings;
     [InjectConfiguration] private readonly IOptionsSnapshot<CloudConfigSettings> _cloudConfigSnapshot;
     [InjectConfiguration(""AppConfig:ConnectionString"")] private readonly string _appConfigConnection;
 }
-
-[Service]
 public partial class DistributedConfigService
 {
     [InjectConfiguration] private readonly DistributedConfigSettings _distributedSettings;
@@ -3121,8 +2981,6 @@ public partial class DistributedConfigService
     [InjectConfiguration(""Consul:ServiceName"")] private readonly string _consulServiceName;
     [InjectConfiguration(""Etcd:Key"")] private readonly string _etcdKey;
 }
-
-[Service]
 public partial class MultiProviderConfigService
 {
     [InjectConfiguration] private readonly IOptions<KeyVaultSettings> _keyVaultOptions;

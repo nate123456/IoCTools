@@ -1,8 +1,9 @@
+namespace IoCTools.Generator.Utilities;
+
 using System;
 using System.IO;
-using Microsoft.CodeAnalysis;
 
-namespace IoCTools.Generator.Utilities;
+using Microsoft.CodeAnalysis;
 
 internal static class ProjectUtilities
 {
@@ -12,7 +13,7 @@ internal static class ProjectUtilities
     public static string GetProjectNamespace(GeneratorExecutionContext context)
     {
         // Use default project name since AnalyzerConfigOptions not available in SourceProductionContext
-        string? projectDir = "TestProject";
+        var projectDir = "TestProject";
         var projectName = GetLastFolderName(projectDir).Replace(".", "");
 
         // Handle specific IoCTools project naming patterns

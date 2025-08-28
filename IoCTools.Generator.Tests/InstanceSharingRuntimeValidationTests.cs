@@ -1,6 +1,6 @@
-using IoCTools.Generator.Tests;
-
 namespace Test;
+
+using IoCTools.Generator.Tests;
 
 /// <summary>
 ///     RUNTIME VALIDATION TESTS FOR INSTANCE SHARING
@@ -33,8 +33,6 @@ public interface IService02 { }
 public interface IService03 { }
 public interface IService04 { }
 public interface IService05 { }
-
-[Service]
 [RegisterAsAll(RegistrationMode.All, InstanceSharing.Shared)]
 public partial class ManyInterfaceService : IService01, IService02, IService03, IService04, IService05
 {
@@ -49,8 +47,9 @@ public partial class ManyInterfaceService : IService01, IService02, IService03, 
         var registrationSource = result.GetServiceRegistrationSource();
         Assert.NotNull(registrationSource);
 
-        // Verify concrete registration
-        Assert.Contains("services.AddScoped<global::Test.ManyInterfaceService, global::Test.ManyInterfaceService>()", registrationSource.Content);
+        // Verify concrete registration (two parameter form for RegisterAsAll only + shared)
+        Assert.Contains("services.AddScoped<global::Test.ManyInterfaceService, global::Test.ManyInterfaceService>()",
+            registrationSource.Content);
 
         // Verify all interfaces use factory pattern
         for (var i = 1; i <= 5; i++)
@@ -58,9 +57,10 @@ public partial class ManyInterfaceService : IService01, IService02, IService03, 
                 $"AddScoped<global::Test.IService{i:D2}>(provider => provider.GetRequiredService<global::Test.ManyInterfaceService>())",
                 registrationSource.Content);
 
-        // Verify no direct interface registrations
+        // Verify no direct interface registrations (they should all use factory pattern)
         for (var i = 1; i <= 5; i++)
-            Assert.DoesNotContain($"AddScoped<global::Test.IService{i:D2}, global::Test.ManyInterfaceService>()", registrationSource.Content);
+            Assert.DoesNotContain($"AddScoped<global::Test.IService{i:D2}, global::Test.ManyInterfaceService>()",
+                registrationSource.Content);
 
         // Verify reasonable code size (should not explode with many interfaces)
         Assert.True(registrationSource.Content.Length < 10000,
@@ -89,11 +89,10 @@ public interface IValidator<T> { }
 public interface INotificationService { }
 public interface ISkippedService { }
 public interface ILogger { }
-
-[Service]
+[Scoped]
 public partial class Logger : ILogger { }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 [RegisterAsAll(RegistrationMode.All, InstanceSharing.Shared)]
 [SkipRegistration<ISkippedService, IRepository<string>>]
 [DependsOn<ILogger>]
@@ -121,13 +120,15 @@ public partial class ComplexService : IUser, IRepository<string>, IValidator<str
         // Logger should be registered first
         Assert.Contains("services.AddScoped<global::Test.ILogger, global::Test.Logger>()", registrationSource.Content);
 
-        // ComplexService should be registered as Singleton with shared instances
-        Assert.Contains("services.AddSingleton<global::Test.ComplexService, global::Test.ComplexService>()", registrationSource.Content);
+        // ComplexService should be registered as Singleton with shared instances (single parameter form)
+        Assert.Contains("services.AddSingleton<global::Test.ComplexService>()", registrationSource.Content);
 
         // Non-skipped interfaces should use factory pattern
-        Assert.Contains("services.AddSingleton<global::Test.IUser>(provider => provider.GetRequiredService<global::Test.ComplexService>())",
+        Assert.Contains(
+            "services.AddSingleton<global::Test.IUser>(provider => provider.GetRequiredService<global::Test.ComplexService>())",
             registrationSource.Content);
-        Assert.Contains("services.AddSingleton<global::Test.IEntity>(provider => provider.GetRequiredService<global::Test.ComplexService>())",
+        Assert.Contains(
+            "services.AddSingleton<global::Test.IEntity>(provider => provider.GetRequiredService<global::Test.ComplexService>())",
             registrationSource.Content);
         Assert.Contains(
             "services.AddSingleton<global::Test.IValidator<string>>(provider => provider.GetRequiredService<global::Test.ComplexService>())",
@@ -158,7 +159,7 @@ namespace Test;
 public interface IUserService { }
 public interface INotificationService { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 [RegisterAsAll(RegistrationMode.All, InstanceSharing.Shared)]
 public partial class SharedUserNotificationService : IUserService, INotificationService
 {
@@ -174,7 +175,7 @@ public partial class SharedUserNotificationService : IUserService, INotification
         Assert.NotNull(registrationSource);
 
         // Verify shared instance pattern: concrete type registered directly, interfaces use factory
-        Assert.Contains("services.AddScoped<global::Test.SharedUserNotificationService, global::Test.SharedUserNotificationService>()",
+        Assert.Contains("services.AddScoped<global::Test.SharedUserNotificationService>()",
             registrationSource.Content);
         Assert.Contains(
             "services.AddScoped<global::Test.IUserService>(provider => provider.GetRequiredService<global::Test.SharedUserNotificationService>())",
@@ -184,8 +185,10 @@ public partial class SharedUserNotificationService : IUserService, INotification
             registrationSource.Content);
 
         // Should NOT contain direct interface-to-implementation registrations
-        Assert.DoesNotContain("AddScoped<global::Test.IUserService, global::Test.SharedUserNotificationService>", registrationSource.Content);
-        Assert.DoesNotContain("AddScoped<global::Test.INotificationService, global::Test.SharedUserNotificationService>",
+        Assert.DoesNotContain("AddScoped<global::Test.IUserService, global::Test.SharedUserNotificationService>",
+            registrationSource.Content);
+        Assert.DoesNotContain(
+            "AddScoped<global::Test.INotificationService, global::Test.SharedUserNotificationService>",
             registrationSource.Content);
     }
 
@@ -202,7 +205,7 @@ namespace Test;
 public interface IUserService { }
 public interface INotificationService { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 [RegisterAsAll(RegistrationMode.All, InstanceSharing.Separate)]
 public partial class SeparateUserNotificationService : IUserService, INotificationService
 {
@@ -218,11 +221,12 @@ public partial class SeparateUserNotificationService : IUserService, INotificati
         Assert.NotNull(registrationSource);
 
         // Verify separate instance pattern: each registration creates its own instance
-        Assert.Contains("services.AddScoped<global::Test.SeparateUserNotificationService, global::Test.SeparateUserNotificationService>()",
+        Assert.Contains("services.AddScoped<global::Test.SeparateUserNotificationService>()",
             registrationSource.Content);
         Assert.Contains("services.AddScoped<global::Test.IUserService, global::Test.SeparateUserNotificationService>()",
             registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.INotificationService, global::Test.SeparateUserNotificationService>()",
+        Assert.Contains(
+            "services.AddScoped<global::Test.INotificationService, global::Test.SeparateUserNotificationService>()",
             registrationSource.Content);
 
         // Should NOT contain factory lambda registrations
@@ -247,7 +251,7 @@ namespace Test;
 public interface IService1 { }
 public interface IService2 { }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 [RegisterAsAll(RegistrationMode.All, InstanceSharing.Shared)]
 public partial class SingletonSharedService : IService1, IService2
 {
@@ -263,7 +267,7 @@ public partial class SingletonSharedService : IService1, IService2
         Assert.NotNull(registrationSource);
 
         // Verify singleton shared pattern with factory lambdas
-        Assert.Contains("services.AddSingleton<global::Test.SingletonSharedService, global::Test.SingletonSharedService>()",
+        Assert.Contains("services.AddSingleton<global::Test.SingletonSharedService>()",
             registrationSource.Content);
         Assert.Contains(
             "services.AddSingleton<global::Test.IService1>(provider => provider.GetRequiredService<global::Test.SingletonSharedService>())",
@@ -286,7 +290,7 @@ namespace Test;
 public interface IService1 { }
 public interface IService2 { }
 
-[Service(Lifetime.Transient)]
+[Transient]
 [RegisterAsAll(RegistrationMode.All, InstanceSharing.Shared)]
 public partial class TransientSharedService : IService1, IService2
 {
@@ -302,7 +306,7 @@ public partial class TransientSharedService : IService1, IService2
         Assert.NotNull(registrationSource);
 
         // Verify transient shared pattern with factory lambdas
-        Assert.Contains("services.AddTransient<global::Test.TransientSharedService, global::Test.TransientSharedService>()",
+        Assert.Contains("services.AddTransient<global::Test.TransientSharedService>()",
             registrationSource.Content);
         Assert.Contains(
             "services.AddTransient<global::Test.IService1>(provider => provider.GetRequiredService<global::Test.TransientSharedService>())",
@@ -325,7 +329,7 @@ namespace Test;
 public interface IService1 { }
 public interface IService2 { }
 
-[Service(Lifetime.Transient)]
+[Transient]
 [RegisterAsAll(RegistrationMode.All, InstanceSharing.Separate)]
 public partial class TransientSeparateService : IService1, IService2
 {
@@ -341,10 +345,12 @@ public partial class TransientSeparateService : IService1, IService2
         Assert.NotNull(registrationSource);
 
         // Verify transient separate pattern with direct registrations
-        Assert.Contains("services.AddTransient<global::Test.TransientSeparateService, global::Test.TransientSeparateService>()",
+        Assert.Contains("services.AddTransient<global::Test.TransientSeparateService>()",
             registrationSource.Content);
-        Assert.Contains("services.AddTransient<global::Test.IService1, global::Test.TransientSeparateService>()", registrationSource.Content);
-        Assert.Contains("services.AddTransient<global::Test.IService2, global::Test.TransientSeparateService>()", registrationSource.Content);
+        Assert.Contains("services.AddTransient<global::Test.IService1, global::Test.TransientSeparateService>()",
+            registrationSource.Content);
+        Assert.Contains("services.AddTransient<global::Test.IService2, global::Test.TransientSeparateService>()",
+            registrationSource.Content);
 
         // Should NOT contain factory lambdas
         Assert.DoesNotContain("provider => provider.GetRequiredService<global::Test.TransientSeparateService>()",
@@ -368,13 +374,11 @@ namespace Test;
 public interface ILogger { }
 public interface IValidator { }
 public interface IService { }
-
-[Service]
 public partial class Logger : ILogger
 {
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 [RegisterAsAll(RegistrationMode.All, InstanceSharing.Shared)]
 public partial class ValidatorService : IValidator, IService
 {
@@ -401,10 +405,12 @@ public partial class ValidatorService : IValidator, IService
         Assert.Contains("services.AddScoped<global::Test.ILogger, global::Test.Logger>()", registrationSource.Content);
 
         // ValidatorService should use shared instance pattern
-        Assert.Contains("services.AddScoped<global::Test.ValidatorService, global::Test.ValidatorService>()", registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IValidator>(provider => provider.GetRequiredService<global::Test.ValidatorService>())",
+        Assert.Contains("services.AddScoped<global::Test.ValidatorService>()", registrationSource.Content);
+        Assert.Contains(
+            "services.AddScoped<global::Test.IValidator>(provider => provider.GetRequiredService<global::Test.ValidatorService>())",
             registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IService>(provider => provider.GetRequiredService<global::Test.ValidatorService>())",
+        Assert.Contains(
+            "services.AddScoped<global::Test.IService>(provider => provider.GetRequiredService<global::Test.ValidatorService>())",
             registrationSource.Content);
     }
 
@@ -423,13 +429,13 @@ public interface ISharedUtility { }
 public interface ISeparateService { }
 public interface ISeparateUtility { }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 [RegisterAsAll(RegistrationMode.All, InstanceSharing.Shared)]
 public partial class SharedService : ISharedService, ISharedUtility
 {
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 [RegisterAsAll(RegistrationMode.All, InstanceSharing.Separate)]
 public partial class SeparateService : ISeparateService, ISeparateUtility
 {
@@ -445,7 +451,7 @@ public partial class SeparateService : ISeparateService, ISeparateUtility
         Assert.NotNull(registrationSource);
 
         // Verify shared service uses factory pattern
-        Assert.Contains("services.AddSingleton<global::Test.SharedService, global::Test.SharedService>()", registrationSource.Content);
+        Assert.Contains("services.AddSingleton<global::Test.SharedService>()", registrationSource.Content);
         Assert.Contains(
             "services.AddSingleton<global::Test.ISharedService>(provider => provider.GetRequiredService<global::Test.SharedService>())",
             registrationSource.Content);
@@ -454,9 +460,11 @@ public partial class SeparateService : ISeparateService, ISeparateUtility
             registrationSource.Content);
 
         // Verify separate service uses direct pattern
-        Assert.Contains("services.AddScoped<global::Test.SeparateService, global::Test.SeparateService>()", registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.ISeparateService, global::Test.SeparateService>()", registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.ISeparateUtility, global::Test.SeparateService>()", registrationSource.Content);
+        Assert.Contains("services.AddScoped<global::Test.SeparateService>()", registrationSource.Content);
+        Assert.Contains("services.AddScoped<global::Test.ISeparateService, global::Test.SeparateService>()",
+            registrationSource.Content);
+        Assert.Contains("services.AddScoped<global::Test.ISeparateUtility, global::Test.SeparateService>()",
+            registrationSource.Content);
     }
 
     #endregion
@@ -475,8 +483,6 @@ namespace Test;
 
 public interface IRepository<T> { }
 public interface IValidator<T> { }
-
-[Service]
 [RegisterAsAll(RegistrationMode.All, InstanceSharing.Shared)]
 public partial class StringDataService : IRepository<string>, IValidator<string>
 {
@@ -492,7 +498,8 @@ public partial class StringDataService : IRepository<string>, IValidator<string>
         Assert.NotNull(registrationSource);
 
         // Verify generic shared instance pattern
-        Assert.Contains("services.AddScoped<global::Test.StringDataService, global::Test.StringDataService>()", registrationSource.Content);
+        Assert.Contains("services.AddScoped<global::Test.StringDataService, global::Test.StringDataService>()",
+            registrationSource.Content);
         Assert.Contains(
             "services.AddScoped<global::Test.IRepository<string>>(provider => provider.GetRequiredService<global::Test.StringDataService>())",
             registrationSource.Content);
@@ -513,8 +520,6 @@ namespace Test;
 
 public interface IRepository<T> { }
 public interface IValidator<T> { }
-
-[Service]
 [RegisterAsAll(RegistrationMode.All, InstanceSharing.Shared)]
 public partial class GenericDataService<T> : IRepository<T>, IValidator<T>
 {
@@ -528,6 +533,11 @@ public partial class GenericDataService<T> : IRepository<T>, IValidator<T>
 
         var registrationSource = result.GetServiceRegistrationSource();
         Assert.NotNull(registrationSource);
+
+        // DEBUG: Print the actual generated code
+        Console.WriteLine("=== GENERATED REGISTRATION CODE ===");
+        Console.WriteLine(registrationSource.Content);
+        Console.WriteLine("=== END GENERATED CODE ===");
 
         // Verify open generic shared instance pattern uses typeof syntax
         Assert.Contains("services.AddScoped(typeof(global::Test.GenericDataService<>));", registrationSource.Content);
@@ -555,8 +565,6 @@ namespace Test;
 
 public interface IService1 { }
 public interface IService2 { }
-
-[Service]
 [RegisterAsAll(RegistrationMode.Exclusionary, InstanceSharing.Shared)]
 public partial class ExclusionarySharedService : IService1, IService2
 {
@@ -573,7 +581,8 @@ public partial class ExclusionarySharedService : IService1, IService2
 
         // In Exclusionary mode with Shared instances, we need the concrete type registered
         // for the factory lambdas to work, even though it's not exposed
-        Assert.Contains("services.AddScoped<global::Test.ExclusionarySharedService, global::Test.ExclusionarySharedService>()",
+        Assert.Contains(
+            "services.AddScoped<global::Test.ExclusionarySharedService, global::Test.ExclusionarySharedService>()",
             registrationSource.Content);
 
         // Interfaces should use factory pattern
@@ -597,8 +606,6 @@ namespace Test;
 
 public interface IService1 { }
 public interface IService2 { }
-
-[Service]
 [RegisterAsAll(RegistrationMode.DirectOnly, InstanceSharing.Shared)]
 public partial class DirectOnlyService : IService1, IService2
 {
@@ -614,7 +621,8 @@ public partial class DirectOnlyService : IService1, IService2
         Assert.NotNull(registrationSource);
 
         // Only concrete type should be registered
-        Assert.Contains("services.AddScoped<global::Test.DirectOnlyService, global::Test.DirectOnlyService>()", registrationSource.Content);
+        Assert.Contains("services.AddScoped<global::Test.DirectOnlyService, global::Test.DirectOnlyService>()",
+            registrationSource.Content);
 
         // Interfaces should NOT be registered at all
         Assert.DoesNotContain("AddScoped<global::Test.IService1>", registrationSource.Content);
@@ -637,15 +645,15 @@ namespace Test;
 
 public interface IService { }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 [RegisterAsAll(RegistrationMode.All, InstanceSharing.Shared)]
 public partial class SingletonService : IService { }
 
-[Service(Lifetime.Scoped)] 
+[Scoped] 
 [RegisterAsAll(RegistrationMode.All, InstanceSharing.Shared)]
 public partial class ScopedService : IService { }
 
-[Service(Lifetime.Transient)]
+[Transient]
 [RegisterAsAll(RegistrationMode.All, InstanceSharing.Shared)]
 public partial class TransientService : IService { }";
 
@@ -659,16 +667,20 @@ public partial class TransientService : IService { }";
         Assert.NotNull(registrationSource);
 
         // Verify each lifetime generates syntactically correct factory lambdas
-        Assert.Contains("services.AddSingleton<global::Test.IService>(provider => provider.GetRequiredService<global::Test.SingletonService>())",
+        Assert.Contains(
+            "services.AddSingleton<global::Test.IService>(provider => provider.GetRequiredService<global::Test.SingletonService>())",
             registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IService>(provider => provider.GetRequiredService<global::Test.ScopedService>())",
+        Assert.Contains(
+            "services.AddScoped<global::Test.IService>(provider => provider.GetRequiredService<global::Test.ScopedService>())",
             registrationSource.Content);
-        Assert.Contains("services.AddTransient<global::Test.IService>(provider => provider.GetRequiredService<global::Test.TransientService>())",
+        Assert.Contains(
+            "services.AddTransient<global::Test.IService>(provider => provider.GetRequiredService<global::Test.TransientService>())",
             registrationSource.Content);
 
         // Verify no malformed registrations
         Assert.DoesNotContain("provider => provider.GetRequiredService<",
-            registrationSource.Content.Replace("provider => provider.GetRequiredService<global::Test.SingletonService>()", "")
+            registrationSource.Content
+                .Replace("provider => provider.GetRequiredService<global::Test.SingletonService>()", "")
                 .Replace("provider => provider.GetRequiredService<global::Test.ScopedService>()", "")
                 .Replace("provider => provider.GetRequiredService<global::Test.TransientService>()", ""));
     }
@@ -686,8 +698,6 @@ namespace Test.Complex.Namespace;
 
 public interface IComplexService<T> where T : class { }
 public interface IRepository<TEntity, TKey> { }
-
-[Service]
 [RegisterAsAll(RegistrationMode.All, InstanceSharing.Shared)]
 public partial class ComplexGenericService : IComplexService<string>, IRepository<object, int>
 {
@@ -703,7 +713,8 @@ public partial class ComplexGenericService : IComplexService<string>, IRepositor
         Assert.NotNull(registrationSource);
 
         // Verify complex generic types are handled correctly in factory lambdas
-        Assert.Contains("services.AddScoped<global::Test.Complex.Namespace.ComplexGenericService, global::Test.Complex.Namespace.ComplexGenericService>()",
+        Assert.Contains(
+            "services.AddScoped<global::Test.Complex.Namespace.ComplexGenericService, global::Test.Complex.Namespace.ComplexGenericService>()",
             registrationSource.Content);
         Assert.Contains(
             "services.AddScoped<global::Test.Complex.Namespace.IComplexService<string>>(provider => provider.GetRequiredService<global::Test.Complex.Namespace.ComplexGenericService>())",
@@ -729,15 +740,11 @@ namespace Test;
 
 public interface IServiceA { }
 public interface IServiceB { }
-
-[Service]
 [RegisterAsAll(RegistrationMode.All, InstanceSharing.Shared)]
 public partial class ServiceA : IServiceA
 {
     [Inject] private readonly IServiceB _serviceB;
 }
-
-[Service]
 [RegisterAsAll(RegistrationMode.All, InstanceSharing.Shared)]
 public partial class ServiceB : IServiceB
 {
@@ -758,11 +765,15 @@ public partial class ServiceB : IServiceB
         var registrationSource = result.GetServiceRegistrationSource();
         Assert.NotNull(registrationSource);
 
-        Assert.Contains("services.AddScoped<global::Test.ServiceA, global::Test.ServiceA>()", registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IServiceA>(provider => provider.GetRequiredService<global::Test.ServiceA>())",
+        Assert.Contains("services.AddScoped<global::Test.ServiceA, global::Test.ServiceA>()",
             registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.ServiceB, global::Test.ServiceB>()", registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IServiceB>(provider => provider.GetRequiredService<global::Test.ServiceB>())",
+        Assert.Contains(
+            "services.AddScoped<global::Test.IServiceA>(provider => provider.GetRequiredService<global::Test.ServiceA>())",
+            registrationSource.Content);
+        Assert.Contains("services.AddScoped<global::Test.ServiceB, global::Test.ServiceB>()",
+            registrationSource.Content);
+        Assert.Contains(
+            "services.AddScoped<global::Test.IServiceB>(provider => provider.GetRequiredService<global::Test.ServiceB>())",
             registrationSource.Content);
     }
 
@@ -780,8 +791,6 @@ public interface IEntity { }
 public interface IUser : IEntity { }
 public interface IAdminUser : IUser { }
 public interface INotificationService { }
-
-[Service]
 [RegisterAsAll(RegistrationMode.All, InstanceSharing.Shared)]
 public partial class AdminUserService : IAdminUser, INotificationService
 {
@@ -797,12 +806,16 @@ public partial class AdminUserService : IAdminUser, INotificationService
         Assert.NotNull(registrationSource);
 
         // Verify all interface levels are registered with factory pattern
-        Assert.Contains("services.AddScoped<global::Test.AdminUserService, global::Test.AdminUserService>()", registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IEntity>(provider => provider.GetRequiredService<global::Test.AdminUserService>())",
+        Assert.Contains("services.AddScoped<global::Test.AdminUserService, global::Test.AdminUserService>()",
             registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IUser>(provider => provider.GetRequiredService<global::Test.AdminUserService>())",
+        Assert.Contains(
+            "services.AddScoped<global::Test.IEntity>(provider => provider.GetRequiredService<global::Test.AdminUserService>())",
             registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IAdminUser>(provider => provider.GetRequiredService<global::Test.AdminUserService>())",
+        Assert.Contains(
+            "services.AddScoped<global::Test.IUser>(provider => provider.GetRequiredService<global::Test.AdminUserService>())",
+            registrationSource.Content);
+        Assert.Contains(
+            "services.AddScoped<global::Test.IAdminUser>(provider => provider.GetRequiredService<global::Test.AdminUserService>())",
             registrationSource.Content);
         Assert.Contains(
             "services.AddScoped<global::Test.INotificationService>(provider => provider.GetRequiredService<global::Test.AdminUserService>())",
@@ -826,8 +839,6 @@ namespace Test;
 public interface IService1 { }
 public interface IService2 { }
 public interface IService3 { }
-
-[Service]
 [RegisterAsAll(RegistrationMode.All, InstanceSharing.Shared)]
 [SkipRegistration<IService2>]
 public partial class SkippedSharedService : IService1, IService2, IService3
@@ -844,7 +855,8 @@ public partial class SkippedSharedService : IService1, IService2, IService3
         Assert.NotNull(registrationSource);
 
         // Concrete type should still be registered
-        Assert.Contains("services.AddScoped<global::Test.SkippedSharedService, global::Test.SkippedSharedService>()", registrationSource.Content);
+        Assert.Contains("services.AddScoped<global::Test.SkippedSharedService, global::Test.SkippedSharedService>()",
+            registrationSource.Content);
 
         // Non-skipped interfaces should use factory pattern
         Assert.Contains(
@@ -872,11 +884,8 @@ public interface IService1 { }
 public interface IService2 { }
 public interface ILogger { }
 public interface IValidator { }
-
-[Service]
+[Scoped]
 public partial class Logger : ILogger { }
-
-[Service]
 [RegisterAsAll(RegistrationMode.All, InstanceSharing.Shared)]
 [DependsOn<ILogger, IValidator>]
 public partial class SharedServiceWithDeps : IService1, IService2

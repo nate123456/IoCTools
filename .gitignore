@@ -22,3 +22,8 @@ IoCTools.Generator.Tests/TestResults/
 generated/
 
 IoCTools.Sample/temp_generated/
+
+.code/
+
+# Debug artifacts
+debug_generated_content.txt

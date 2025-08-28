@@ -1,6 +1,6 @@
-using Microsoft.CodeAnalysis;
-
 namespace IoCTools.Generator.Tests;
+
+using Microsoft.CodeAnalysis;
 
 public class BackgroundServiceTests
 {
@@ -13,11 +13,13 @@ public class BackgroundServiceTests
         var sourceCode = @"
 using Microsoft.Extensions.Hosting;
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Test;
 
+[Scoped]
 public partial class EmailBackgroundService : BackgroundService
 {
     [Inject] private readonly IEmailService _emailService;
@@ -29,7 +31,7 @@ public partial class EmailBackgroundService : BackgroundService
 }
 
 public interface IEmailService { }
-[Service] public partial class EmailService : IEmailService { }
+[Scoped] public partial class EmailService : IEmailService { }
 ";
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
@@ -45,7 +47,8 @@ public interface IEmailService { }
         var registrationSource = result.GetServiceRegistrationSource();
         Assert.NotNull(registrationSource);
         Assert.Contains("services.AddHostedService<global::Test.EmailBackgroundService>", registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.EmailService, global::Test.EmailService>", registrationSource.Content);
+        Assert.Contains("services.AddScoped<global::Test.EmailService, global::Test.EmailService>",
+            registrationSource.Content);
     }
 
     /// <summary>
@@ -57,12 +60,13 @@ public interface IEmailService { }
         var sourceCode = @"
 using Microsoft.Extensions.Hosting;
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Test;
 
-[BackgroundService]
+[Scoped]
 public partial class DataProcessingService : BackgroundService
 {
     [Inject] private readonly IDataProcessor _processor;
@@ -74,7 +78,7 @@ public partial class DataProcessingService : BackgroundService
 }
 
 public interface IDataProcessor { }
-[Service] public partial class DataProcessor : IDataProcessor { }
+[Scoped] public partial class DataProcessor : IDataProcessor { }
 ";
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
@@ -95,12 +99,13 @@ public interface IDataProcessor { }
         var sourceCode = @"
 using Microsoft.Extensions.Hosting;
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Test;
 
-[BackgroundService(AutoRegister = false)]
+[SkipRegistration]
 public partial class ManualBackgroundService : BackgroundService
 {
     [Inject] private readonly IProcessor _processor;
@@ -112,7 +117,7 @@ public partial class ManualBackgroundService : BackgroundService
 }
 
 public interface IProcessor { }
-[Service] public partial class Processor : IProcessor { }
+[Scoped] public partial class Processor : IProcessor { }
 ";
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
@@ -127,23 +132,25 @@ public interface IProcessor { }
         var registrationSource = result.GetServiceRegistrationSource();
         Assert.NotNull(registrationSource);
         Assert.DoesNotContain("ManualBackgroundService", registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.Processor, global::Test.Processor>", registrationSource.Content);
+        Assert.Contains("services.AddScoped<global::Test.Processor, global::Test.Processor>",
+            registrationSource.Content);
     }
 
     /// <summary>
-    ///     Test BackgroundService with Service attribute - should warn about lifetime conflicts
+    ///     Test BackgroundService with Service attribute - no IOC014 warnings for hosted services
     /// </summary>
     [Fact]
-    public void BackgroundService_WithServiceAttribute_ProducesLifetimeWarning()
+    public void BackgroundService_WithLifetimeAttributes_NoLifetimeWarning()
     {
         var sourceCode = @"
 using Microsoft.Extensions.Hosting;
 using IoCTools.Abstractions.Annotations;
 using IoCTools.Abstractions.Enumerations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace Test;
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class TransientBackgroundService : BackgroundService
 {
     [Inject] private readonly IWorker _worker;
@@ -155,43 +162,42 @@ public partial class TransientBackgroundService : BackgroundService
 }
 
 public interface IWorker { }
-[Service] public partial class Worker : IWorker { }
+[Scoped] public partial class Worker : IWorker { }
 ";
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
-        // Should have IOC014 warning about lifetime conflict
+        // No IOC014 errors for hosted services - their lifetime is managed by AddHostedService()
         var warnings = result.GetDiagnosticsByCode("IOC014");
-        Assert.Single(warnings);
-        Assert.Contains("TransientBackgroundService", warnings[0].GetMessage());
-        Assert.Contains("Transient", warnings[0].GetMessage());
+        Assert.Empty(warnings);
 
         // Should still register as IHostedService (not as regular service)
         var registrationSource = result.GetServiceRegistrationSource();
         Assert.NotNull(registrationSource);
-        Assert.Contains("services.AddHostedService<global::Test.TransientBackgroundService>", registrationSource.Content);
+        Assert.Contains("services.AddHostedService<global::Test.TransientBackgroundService>",
+            registrationSource.Content);
         // Should NOT contain regular service registration
         Assert.DoesNotContain("services.AddTransient<TransientBackgroundService>", registrationSource.Content);
     }
 
     /// <summary>
-    ///     Test BackgroundService with SuppressLifetimeWarnings = true
+    ///     Test BackgroundService with Singleton lifetime has no warnings
     /// </summary>
     [Fact]
-    public void BackgroundService_SuppressLifetimeWarnings_NoWarning()
+    public void BackgroundService_SingletonLifetime_NoWarning()
     {
         var sourceCode = @"
 using Microsoft.Extensions.Hosting;
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using IoCTools.Abstractions.Enumerations;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Test;
 
-[BackgroundService(SuppressLifetimeWarnings = true)]
-[Service(Lifetime.Scoped)]
-public partial class ScopedBackgroundService : BackgroundService
+[Singleton]
+public partial class SingletonBackgroundService : BackgroundService
 {
     [Inject] private readonly IHandler _handler;
 
@@ -202,19 +208,20 @@ public partial class ScopedBackgroundService : BackgroundService
 }
 
 public interface IHandler { }
-[Service] public partial class Handler : IHandler { }
+[Scoped] public partial class Handler : IHandler { }
 ";
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
-        // Should NOT have IOC014 warning (it's suppressed)
+        // Should NOT have IOC014 warning (Singleton is recommended)
         var warnings = result.GetDiagnosticsByCode("IOC014");
         Assert.Empty(warnings);
 
         // Should still register as IHostedService
         var registrationSource = result.GetServiceRegistrationSource();
         Assert.NotNull(registrationSource);
-        Assert.Contains("services.AddHostedService<global::Test.ScopedBackgroundService>", registrationSource.Content);
+        Assert.Contains("services.AddHostedService<global::Test.SingletonBackgroundService>",
+            registrationSource.Content);
     }
 
     /// <summary>
@@ -226,6 +233,7 @@ public interface IHandler { }
         var sourceCode = @"
 using Microsoft.Extensions.Hosting;
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -242,7 +250,7 @@ public class NonPartialBackgroundService : BackgroundService
 }
 
 public interface IService { }
-[Service] public partial class ServiceImpl : IService { }
+[Scoped] public partial class ServiceImpl : IService { }
 ";
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
@@ -263,11 +271,13 @@ public interface IService { }
         var sourceCode = @"
 using Microsoft.Extensions.Hosting;
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Test;
 
+[Scoped]
 public partial class ComplexBackgroundService : BackgroundService
 {
     [Inject] private readonly ILogger _logger;
@@ -284,9 +294,9 @@ public interface ILogger { }
 public interface IEmailService { }
 public interface IDataRepository { }
 
-[Service] public partial class Logger : ILogger { }
-[Service] public partial class EmailService : IEmailService { }
-[Service] public partial class DataRepository : IDataRepository { }
+[Scoped] public partial class Logger : ILogger { }
+[Scoped] public partial class EmailService : IEmailService { }
+[Scoped] public partial class DataRepository : IDataRepository { }
 ";
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
@@ -315,11 +325,13 @@ public interface IDataRepository { }
         var sourceCode = @"
 using Microsoft.Extensions.Hosting;
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Test;
 
+[Scoped]
 [DependsOn<IConfigurationService, IMetrics>]
 public partial class MonitoringBackgroundService : BackgroundService
 {
@@ -335,9 +347,9 @@ public interface ILogger { }
 public interface IConfigurationService { }
 public interface IMetrics { }
 
-[Service] public partial class Logger : ILogger { }
-[Service] public partial class ConfigurationService : IConfigurationService { }
-[Service] public partial class Metrics : IMetrics { }
+[Scoped] public partial class Logger : ILogger { }
+[Scoped] public partial class ConfigurationService : IConfigurationService { }
+[Scoped] public partial class Metrics : IMetrics { }
 ";
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
@@ -362,18 +374,25 @@ public interface IMetrics { }
         var sourceCode = @"
 using Microsoft.Extensions.Hosting;
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Test;
 
+[Scoped]
 public partial class SimpleBackgroundService : BackgroundService
 {
+    [Inject] private readonly IEmailService _emailService;
+    
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         await Task.Delay(1000, stoppingToken);
     }
 }
+
+public interface IEmailService { }
+[Scoped] public partial class EmailService : IEmailService { }
 ";
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
@@ -388,25 +407,29 @@ public partial class SimpleBackgroundService : BackgroundService
 
         // Should register as IHostedService with Singleton lifetime
         Assert.Contains("services.AddHostedService<global::Test.SimpleBackgroundService>", registrationSource.Content);
+
+        // Should also register the dependency service
+        Assert.Contains("services.AddScoped<global::Test.EmailService, global::Test.EmailService>",
+            registrationSource.Content);
     }
 
     /// <summary>
-    ///     Test BackgroundService with custom ServiceName
+    ///     Test BackgroundService with custom ServiceName - no IOC014 warnings for hosted services
     /// </summary>
     [Fact]
-    public void BackgroundService_WithCustomServiceName_UsesInDiagnostics()
+    public void BackgroundService_WithCustomServiceName_NoWarnings()
     {
         var sourceCode = @"
 using Microsoft.Extensions.Hosting;
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using IoCTools.Abstractions.Enumerations;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Test;
 
-[BackgroundService(ServiceName = ""Email Processor"")]
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class EmailProcessorService : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -418,10 +441,8 @@ public partial class EmailProcessorService : BackgroundService
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
-        // Should have IOC014 warning with custom service name
+        // No IOC014 errors for hosted services - their lifetime is managed by AddHostedService()
         var warnings = result.GetDiagnosticsByCode("IOC014");
-        Assert.Single(warnings);
-        // Note: For now, diagnostics will use class name, but this test documents intended behavior
-        Assert.Contains("EmailProcessorService", warnings[0].GetMessage());
+        Assert.Empty(warnings);
     }
 }

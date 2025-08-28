@@ -1,6 +1,6 @@
-using Microsoft.CodeAnalysis;
-
 namespace IoCTools.Generator.Tests;
+
+using Microsoft.CodeAnalysis;
 
 /// <summary>
 ///     Critical test that exposes Configuration Injection implementation gaps.
@@ -19,8 +19,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace TestProject.Services;
-
-[Service]
 public partial class ConfigurationService
 {
     [Inject] private readonly ILogger<ConfigurationService> _logger;
@@ -76,8 +74,6 @@ using IoCTools.Abstractions.Annotations;
 using Microsoft.Extensions.Configuration;
 
 namespace TestProject.Services;
-
-[Service]
 public partial class DatabaseService
 {
     [Inject] private readonly IConfiguration _configuration;
@@ -131,8 +127,6 @@ public class ReloadableSettings
     public string Setting { get; set; } = """";
     public int Value { get; set; }
 }
-
-[Service]
 public partial class ReloadableService
 {
     [InjectConfiguration(""HotReload"", SupportsReloading = true)]
@@ -177,8 +171,6 @@ using IoCTools.Abstractions.Annotations;
 using Microsoft.Extensions.Configuration;
 
 namespace TestProject.Services;
-
-[Service]
 public partial class CollectionService
 {
     [Inject] private readonly IConfiguration _configuration;

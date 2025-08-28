@@ -1,11 +1,13 @@
+namespace IoCTools.Generator.Tests;
+
 using System.Reflection;
 using System.Text.RegularExpressions;
-using IoCTools.Abstractions.Annotations;
+
+using Abstractions.Annotations;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Extensions.DependencyInjection;
-
-namespace IoCTools.Generator.Tests;
 
 /// <summary>
 ///     ABSOLUTELY BRUTAL NAMESPACE AND USING STATEMENT TESTS
@@ -19,13 +21,13 @@ public class NamespaceUsingStatementTests
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using System.Collections.Generic;
 
 namespace Complex.Nested.Namespace;
 
 public interface ITestService { }
-
-[Service]
+[Scoped]
 public partial class CollectionService
 {
     [Inject] private readonly IEnumerable<ITestService> _enumerable;
@@ -75,7 +77,7 @@ namespace ProjectC.Main
     using ProjectA.Services;
     using ProjectB.Repositories;
 
-    [Service]
+    
     public partial class NestedGenericService
     {
         [Inject] private readonly IEnumerable<IEnumerable<IServiceA>> _nestedA;
@@ -117,7 +119,7 @@ namespace Consumer.Namespace
 {
     using Arrays.Test;
 
-    [Service]
+    
     public partial class ArrayConsumer
     {
         [Inject] private readonly IArrayService[] _arrayField;
@@ -153,7 +155,7 @@ public interface IGlobalService { }
 
 namespace Specific.Namespace
 {
-    [Service]
+    
     public partial class GlobalConsumer
     {
         [Inject] private readonly IGlobalService _globalService;
@@ -198,7 +200,7 @@ namespace Consumer.Application.Main
     using Very.Very.Very.Very.Very.Long.Namespace.That.Goes.On.And.On.Services;
     using Another.Extremely.Long.Namespace.With.Many.Levels.Of.Nesting.Repositories;
 
-    [Service]
+    
     public partial class LongNamespaceConsumer
     {
         [Inject] private readonly ILongNamespaceService _service;
@@ -248,7 +250,7 @@ namespace Services.Application
     using Repositories.Contracts;
     using System.Collections.Generic;
 
-    [Service]
+    
     public partial class ComplexConstraintService<T> 
         where T : class, IEntity, new()
     {
@@ -295,7 +297,7 @@ namespace Consumer.App
 
     public class MyNode : INode<MyNode> { }
 
-    [Service]
+    
     public partial class RecursiveService
     {
         [Inject] private readonly INode<MyNode> _node;
@@ -343,7 +345,7 @@ namespace Consumer.Application.Services.Main
     using Level4.Mappers;
     using Level5.Handlers;
 
-    [Service]
+    
     public partial class InsanelyComplexNamespaceService
     {
         // This is ABSOLUTELY BRUTAL - every type from different namespace!
@@ -377,13 +379,8 @@ namespace Consumer.Application.Services.Main
         // Should collect ALL namespaces from this insane complexity
         var expectedUsings = new[]
         {
-            "using System.Collections.Generic;",
-            "using System.Collections.Concurrent;",
-            "using Level1.Services;",
-            "using Level2.Repositories;",
-            "using Level3.Validators;",
-            "using Level4.Mappers;",
-            "using Level5.Handlers;"
+            "using System.Collections.Generic;", "using System.Collections.Concurrent;", "using Level1.Services;",
+            "using Level2.Repositories;", "using Level3.Validators;", "using Level4.Mappers;", "using Level5.Handlers;"
             // NOTE: Removed "using Consumer.Application.Services.Main;" as it's redundant 
             // (class is already in that namespace)
         };
@@ -429,7 +426,7 @@ namespace Consumer.App
     using System.Collections.Generic;
     using System.Collections.Generic; // Duplicate!
 
-    [Service]
+    
     public partial class DuplicateNamespaceService
     {
         [Inject] private readonly IEnumerable<IService1> _service1;
@@ -478,7 +475,7 @@ namespace MyApp.Services
 {
     public interface IExternalService { }
 
-    [Service]
+    
     public partial class TestService
     {
         [Inject] private readonly IExternalService _external;
@@ -507,18 +504,23 @@ namespace MyApp.Services
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace Shared.Domain
 {
     public interface ISharedService { }
     
-    [Service]
+    [Scoped]
+    public partial class SharedServiceImpl : ISharedService { }
+    
+    
+    [Scoped]
     public partial class ServiceA
     {
         [Inject] private readonly ISharedService _shared;
     }
     
-    [Service] 
+    [Scoped] 
     public partial class ServiceB
     {
         [Inject] private readonly ISharedService _shared;
@@ -565,7 +567,7 @@ namespace MyApp.Core
     
     public interface ILocalService { }
     
-    [Service]
+    
     public partial class MixedDependencyService
     {
         [Inject] private readonly IExternalService _external;
@@ -615,7 +617,7 @@ namespace Unsafe.Types
         IntPtr GetPointer();
     }
     
-    [Service]
+    
     public partial class PointerHandler : IPointerHandler
     {
         public IntPtr GetPointer() => IntPtr.Zero;
@@ -627,7 +629,7 @@ namespace Pointer.Consumer
     using Unsafe.Types;
     using System;
     
-    [Service]
+    
     public unsafe partial class PointerService
     {
         [Inject] private readonly IPointerHandler _pointerHandler;
@@ -643,7 +645,7 @@ namespace Pointer.Consumer
             MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Attribute).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(IEnumerable<>).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(ServiceAttribute).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(ScopedAttribute).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(IServiceCollection).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(ServiceCollectionServiceExtensions).Assembly.Location)
         };
@@ -719,7 +721,7 @@ namespace Consumer.App
 {
     using Regular.Namespace;
     
-    [Service]
+    
     public partial class MixedNamespaceService
     {
         [Inject] private readonly IGlobalInterface _global;
@@ -777,7 +779,7 @@ namespace App.Controllers
     using Microsoft.Extensions.Logging;
     using Microsoft.Extensions.Configuration;
     
-    [Service]
+    
     public partial class ControllerService
     {
         [Inject] private readonly ILogger<ControllerService> _logger;
@@ -830,7 +832,7 @@ namespace Derived.Application
 {
     using Base.Infrastructure;
     
-    [Service]
+    
     public partial class DerivedService : BaseService
     {
         [Inject] private readonly IBaseRepository _repository;
@@ -876,7 +878,7 @@ namespace Level1.Level2.Level3.Level4.Level5.Level6.Level7.Level8.Level9.Level10
 
 namespace Consumer.Level1.Level2.Level3.Level4.Level5.Level6.Level7.Level8.Level9.Level10.App
 {
-    [Service]
+    
     public partial class ExtremelyDeepService
     {
         [Inject] private readonly IEnumerable<IEnumerable<IEnumerable<IDeepService>>> _tripleNestedDeep;
@@ -913,10 +915,11 @@ namespace Consumer.Level1.Level2.Level3.Level4.Level5.Level6.Level7.Level8.Level
         // Arrange - Minimal valid source with no dependencies
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace Empty.Test
 {
-    [Service]
+    [Scoped]
     public partial class EmptyService
     {
         // No injected dependencies
@@ -951,7 +954,7 @@ namespace Primary.Namespace
 {
     public interface IPrimaryService { }
     
-    [Service]
+    
     public partial class PartialService
     {
         [Inject] private readonly IPrimaryService _primary;
@@ -1000,7 +1003,7 @@ namespace Test.Application
 {
     using External.Services;
     
-    [Service]
+    
     public partial class RobustTestService
     {
         [Inject] private readonly IList<IExternalService> _services;
@@ -1060,7 +1063,7 @@ namespace Cønßüméer.App
 {
     using Ünïcøde.Namespace;
     
-    [Service]
+    
     public partial class UnicodeTestService
     {
         [Inject] private readonly IÜnicødeService _service;
@@ -1111,7 +1114,7 @@ namespace MyProject.Services.Business
     using MyProject.Models.Core;
     using System.Collections.Generic;
     
-    [Service]
+    
     public partial class UserService
     {
         [Inject] private readonly IEnumerable<IList<IUserRepository<UserModel>>> _nestedRepositories;
@@ -1182,7 +1185,7 @@ namespace ServiceA
 {
     public interface IServiceA { }
     
-    [Service]
+    
     public partial class ServiceAImpl : IServiceA { }
 }
 
@@ -1190,7 +1193,7 @@ namespace ServiceB
 {
     public interface IServiceB { }
     
-    [Service]
+    
     public partial class ServiceBImpl : IServiceB { }
 }
 
@@ -1199,7 +1202,7 @@ namespace Consumer
     using ServiceA;
     using ServiceB;
     
-    [Service]
+    
     public partial class CrossNamespaceService
     {
         [Inject] private readonly IServiceA _serviceA;
@@ -1236,7 +1239,7 @@ public interface IGlobalService { }
 
 namespace MyProject.Services
 {
-    [Service]
+    
     public partial class GlobalTestService
     {
         [Inject] private readonly IGlobalService _globalService;
@@ -1276,7 +1279,7 @@ namespace MyProject.Services.BusinessLogic.Core
 {
     using VeryLongCompanyName.BusinessUnit.Department.Team.SubTeam.Project.Module.Component.Service.Interface;
     
-    [Service]
+    
     public partial class DeepNamespaceService
     {
         [Inject] private readonly IVeryDeeplyNestedService _deepService;
@@ -1321,7 +1324,7 @@ namespace MyProject.Services_2024
 {
     using _UnderscoreNamespace._123NumberStart;
     
-    [Service]
+    
     public partial class SpecialCharService
     {
         [Inject] private readonly I_SpecialService _specialService;

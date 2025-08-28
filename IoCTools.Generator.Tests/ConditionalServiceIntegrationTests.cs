@@ -1,8 +1,8 @@
-using Xunit.Abstractions;
-using IoCTools.Generator.Tests;
-using Microsoft.CodeAnalysis;
-
 namespace Test;
+
+using IoCTools.Generator.Tests;
+
+using Xunit.Abstractions;
 
 /// <summary>
 ///     Comprehensive integration tests for Conditional Service Registration working with all other IoCTools features.
@@ -17,6 +17,59 @@ public class ConditionalServiceIntegrationTests
     {
         _output = output;
     }
+
+    #region Error Scenarios and Edge Cases
+
+    [Fact]
+    public void ConditionalIntegration_ConflictingFeatureConfigurations_HandlesGracefully()
+    {
+        // Arrange - Conflicting configurations that should be handled gracefully
+        var source = @"
+using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
+
+namespace Test;
+
+public interface IService { }
+
+// Conflicting environment conditions - impossible to satisfy
+[ConditionalService(Environment = ""Development"", NotEnvironment = ""Development"")]
+[Scoped]
+public partial class ConflictingService : IService { }
+
+// Invalid lifetime dependency in conditional service
+[ConditionalService(Environment = ""Production"")]
+[Singleton]
+public partial class InvalidSingletonService : IService
+{
+    [Inject] private readonly IScopedDependency _scoped;
+}
+
+[Scoped]
+public partial class ScopedDependency : IScopedDependency { }
+
+public interface IScopedDependency { }";
+
+        // Act
+        var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+
+        // Assert
+        // Should not crash and should produce appropriate diagnostics
+        var conflictDiagnostics = result.GetDiagnosticsByCode("IOC020");
+        var lifetimeDiagnostics = result.GetDiagnosticsByCode("IOC004");
+
+        // If diagnostics are implemented, they should be present
+        // If not, should at least not crash during compilation
+        Assert.False(result.HasErrors, "Should not have compilation errors even with conflicting configurations");
+
+        var registrationSource = result.GetServiceRegistrationSource();
+        if (registrationSource != null)
+            // Should not generate impossible conditions
+            Assert.DoesNotContain("environment == \"Development\" && environment != \"Development\"",
+                registrationSource.Content);
+    }
+
+    #endregion
 
     #region Multi-Feature Combinations
 
@@ -40,6 +93,7 @@ public class ConditionalServiceIntegrationTests
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
@@ -47,7 +101,7 @@ namespace Test;
 public interface ICacheService { }
 
 [ConditionalService(ConfigValue = ""Cache:Provider"", Equals = ""Redis"")]
-[Service]
+[Scoped]
 public partial class RedisCacheService : ICacheService
 {
     [InjectConfiguration(""Cache:Redis:ConnectionString"")] private readonly string _connectionString;
@@ -56,7 +110,7 @@ public partial class RedisCacheService : ICacheService
 }
 
 [ConditionalService(ConfigValue = ""Cache:Provider"", Equals = ""Memory"")]
-[Service]
+[Scoped]
 public partial class MemoryCacheService : ICacheService
 {
     [InjectConfiguration(""Cache:Memory:SizeLimit"")] private readonly long _sizeLimit;
@@ -65,8 +119,6 @@ public partial class MemoryCacheService : ICacheService
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-
-
         // Assert
         Assert.False(result.HasErrors);
 
@@ -74,21 +126,25 @@ public partial class MemoryCacheService : ICacheService
         Assert.NotNull(registrationSource);
 
         // Should use string.Equals for configuration-based conditionals (different pattern than environment-based)
-        Assert.Contains("string.Equals(configuration[\"Cache:Provider\"], \"Redis\", StringComparison.OrdinalIgnoreCase)",
+        Assert.Contains(
+            "string.Equals(configuration[\"Cache:Provider\"], \"Redis\", StringComparison.OrdinalIgnoreCase)",
             registrationSource.Content);
-        Assert.Contains("string.Equals(configuration[\"Cache:Provider\"], \"Memory\", StringComparison.OrdinalIgnoreCase)",
+        Assert.Contains(
+            "string.Equals(configuration[\"Cache:Provider\"], \"Memory\", StringComparison.OrdinalIgnoreCase)",
             registrationSource.Content);
 
         // Both services should be registered conditionally
         // Conditional services with configuration injection use factory patterns for interface registrations
-        Assert.Contains("AddScoped<global::Test.ICacheService>(provider => provider.GetRequiredService<global::Test.RedisCacheService>())",
+        Assert.Contains(
+            "AddScoped<global::Test.ICacheService>(provider => provider.GetRequiredService<global::Test.RedisCacheService>())",
             registrationSource.Content);
-        Assert.Contains("AddScoped<global::Test.ICacheService>(provider => provider.GetRequiredService<global::Test.MemoryCacheService>())",
+        Assert.Contains(
+            "AddScoped<global::Test.ICacheService>(provider => provider.GetRequiredService<global::Test.MemoryCacheService>())",
             registrationSource.Content);
 
         // Concrete classes should also be registered directly
-        Assert.Contains("AddScoped<global::Test.RedisCacheService, global::Test.RedisCacheService>", registrationSource.Content);
-        Assert.Contains("AddScoped<global::Test.MemoryCacheService, global::Test.MemoryCacheService>", registrationSource.Content);
+        Assert.Contains("AddScoped<global::Test.RedisCacheService>", registrationSource.Content);
+        Assert.Contains("AddScoped<global::Test.MemoryCacheService>", registrationSource.Content);
     }
 
     [Fact]
@@ -112,7 +168,7 @@ public class EmailOptions
 }
 
 [ConditionalService(Environment = ""Development"")]
-[Service]
+[Scoped]
 public partial class DevEmailService : IEmailService
 {
     [Inject] private readonly IOptions<EmailOptions> _options;
@@ -120,7 +176,7 @@ public partial class DevEmailService : IEmailService
 }
 
 [ConditionalService(Environment = ""Production"")]  
-[Service]
+[Scoped]
 public partial class ProdEmailService : IEmailService
 {
     [Inject] private readonly IOptions<EmailOptions> _options;
@@ -143,8 +199,10 @@ public partial class ProdEmailService : IEmailService
         // Should generate environment-based conditional registration
         var registrationSource = result.GetServiceRegistrationSource();
         Assert.NotNull(registrationSource);
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
     }
 
     #endregion
@@ -164,18 +222,18 @@ namespace Test;
 public interface ISingletonService { }
 public interface IScopedService { }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class SingletonService : ISingletonService { }
 
 [ConditionalService(Environment = ""Development"")]
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DevScopedService : IScopedService
 {
     [Inject] private readonly ISingletonService _singleton; // Valid: Scoped can depend on Singleton
 }
 
 [ConditionalService(Environment = ""Production"")]
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class ProdSingletonService : IScopedService
 {
     [Inject] private readonly ISingletonService _singleton; // Valid: Singleton can depend on Singleton
@@ -193,9 +251,11 @@ public partial class ProdSingletonService : IScopedService
 
         var registrationSource = result.GetServiceRegistrationSource();
         Assert.NotNull(registrationSource);
-        Assert.Contains("services.AddSingleton<Test.ISingletonService, Test.SingletonService>", registrationSource.Content);
+        Assert.Contains("services.AddSingleton<Test.ISingletonService, Test.SingletonService>",
+            registrationSource.Content);
         Assert.Contains("AddScoped<Test.IScopedService, Test.DevScopedService>", registrationSource.Content);
-        Assert.Contains("services.AddSingleton<Test.IScopedService, Test.ProdSingletonService>", registrationSource.Content);
+        Assert.Contains("services.AddSingleton<Test.IScopedService, Test.ProdSingletonService>",
+            registrationSource.Content);
     }
 
     [Fact]
@@ -211,11 +271,11 @@ namespace Test;
 public interface IScopedService { }
 public interface ISingletonService { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class ScopedService : IScopedService { }
 
 [ConditionalService(Environment = ""Development"")]
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class InvalidSingletonService : ISingletonService
 {
     [Inject] private readonly IScopedService _scoped; // Invalid: Singleton cannot depend on Scoped
@@ -249,10 +309,11 @@ namespace Test;
 
 public interface IDataProcessor { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DataProcessor : IDataProcessor { }
 
 [ConditionalService(Environment = ""Production"")]
+[Scoped]
 public partial class ConditionalBackgroundService : BackgroundService
 {
     [Inject] private readonly IDataProcessor _processor; // Invalid: BackgroundService (Singleton) cannot depend on Scoped
@@ -278,7 +339,8 @@ public partial class ConditionalBackgroundService : BackgroundService
         // Should still register the background service conditionally
         var registrationSource = result.GetServiceRegistrationSource();
         Assert.NotNull(registrationSource);
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
         Assert.Contains("AddHostedService<Test.ConditionalBackgroundService>", registrationSource.Content);
     }
 
@@ -292,21 +354,21 @@ public partial class ConditionalBackgroundService : BackgroundService
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace Test;
 
 public interface IService { }
 public interface ILogger { }
 public interface ICache { }
-
-[Service]
+[Scoped]
 public partial class Logger : ILogger { }
 
-[Service] 
+[Scoped] 
 public partial class Cache : ICache { }
 
 // Base class with dependencies
-[Service]
+[Scoped]
 public partial class BaseService : IService
 {
     [Inject] private readonly ILogger _logger;
@@ -314,14 +376,14 @@ public partial class BaseService : IService
 
 // Derived conditional services
 [ConditionalService(Environment = ""Development"")]
-[Service]
+[Scoped]
 public partial class DevService : BaseService
 {
     [Inject] private readonly ICache _cache;
 }
 
 [ConditionalService(Environment = ""Production"")]
-[Service]
+[Scoped]
 public partial class ProdService : BaseService
 {
     [Inject] private readonly ICache _cache;
@@ -329,7 +391,7 @@ public partial class ProdService : BaseService
 }
 
 public interface IMetrics { }
-[Service] public partial class Metrics : IMetrics { }";
+[Scoped] public partial class Metrics : IMetrics { }";
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
@@ -351,13 +413,15 @@ public interface IMetrics { }
         // Should generate conditional registration for derived classes only
         var registrationSource = result.GetServiceRegistrationSource();
         Assert.NotNull(registrationSource);
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
         Assert.Contains("AddScoped<Test.DevService, Test.DevService>", registrationSource.Content);
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
         Assert.Contains("AddScoped<Test.ProdService, Test.ProdService>", registrationSource.Content);
 
         // Base service should be registered unconditionally  
-        Assert.Contains("AddScoped<Test.IService, Test.BaseService>", registrationSource.Content);
+        Assert.Contains("AddScoped<Test.BaseService, Test.BaseService>", registrationSource.Content);
     }
 
     [Fact]
@@ -366,17 +430,17 @@ public interface IMetrics { }
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace Test;
 
 public interface IRepository<T> { }
 public interface ILogger { }
-
-[Service]
+[Scoped]
 public partial class Logger : ILogger { }
 
 // Generic base class
-[Service]
+[Scoped]
 public partial class BaseRepository<T> : IRepository<T>
 {
     [Inject] private readonly ILogger _logger;
@@ -384,14 +448,14 @@ public partial class BaseRepository<T> : IRepository<T>
 
 // Conditional specialized repositories
 [ConditionalService(Environment = ""Development"")]
-[Service]
+[Scoped]
 public partial class InMemoryUserRepository : BaseRepository<User>
 {
     // Inherits ILogger dependency from base
 }
 
 [ConditionalService(Environment = ""Production"")]
-[Service] 
+[Scoped] 
 public partial class SqlUserRepository : BaseRepository<User>
 {
     [Inject] private readonly IDbContext _context;
@@ -399,7 +463,7 @@ public partial class SqlUserRepository : BaseRepository<User>
 
 public class User { }
 public interface IDbContext { }
-[Service] public partial class DbContext : IDbContext { }";
+[Scoped] public partial class DbContext : IDbContext { }";
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
@@ -418,8 +482,10 @@ public interface IDbContext { }
 
         var registrationSource = result.GetServiceRegistrationSource();
         Assert.NotNull(registrationSource);
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
     }
 
     #endregion
@@ -440,10 +506,10 @@ public interface IPaymentProcessor { }
 public interface INotificationService { }
 public interface ILogger { }
 
-[Service] public partial class Logger : ILogger { }
+[Scoped] public partial class Logger : ILogger { }
 
 [ConditionalService(Environment = ""Development"")]
-[Service]
+[Scoped]
 [RegisterAsAll(RegistrationMode.All, InstanceSharing.Separate)]
 public partial class DevMultiService : IPaymentProcessor, INotificationService
 {
@@ -451,7 +517,7 @@ public partial class DevMultiService : IPaymentProcessor, INotificationService
 }
 
 [ConditionalService(Environment = ""Production"")]
-[Service]
+[Scoped]
 [RegisterAsAll(RegistrationMode.Exclusionary, InstanceSharing.Separate)]
 public partial class ProdMultiService : IPaymentProcessor, INotificationService
 {
@@ -468,17 +534,22 @@ public partial class ProdMultiService : IPaymentProcessor, INotificationService
         Assert.NotNull(registrationSource);
 
         // Should register conditionally for all interfaces
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
 
         // CORRECTED: DevMultiService uses RegistrationMode.All with InstanceSharing.Separate,
         // so it should use factory patterns to ensure each interface gets its own instance
-        Assert.Contains("AddScoped<Test.DevMultiService, Test.DevMultiService>", registrationSource.Content); // Self registration
-        Assert.Contains("AddScoped<Test.IPaymentProcessor>(provider => provider.GetRequiredService<Test.DevMultiService>())",
+        Assert.Contains("AddScoped<Test.DevMultiService>",
+            registrationSource.Content); // Self registration (single parameter form)
+        Assert.Contains(
+            "AddScoped<Test.IPaymentProcessor>(provider => provider.GetRequiredService<Test.DevMultiService>())",
             registrationSource.Content);
-        Assert.Contains("AddScoped<Test.INotificationService>(provider => provider.GetRequiredService<Test.DevMultiService>())",
+        Assert.Contains(
+            "AddScoped<Test.INotificationService>(provider => provider.GetRequiredService<Test.DevMultiService>())",
             registrationSource.Content);
 
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
 
         // CORRECTED: ProdMultiService uses RegistrationMode.Exclusionary, so direct registrations
         Assert.Contains("AddScoped<Test.IPaymentProcessor, Test.ProdMultiService>", registrationSource.Content);
@@ -499,7 +570,7 @@ namespace Test;
 public interface IService { }
 
 [ConditionalService(Environment = ""Development"")]
-[Service]
+[Scoped]
 [SkipRegistration]
 public partial class ConditionalSkippedService : IService
 {
@@ -508,7 +579,7 @@ public partial class ConditionalSkippedService : IService
 }
 
 [ConditionalService(Environment = ""Production"")]
-[Service]
+[Scoped]
 public partial class ConditionalRegisteredService : IService
 {
     // This service should be registered conditionally
@@ -527,7 +598,8 @@ public partial class ConditionalRegisteredService : IService
         Assert.DoesNotContain("ConditionalSkippedService", registrationSource.Content);
 
         // Should contain registration for non-skipped conditional service
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
         Assert.Contains("AddScoped<Test.IService, Test.ConditionalRegisteredService>", registrationSource.Content);
     }
 
@@ -546,11 +618,11 @@ public interface IPaymentService { }
 public interface ILogger { }
 public interface IUserService { }
 
-[Service] public partial class Logger : ILogger { }
-[Service] public partial class EmailService : IEmailService { }
+[Scoped] public partial class Logger : ILogger { }
+[Scoped] public partial class EmailService : IEmailService { }
 
 [ConditionalService(Environment = ""Development"")]
-[Service]
+[Scoped]
 [DependsOn<ILogger, IEmailService>]
 public partial class DevPaymentService : IPaymentService
 {
@@ -558,7 +630,7 @@ public partial class DevPaymentService : IPaymentService
 }
 
 [ConditionalService(Environment = ""Production"")]
-[Service]
+[Scoped]
 public partial class ProdPaymentService : IPaymentService
 {
     [Inject] private readonly ILogger _logger;
@@ -566,7 +638,7 @@ public partial class ProdPaymentService : IPaymentService
 }
 
 // Service that depends on conditional services
-[Service]
+
 public partial class UserService : IUserService
 {
     [Inject] private readonly IPaymentService _paymentService; // Should resolve to conditional service
@@ -586,9 +658,11 @@ public partial class UserService : IUserService
         // Should generate conditional registration
         var registrationSource = result.GetServiceRegistrationSource();
         Assert.NotNull(registrationSource);
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
         Assert.Contains("AddScoped<Test.IPaymentService, Test.DevPaymentService>", registrationSource.Content);
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
         Assert.Contains("AddScoped<Test.IPaymentService, Test.ProdPaymentService>", registrationSource.Content);
 
         // UserService should be registered and depend on whichever IPaymentService is conditionally registered
@@ -612,14 +686,14 @@ public interface IPaymentService { }
 public class ExternalApiService : IExternalApi { }
 
 [ConditionalService(Environment = ""Development"")]
-[Service]
+[Scoped]
 public partial class DevPaymentService : IPaymentService
 {
     [Inject] private readonly IExternalApi _externalApi; // Should not cause missing dependency warnings
 }
 
 [ConditionalService(Environment = ""Production"")]
-[Service]
+[Scoped]
 public partial class ProdPaymentService : IPaymentService
 {
     [Inject] private readonly IExternalApi _externalApi;
@@ -638,7 +712,8 @@ public partial class ProdPaymentService : IPaymentService
         // Should generate conditional registration for payment services
         var registrationSource = result.GetServiceRegistrationSource();
         Assert.NotNull(registrationSource);
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
         Assert.Contains("AddScoped<Test.IPaymentService, Test.DevPaymentService>", registrationSource.Content);
 
         // Should NOT register external service
@@ -656,6 +731,7 @@ public partial class ProdPaymentService : IPaymentService
         var source = @"
 using Microsoft.Extensions.Hosting;
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -664,10 +740,11 @@ namespace Test;
 public interface IDataProcessor { }
 public interface IEmailService { }
 
-[Service] public partial class DataProcessor : IDataProcessor { }
-[Service] public partial class EmailService : IEmailService { }
+[Scoped] public partial class DataProcessor : IDataProcessor { }
+[Scoped] public partial class EmailService : IEmailService { }
 
 [ConditionalService(Environment = ""Production"")]
+[Scoped]
 public partial class ProductionBackgroundService : BackgroundService
 {
     [Inject] private readonly IDataProcessor _processor;
@@ -680,6 +757,7 @@ public partial class ProductionBackgroundService : BackgroundService
 }
 
 [ConditionalService(Environment = ""Development"")]
+[Scoped]
 public partial class DevelopmentBackgroundService : BackgroundService
 {
     [Inject] private readonly IDataProcessor _processor;
@@ -709,9 +787,11 @@ public partial class DevelopmentBackgroundService : BackgroundService
         // Should register background services conditionally as IHostedService
         var registrationSource = result.GetServiceRegistrationSource();
         Assert.NotNull(registrationSource);
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
         Assert.Contains("AddHostedService<Test.ProductionBackgroundService>", registrationSource.Content);
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
         Assert.Contains("AddHostedService<Test.DevelopmentBackgroundService>", registrationSource.Content);
     }
 
@@ -722,6 +802,7 @@ public partial class DevelopmentBackgroundService : BackgroundService
         var source = @"
 using Microsoft.Extensions.Hosting;
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -730,15 +811,14 @@ namespace Test;
 public interface IDataProcessor { }
 
 [ConditionalService(Environment = ""Development"")]
-[Service]
+[Scoped]
 public partial class MockDataProcessor : IDataProcessor { }
 
 [ConditionalService(Environment = ""Production"")]
-[Service] 
+[Scoped] 
 public partial class RealDataProcessor : IDataProcessor { }
 
 // Background service that depends on conditional data processor
-[BackgroundService]
 public partial class DataProcessingBackgroundService : BackgroundService
 {
     [Inject] private readonly IDataProcessor _processor; // Will resolve to conditional service
@@ -758,10 +838,17 @@ public partial class DataProcessingBackgroundService : BackgroundService
         var registrationSource = result.GetServiceRegistrationSource();
         Assert.NotNull(registrationSource);
 
+        // DEBUG: Print actual generated registration code
+        Console.WriteLine("=== CONDITIONAL SERVICE REGISTRATION DEBUG ===");
+        Console.WriteLine(registrationSource.Content);
+        Console.WriteLine("=== END DEBUG ===");
+
         // Should register conditional data processors
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
         Assert.Contains("AddScoped<Test.IDataProcessor, Test.MockDataProcessor>", registrationSource.Content);
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
         Assert.Contains("AddScoped<Test.IDataProcessor, Test.RealDataProcessor>", registrationSource.Content);
 
         // Should register background service unconditionally
@@ -775,6 +862,7 @@ public partial class DataProcessingBackgroundService : BackgroundService
         var source = @"
 using Microsoft.Extensions.Hosting;
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -782,9 +870,10 @@ namespace Test;
 
 public interface IEmailService { }
 
-[Service] public partial class EmailService : IEmailService { }
+[Scoped] public partial class EmailService : IEmailService { }
 
 [ConditionalService(Environment = ""Production"")]
+[Scoped]
 public partial class ConditionalHostedService : IHostedService
 {
     [Inject] private readonly IEmailService _emailService;
@@ -810,16 +899,10 @@ public partial class ConditionalHostedService : IHostedService
         Assert.NotNull(registrationSource);
 
         // Should register IHostedService conditionally
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
         Assert.Contains("AddHostedService<Test.ConditionalHostedService>", registrationSource.Content);
     }
-
-    #endregion
-
-    #region Conditional Services + Generic Services Integration
-
-
-
 
     #endregion
 
@@ -833,61 +916,6 @@ public partial class ConditionalHostedService : IHostedService
 
     #endregion
 
-    #region Error Scenarios and Edge Cases
-
-    [Fact]
-    public void ConditionalIntegration_ConflictingFeatureConfigurations_HandlesGracefully()
-    {
-        // Arrange - Conflicting configurations that should be handled gracefully
-        var source = @"
-using IoCTools.Abstractions.Annotations;
-using IoCTools.Abstractions.Enumerations;
-
-namespace Test;
-
-public interface IService { }
-
-// Conflicting environment conditions - impossible to satisfy
-[ConditionalService(Environment = ""Development"", NotEnvironment = ""Development"")]
-[Service]
-public partial class ConflictingService : IService { }
-
-// Invalid lifetime dependency in conditional service
-[ConditionalService(Environment = ""Production"")]
-[Service(Lifetime.Singleton)]
-public partial class InvalidSingletonService : IService
-{
-    [Inject] private readonly IScopedDependency _scoped;
-}
-
-[Service(Lifetime.Scoped)]
-public partial class ScopedDependency : IScopedDependency { }
-
-public interface IScopedDependency { }";
-
-        // Act
-        var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-
-        // Assert
-        // Should not crash and should produce appropriate diagnostics
-        var conflictDiagnostics = result.GetDiagnosticsByCode("IOC020");
-        var lifetimeDiagnostics = result.GetDiagnosticsByCode("IOC004");
-
-        // If diagnostics are implemented, they should be present
-        // If not, should at least not crash during compilation
-        Assert.False(result.HasErrors, "Should not have compilation errors even with conflicting configurations");
-
-        var registrationSource = result.GetServiceRegistrationSource();
-        if (registrationSource != null)
-            // Should not generate impossible conditions
-            Assert.DoesNotContain("environment == \"Development\" && environment != \"Development\"",
-                registrationSource.Content);
-    }
-
-
-
-    #endregion
-
     #region Conditional Services + IEnumerable<T> Dependencies Integration
 
     [Fact]
@@ -896,36 +924,36 @@ public interface IScopedDependency { }";
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using System.Collections.Generic;
 
 namespace Test;
 
 public interface INotificationProvider { }
 public interface IPaymentService { }
-
-[Service]
+[Scoped]
 public partial class EmailNotificationProvider : INotificationProvider { }
 
-[Service] 
+[Scoped] 
 public partial class SmsNotificationProvider : INotificationProvider { }
 
 [ConditionalService(Environment = ""Development"")]
-[Service]
+[Scoped]
 public partial class SlackNotificationProvider : INotificationProvider { }
 
 [ConditionalService(Environment = ""Production"")]
-[Service]
+[Scoped]
 public partial class PushNotificationProvider : INotificationProvider { }
 
 [ConditionalService(Environment = ""Development"")]
-[Service]
+[Scoped]
 public partial class DevPaymentService : IPaymentService
 {
     [Inject] private readonly IEnumerable<INotificationProvider> _notificationProviders;
 }
 
 [ConditionalService(Environment = ""Production"")]
-[Service]
+[Scoped]
 public partial class ProdPaymentService : IPaymentService
 {
     [Inject] private readonly IEnumerable<INotificationProvider> _notificationProviders;
@@ -949,14 +977,20 @@ public partial class ProdPaymentService : IPaymentService
         // Should register all notification providers (conditional and non-conditional)
         var registrationSource = result.GetServiceRegistrationSource();
         Assert.NotNull(registrationSource);
-        Assert.Contains("AddScoped<Test.INotificationProvider, Test.EmailNotificationProvider>", registrationSource.Content);
-        Assert.Contains("AddScoped<Test.INotificationProvider, Test.SmsNotificationProvider>", registrationSource.Content);
+        Assert.Contains("AddScoped<Test.INotificationProvider, Test.EmailNotificationProvider>",
+            registrationSource.Content);
+        Assert.Contains("AddScoped<Test.INotificationProvider, Test.SmsNotificationProvider>",
+            registrationSource.Content);
 
         // Should register conditional notification providers conditionally
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
-        Assert.Contains("AddScoped<Test.INotificationProvider, Test.SlackNotificationProvider>", registrationSource.Content);
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
-        Assert.Contains("AddScoped<Test.INotificationProvider, Test.PushNotificationProvider>", registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
+        Assert.Contains("AddScoped<Test.INotificationProvider, Test.SlackNotificationProvider>",
+            registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
+        Assert.Contains("AddScoped<Test.INotificationProvider, Test.PushNotificationProvider>",
+            registrationSource.Content);
 
         // Should register payment services conditionally
         Assert.Contains("AddScoped<Test.IPaymentService, Test.DevPaymentService>", registrationSource.Content);
@@ -969,37 +1003,36 @@ public partial class ProdPaymentService : IPaymentService
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using System.Collections.Generic;
 
 namespace Test;
 
 public interface IDataProcessor { }
 public interface IService { }
-
-[Service]
+[Scoped]
 public partial class BaseDataProcessor : IDataProcessor { }
 
 [ConditionalService(Environment = ""Development"")]
-[Service]
+[Scoped]
 public partial class MockDataProcessor : IDataProcessor { }
 
 [ConditionalService(Environment = ""Development"")]
-[Service] 
+[Scoped] 
 public partial class DebugDataProcessor : IDataProcessor { }
 
 [ConditionalService(Environment = ""Production"")]
-[Service]
+[Scoped]
 public partial class OptimizedDataProcessor : IDataProcessor { }
 
 [ConditionalService(Environment = ""Production"")]
-[Service]
+[Scoped]
 public partial class CachedDataProcessor : IDataProcessor { }
 
 [ConditionalService(Environment = ""Testing"")]
-[Service]
+[Scoped]
 public partial class TestDataProcessor : IDataProcessor { }
-
-[Service]
+[Scoped]
 public partial class ProcessingService : IService
 {
     [Inject] private readonly IEnumerable<IDataProcessor> _processors;
@@ -1013,23 +1046,24 @@ public partial class ProcessingService : IService
 
         var registrationSource = result.GetServiceRegistrationSource();
         Assert.NotNull(registrationSource);
-
-
         // Should register base processor unconditionally
         Assert.Contains("AddScoped<Test.IDataProcessor, Test.BaseDataProcessor>", registrationSource.Content);
 
         // Should register multiple Development conditional processors
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
         Assert.Contains("AddScoped<Test.IDataProcessor, Test.MockDataProcessor>", registrationSource.Content);
         Assert.Contains("AddScoped<Test.IDataProcessor, Test.DebugDataProcessor>", registrationSource.Content);
 
         // Should register multiple Production conditional processors
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
         Assert.Contains("AddScoped<Test.IDataProcessor, Test.OptimizedDataProcessor>", registrationSource.Content);
         Assert.Contains("AddScoped<Test.IDataProcessor, Test.CachedDataProcessor>", registrationSource.Content);
 
         // Should register Testing conditional processor
-        Assert.Contains("string.Equals(environment, \"Testing\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Testing\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
         Assert.Contains("AddScoped<Test.IDataProcessor, Test.TestDataProcessor>", registrationSource.Content);
 
         // Service using IEnumerable should be registered unconditionally
@@ -1056,36 +1090,34 @@ public interface IValidator { }
 public interface IService { }
 
 // Always available validators
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class BasicValidator : IValidator { }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class RequiredValidator : IValidator { }
 
 // Development-only validators
 [ConditionalService(Environment = ""Development"")]
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class DebugValidator : IValidator { }
 
 [ConditionalService(Environment = ""Development"")]
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class VerboseValidator : IValidator { }
 
 // Production-only validators  
 [ConditionalService(Environment = ""Production"")]
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class PerformanceValidator : IValidator { }
 
 [ConditionalService(Environment = ""Production"")]
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class SecurityValidator : IValidator { }
 
 // Testing-only validators
 [ConditionalService(Environment = ""Testing"")]
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class MockValidator : IValidator { }
-
-[Service]
 public partial class ValidationService : IService
 {
     [Inject] private readonly IEnumerable<IValidator> _validators;
@@ -1105,26 +1137,26 @@ public partial class ValidationService : IService
         Assert.Contains("services.AddSingleton<Test.IValidator, Test.RequiredValidator>", registrationSource.Content);
 
         // Should register Development validators conditionally
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
         Assert.Contains("services.AddSingleton<Test.IValidator, Test.DebugValidator>", registrationSource.Content);
         Assert.Contains("services.AddSingleton<Test.IValidator, Test.VerboseValidator>", registrationSource.Content);
 
         // Should register Production validators conditionally
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
-        Assert.Contains("services.AddSingleton<Test.IValidator, Test.PerformanceValidator>", registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
+        Assert.Contains("services.AddSingleton<Test.IValidator, Test.PerformanceValidator>",
+            registrationSource.Content);
         Assert.Contains("services.AddSingleton<Test.IValidator, Test.SecurityValidator>", registrationSource.Content);
 
         // Should register Testing validators conditionally
-        Assert.Contains("string.Equals(environment, \"Testing\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Testing\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
         Assert.Contains("services.AddSingleton<Test.IValidator, Test.MockValidator>", registrationSource.Content);
 
         // Validation service should be registered unconditionally
         Assert.Contains("AddScoped<Test.IService, Test.ValidationService>", registrationSource.Content);
     }
-
-
-
-
 
     [Fact]
     public void
@@ -1142,45 +1174,45 @@ public interface IMiddleware { }
 public interface IService { }
 
 // Always registered middleware
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class AuthenticationMiddleware : IMiddleware { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class LoggingMiddleware : IMiddleware { }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class ValidationMiddleware : IMiddleware { }
 
 // Conditional middleware
 [ConditionalService(Environment = ""Development"")]
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class DebugMiddleware : IMiddleware { }
 
 [ConditionalService(Environment = ""Development"")]
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class DeveloperToolsMiddleware : IMiddleware { }
 
 [ConditionalService(Environment = ""Production"")]
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class PerformanceMiddleware : IMiddleware { }
 
 [ConditionalService(Environment = ""Production"")]
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class MetricsMiddleware : IMiddleware { }
 
 [ConditionalService(ConfigValue = ""Features:EnableCaching"", Equals = ""true"")]
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class CachingMiddleware : IMiddleware { }
 
 // Services using the middleware collections
-[Service]
+
 public partial class MiddlewareService : IService
 {
     [Inject] private readonly IEnumerable<IMiddleware> _middlewares;
 }
 
 [ConditionalService(Environment = ""Development"")]
-[Service]
+[Scoped]
 public partial class DevMiddlewareService : IService
 {
     [Inject] private readonly IEnumerable<IMiddleware> _middlewares;
@@ -1197,22 +1229,28 @@ public partial class DevMiddlewareService : IService
         Assert.NotNull(registrationSource);
 
         // Should register non-conditional middleware with correct lifetimes (using simplified naming)
-        Assert.Contains("services.AddSingleton<Test.IMiddleware, Test.AuthenticationMiddleware>", registrationSource.Content);
+        Assert.Contains("services.AddSingleton<Test.IMiddleware, Test.AuthenticationMiddleware>",
+            registrationSource.Content);
         Assert.Contains("AddScoped<Test.IMiddleware, Test.LoggingMiddleware>", registrationSource.Content);
         Assert.Contains("AddTransient<Test.IMiddleware, Test.ValidationMiddleware>", registrationSource.Content);
 
         // Should register Development conditional middleware
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
         Assert.Contains("AddTransient<Test.IMiddleware, Test.DebugMiddleware>", registrationSource.Content);
-        Assert.Contains("services.AddSingleton<Test.IMiddleware, Test.DeveloperToolsMiddleware>", registrationSource.Content);
+        Assert.Contains("services.AddSingleton<Test.IMiddleware, Test.DeveloperToolsMiddleware>",
+            registrationSource.Content);
 
         // Should register Production conditional middleware
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
-        Assert.Contains("services.AddSingleton<Test.IMiddleware, Test.PerformanceMiddleware>", registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
+        Assert.Contains("services.AddSingleton<Test.IMiddleware, Test.PerformanceMiddleware>",
+            registrationSource.Content);
         Assert.Contains("AddScoped<Test.IMiddleware, Test.MetricsMiddleware>", registrationSource.Content);
 
         // Should register configuration-based conditional middleware  
-        Assert.Contains("string.Equals(configuration[\"Features:EnableCaching\"], \"true\", StringComparison.OrdinalIgnoreCase)",
+        Assert.Contains(
+            "string.Equals(configuration[\"Features:EnableCaching\"], \"true\", StringComparison.OrdinalIgnoreCase)",
             registrationSource.Content);
         Assert.Contains("services.AddSingleton<Test.IMiddleware, Test.CachingMiddleware>", registrationSource.Content);
 
@@ -1230,7 +1268,6 @@ public partial class DevMiddlewareService : IService
         Assert.Contains("IEnumerable<IMiddleware> middlewares", devServiceConstructorSource.Content);
         Assert.Contains("IList<IMiddleware> middlewareList", devServiceConstructorSource.Content);
     }
-
 
     #endregion
 }

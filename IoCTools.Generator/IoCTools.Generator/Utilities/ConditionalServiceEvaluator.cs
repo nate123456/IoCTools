@@ -1,9 +1,10 @@
+namespace IoCTools.Generator.Utilities;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.CodeAnalysis;
 
-namespace IoCTools.Generator.Utilities;
+using Microsoft.CodeAnalysis;
 
 /// <summary>
 ///     Provides utilities for evaluating conditional service registration conditions.
@@ -193,11 +194,11 @@ internal static class ConditionalServiceEvaluator
         var conflictingConfigValues = new List<string>();
         if (!string.IsNullOrEmpty(equalsArg) && !string.IsNullOrEmpty(notEqualsArg))
         {
-            var equalsValues = new[] { equalsArg };
-            var notEqualsValues = ParseCommaSeperatedList(notEqualsArg ?? "");
+            var equalsValues = new[] { equalsArg! };
+            var notEqualsValues = ParseCommaSeperatedList(notEqualsArg!);
 
             // Check if equals value appears in not equals list - use case-sensitive comparison
-            conflictingConfigValues = equalsValues.Intersect(notEqualsValues.Where(x => x != null), StringComparer.Ordinal).ToList();
+            conflictingConfigValues = equalsValues.Intersect(notEqualsValues, StringComparer.Ordinal).ToList();
             if (conflictingConfigValues.Any())
                 errors.Add(
                     $"Configuration conflict for '{configValueArg}': value '{string.Join(", ", conflictingConfigValues)}' appears in both Equals and NotEquals");
@@ -403,6 +404,21 @@ internal class ConditionalServiceCondition : IEquatable<ConditionalServiceCondit
     public bool RequiresConfiguration => ConfigValue != null;
 
     /// <summary>
+    ///     CRITICAL FIX: Implements proper equality checking for deduplication
+    /// </summary>
+    public bool Equals(ConditionalServiceCondition? other)
+    {
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
+
+        return string.Equals(Environment, other.Environment, StringComparison.Ordinal) &&
+               string.Equals(NotEnvironment, other.NotEnvironment, StringComparison.Ordinal) &&
+               string.Equals(ConfigValue, other.ConfigValue, StringComparison.Ordinal) &&
+               string.Equals(EqualsValue, other.EqualsValue, StringComparison.Ordinal) &&
+               string.Equals(NotEquals, other.NotEquals, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     ///     CRITICAL FIX: Provides unique string representation for proper deduplication
     /// </summary>
     public override string ToString()
@@ -418,32 +434,14 @@ internal class ConditionalServiceCondition : IEquatable<ConditionalServiceCondit
         return parts.Any() ? string.Join(";", parts) : "NoConditions";
     }
 
-    /// <summary>
-    ///     CRITICAL FIX: Implements proper equality checking for deduplication
-    /// </summary>
-    public bool Equals(ConditionalServiceCondition? other)
-    {
-        if (other is null) return false;
-        if (ReferenceEquals(this, other)) return true;
-        
-        return string.Equals(Environment, other.Environment, StringComparison.Ordinal) &&
-               string.Equals(NotEnvironment, other.NotEnvironment, StringComparison.Ordinal) &&
-               string.Equals(ConfigValue, other.ConfigValue, StringComparison.Ordinal) &&
-               string.Equals(EqualsValue, other.EqualsValue, StringComparison.Ordinal) &&
-               string.Equals(NotEquals, other.NotEquals, StringComparison.Ordinal);
-    }
-
-    public override bool Equals(object? obj)
-    {
-        return Equals(obj as ConditionalServiceCondition);
-    }
+    public override bool Equals(object? obj) => Equals(obj as ConditionalServiceCondition);
 
     public override int GetHashCode()
     {
         // CRITICAL FIX: Use .NET Standard 2.0 compatible hash code calculation
         unchecked
         {
-            int hash = 17;
+            var hash = 17;
             hash = hash * 23 + (Environment?.GetHashCode() ?? 0);
             hash = hash * 23 + (NotEnvironment?.GetHashCode() ?? 0);
             hash = hash * 23 + (ConfigValue?.GetHashCode() ?? 0);

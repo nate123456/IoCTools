@@ -1,8 +1,9 @@
+namespace IoCTools.Generator.Tests;
+
 using System.Diagnostics;
 using System.Text;
-using Microsoft.CodeAnalysis;
 
-namespace IoCTools.Generator.Tests;
+using Microsoft.CodeAnalysis;
 
 /// <summary>
 ///     Comprehensive tests for Lifetime Dependency Validation feature (IOC012-IOC015).
@@ -21,17 +22,17 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DatabaseContext
 {
 }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class HelperService
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class CacheService
 {
     [Inject] private readonly DatabaseContext _context;
@@ -63,12 +64,12 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DatabaseContext
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class CacheService
 {
     [Inject] private readonly DatabaseContext _context;
@@ -93,12 +94,12 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DatabaseContext
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 [DependsOn<DatabaseContext>]
 public partial class CacheService
 {
@@ -122,17 +123,17 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DatabaseContext
 {
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class HttpService
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class CacheService
 {
     [Inject] private readonly DatabaseContext _context;
@@ -155,18 +156,18 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DatabaseContext
 {
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class BaseService
 {
     [Inject] private readonly DatabaseContext _context;
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class DerivedService : BaseService
 {
 }";
@@ -191,12 +192,12 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class HelperService
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class CacheService
 {
     [Inject] private readonly HelperService _helper;
@@ -221,12 +222,12 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class HelperService
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 [DependsOn<HelperService>]
 public partial class CacheService
 {
@@ -248,17 +249,17 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class HelperService
 {
 }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class UtilityService
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class CacheService
 {
     [Inject] private readonly HelperService _helper;
@@ -277,7 +278,7 @@ public partial class CacheService
     #region IOC014: Background Service Lifetime Validation
 
     [Fact]
-    public void IOC014_BackgroundServiceWithScopedLifetime_ReportsError()
+    public void IOC014_BackgroundServiceWithScopedLifetime_NoError()
     {
         var sourceCode = @"
 using IoCTools.Abstractions.Annotations;
@@ -288,13 +289,12 @@ using System.Threading.Tasks;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class ConfigService
 {
 }
 
-[Service(Lifetime.Scoped)]
-[BackgroundService]
+[Scoped]
 public partial class EmailBackgroundService : BackgroundService
 {
     [Inject] private readonly ConfigService _config;
@@ -308,15 +308,12 @@ public partial class EmailBackgroundService : BackgroundService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC014");
 
-        Assert.Single(diagnostics);
-        Assert.Equal(DiagnosticSeverity.Error, diagnostics[0].Severity);
-        Assert.Contains("EmailBackgroundService", diagnostics[0].GetMessage());
-        Assert.Contains("Scoped", diagnostics[0].GetMessage());
-        Assert.Contains("Background services should typically be Singleton", diagnostics[0].GetMessage());
+        // No IOC014 errors for hosted services - their lifetime is managed by AddHostedService()
+        Assert.Empty(diagnostics);
     }
 
     [Fact]
-    public void IOC014_BackgroundServiceWithTransientLifetime_ReportsError()
+    public void IOC014_BackgroundServiceWithTransientLifetime_NoError()
     {
         var sourceCode = @"
 using IoCTools.Abstractions.Annotations;
@@ -327,13 +324,12 @@ using System.Threading.Tasks;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class ConfigService
 {
 }
 
-[Service(Lifetime.Transient)]
-[BackgroundService]
+[Transient]
 public partial class EmailBackgroundService : BackgroundService
 {
     [Inject] private readonly ConfigService _config;
@@ -347,9 +343,8 @@ public partial class EmailBackgroundService : BackgroundService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC014");
 
-        Assert.Single(diagnostics);
-        Assert.Equal(DiagnosticSeverity.Error, diagnostics[0].Severity);
-        Assert.Contains("Transient", diagnostics[0].GetMessage());
+        // No IOC014 errors for hosted services - their lifetime is managed by AddHostedService()
+        Assert.Empty(diagnostics);
     }
 
     [Fact]
@@ -364,8 +359,7 @@ using System.Threading.Tasks;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Singleton)]
-[BackgroundService]
+[Singleton]
 public partial class EmailBackgroundService : BackgroundService
 {
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
@@ -393,28 +387,28 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DatabaseContext
 {
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class Level1Service
 {
     [Inject] private readonly DatabaseContext _context;
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class Level2Service : Level1Service
 {
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class Level3Service : Level2Service
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class FinalService : Level3Service
 {
 }";
@@ -438,18 +432,18 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class ConfigService
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class BaseService
 {
     [Inject] private readonly ConfigService _config;
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class DerivedService : BaseService
 {
 }";
@@ -473,12 +467,12 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class ConfigService
 {
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DatabaseService
 {
     [Inject] private readonly ConfigService _config;
@@ -503,12 +497,12 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DatabaseService
 {
 }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class ProcessorService
 {
     [Inject] private readonly DatabaseService _db;
@@ -533,12 +527,12 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class ConfigService
 {
 }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class ProcessorService
 {
     [Inject] private readonly ConfigService _config;
@@ -559,7 +553,7 @@ public partial class ProcessorService
     #region Lifetime Validation with [ExternalService] (Should Skip Validation)
 
     [Fact]
-    public void ExternalService_ServiceAttribute_SkipsLifetimeValidation()
+    public void ExternalService_WithLifetimeAttributes_SkipsLifetimeValidation()
     {
         var sourceCode = @"
 using IoCTools.Abstractions.Annotations;
@@ -567,12 +561,12 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DatabaseContext
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 [ExternalService]
 public partial class CacheService
 {
@@ -594,12 +588,12 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DatabaseContext
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class CacheService
 {
     [Inject]
@@ -630,12 +624,12 @@ public interface IRepository<T>
 {
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class Repository<T> : IRepository<T>
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class CacheService
 {
     [Inject] private readonly IRepository<string> _repository;
@@ -671,12 +665,12 @@ public interface IRepository<T> where T : IEntity
 {
 }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class Repository<T> : IRepository<T> where T : IEntity
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class CacheService
 {
     [Inject] private readonly IRepository<User> _userRepository;
@@ -706,7 +700,7 @@ public interface IServiceA
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class ServiceA : IServiceA
 {
     [Inject] private readonly IServiceA _self;
@@ -742,13 +736,13 @@ public interface IServiceB
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class ServiceA : IServiceA
 {
     [Inject] private readonly IServiceB _serviceB;
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class ServiceB : IServiceB
 {
     [Inject] private readonly IServiceA _serviceA;
@@ -772,23 +766,23 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DatabaseContext
 {
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class BaseProcessor<T>
 {
     [Inject] private readonly DatabaseContext _context;
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class MiddleProcessor<T> : BaseProcessor<T>
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class ConcreteProcessor : MiddleProcessor<string>
 {
 }";
@@ -816,12 +810,12 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DatabaseContext
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class CacheService
 {
     [Inject] private readonly DatabaseContext _context;
@@ -846,12 +840,12 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DatabaseContext
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class CacheService
 {
     [Inject] private readonly DatabaseContext _context;
@@ -878,12 +872,12 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DatabaseContext
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class CacheService
 {
     [Inject] private readonly DatabaseContext _context;
@@ -912,12 +906,12 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class HelperService
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class CacheService
 {
     [Inject] private readonly HelperService _helper;
@@ -938,7 +932,7 @@ public partial class CacheService
     }
 
     [Fact]
-    public void DiagnosticMessageFormat_IOC014_ContainsRequiredInformation()
+    public void DiagnosticMessageFormat_IOC014_NoLongerGeneratedForBackgroundServices()
     {
         var sourceCode = @"
 using IoCTools.Abstractions.Annotations;
@@ -949,13 +943,12 @@ using System.Threading.Tasks;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class ConfigService
 {
 }
 
-[Service(Lifetime.Scoped)]
-[BackgroundService]
+[Scoped]
 public partial class EmailBackgroundService : BackgroundService
 {
     [Inject] private readonly ConfigService _config;
@@ -969,14 +962,8 @@ public partial class EmailBackgroundService : BackgroundService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC014");
 
-        Assert.Single(diagnostics);
-        var message = diagnostics[0].GetMessage();
-
-        // Verify message contains all required elements
-        Assert.Contains("Background service", message);
-        Assert.Contains("EmailBackgroundService", message);
-        Assert.Contains("Scoped", message);
-        Assert.Contains("Background services should typically be Singleton", message);
+        // No IOC014 errors for hosted services - their lifetime is managed by AddHostedService()
+        Assert.Empty(diagnostics);
     }
 
     [Fact]
@@ -988,18 +975,18 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DatabaseContext
 {
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class BaseService
 {
     [Inject] private readonly DatabaseContext _context;
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class DerivedService : BaseService
 {
 }";
@@ -1033,7 +1020,7 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DatabaseContext
 {
 }");
@@ -1045,7 +1032,7 @@ public partial class DatabaseContext
             var baseClass = i == 0 ? "" : $" : Level{i - 1}Service";
 
             sourceCodeBuilder.AppendLine($@"
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class {className}{baseClass}
 {{
     [Inject] private readonly DatabaseContext _context{i};
@@ -1054,7 +1041,7 @@ public partial class {className}{baseClass}
 
         // Final singleton service that should cause validation
         sourceCodeBuilder.AppendLine(@"
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class FinalService : Level49Service
 {
 }");
@@ -1096,7 +1083,7 @@ namespace TestNamespace;");
             };
 
             sourceCodeBuilder.AppendLine($@"
-[Service(Lifetime.{lifetime})]
+[{lifetime}]
 public partial class Service{i}
 {{
 }}");
@@ -1107,7 +1094,7 @@ public partial class Service{i}
         {
             var dependencyIndex = i - 200;
             sourceCodeBuilder.AppendLine($@"
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class SingletonService{i}
 {{
     [Inject] private readonly Service{dependencyIndex} _dependency;
@@ -1146,12 +1133,12 @@ public interface IScopedService
 {
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class ScopedServiceImpl : IScopedService
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class SingletonConsumer
 {
     [Inject] private readonly IEnumerable<IScopedService> _scopedServices;
@@ -1181,12 +1168,12 @@ public interface ITransientService
 {
 }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class TransientServiceImpl : ITransientService
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class SingletonConsumer
 {
     [Inject] private readonly IEnumerable<ITransientService> _transientServices;
@@ -1220,17 +1207,17 @@ public interface ITransientService
 {
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class ScopedServiceImpl : IScopedService
 {
 }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class TransientServiceImpl : ITransientService
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class SingletonConsumer
 {
     [Inject] private readonly IEnumerable<IScopedService> _scopedServices;
@@ -1263,22 +1250,22 @@ public interface INotificationService
 {
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class EmailNotificationService : INotificationService
 {
 }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class SmsNotificationService : INotificationService
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class PushNotificationService : INotificationService
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class NotificationManager
 {
     [Inject] private readonly IEnumerable<INotificationService> _notificationServices;
@@ -1311,12 +1298,12 @@ public interface IRepository<T>
 {
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class Repository<T> : IRepository<T>
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class RepositoryManager
 {
     [Inject] private readonly IEnumerable<IRepository<string>> _stringRepositories;
@@ -1351,18 +1338,17 @@ public interface IProcessor
 {
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class ScopedProcessor : IProcessor
 {
 }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class TransientProcessor : IProcessor
 {
 }
 
-[Service(Lifetime.Singleton)]
-[BackgroundService]
+[Singleton]
 public partial class ProcessingBackgroundService : BackgroundService
 {
     [Inject] private readonly IEnumerable<IProcessor> _processors;
@@ -1398,23 +1384,23 @@ public interface IHandler
 {
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class ScopedHandler : IHandler
 {
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class BaseProcessor
 {
     [Inject] private readonly IEnumerable<IHandler> _handlers;
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class MiddleProcessor : BaseProcessor
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class FinalProcessor : MiddleProcessor
 {
 }";
@@ -1443,12 +1429,12 @@ public interface INestedService
 {
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class NestedServiceImpl : INestedService
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class NestedCollectionConsumer
 {
     [Inject] private readonly IEnumerable<IEnumerable<INestedService>> _nestedServices;
@@ -1488,12 +1474,12 @@ public interface ILazyService
 {
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class LazyServiceImpl : ILazyService
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class LazyCollectionConsumer
 {
     [Inject] private readonly Lazy<IEnumerable<ILazyService>> _lazyServices;
@@ -1522,12 +1508,12 @@ public interface IDependsOnService
 {
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DependsOnServiceImpl : IDependsOnService
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 [DependsOn<IEnumerable<IDependsOnService>>]
 public partial class DependsOnCollectionConsumer
 {
@@ -1560,24 +1546,24 @@ public interface IScopedCollectionService
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class SingletonServiceImpl : ISingletonCollectionService
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class ScopedServiceImpl : IScopedCollectionService
 {
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class ScopedConsumer
 {
     [Inject] private readonly IEnumerable<ISingletonCollectionService> _singletonServices;
     [Inject] private readonly IEnumerable<IScopedCollectionService> _scopedServices;
 }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class TransientConsumer
 {
     [Inject] private readonly IEnumerable<ISingletonCollectionService> _singletonServices;
@@ -1595,7 +1581,7 @@ public partial class TransientConsumer
     }
 
     [Fact]
-    public void IEnumerable_ExternalServiceAttribute_SkipsValidation()
+    public void IEnumerable_WithExternalService_SkipsValidation()
     {
         var sourceCode = @"
 using IoCTools.Abstractions.Annotations;
@@ -1608,12 +1594,12 @@ public interface IExternalCollectionService
 {
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class ExternalServiceImpl : IExternalCollectionService
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 [ExternalService]
 public partial class ExternalCollectionConsumer
 {
@@ -1627,7 +1613,7 @@ public partial class ExternalCollectionConsumer
     }
 
     [Fact]
-    public void IEnumerable_FieldExternalServiceAttribute_SkipsValidation()
+    public void IEnumerable_WithFieldExternalService_SkipsValidation()
     {
         var sourceCode = @"
 using IoCTools.Abstractions.Annotations;
@@ -1640,12 +1626,12 @@ public interface IFieldExternalService
 {
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class FieldExternalServiceImpl : IFieldExternalService
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class FieldExternalConsumer
 {
     [Inject]
@@ -1681,12 +1667,12 @@ public interface IConstrainedRepository<T> where T : IEntity
 {
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class ConstrainedRepository<T> : IConstrainedRepository<T> where T : IEntity
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class ConstrainedRepositoryManager
 {
     [Inject] private readonly IEnumerable<IConstrainedRepository<User>> _userRepositories;
@@ -1720,14 +1706,14 @@ public interface IService{i}
 {{
 }}
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class Service{i}Impl : IService{i}
 {{
 }}");
 
         // Create a singleton service that depends on collections of all services
         sourceCodeBuilder.AppendLine(@"
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class MassiveCollectionConsumer
 {");
 

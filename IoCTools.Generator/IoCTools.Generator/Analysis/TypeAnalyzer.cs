@@ -1,9 +1,10 @@
+namespace IoCTools.Generator.Analysis;
+
 using System.Collections.Generic;
 using System.Linq;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-
-namespace IoCTools.Generator.Analysis;
 
 internal static class TypeAnalyzer
 {
@@ -33,24 +34,22 @@ internal static class TypeAnalyzer
                 var classSymbol = semanticModel.GetDeclaredSymbol(classDeclaration) as INamedTypeSymbol;
                 if (classSymbol == null) continue;
 
-                var hasServiceAttribute = classSymbol.GetAttributes()
-                    .Any(attr =>
-                        attr.AttributeClass?.ToDisplayString() == "IoCTools.Abstractions.Annotations.ServiceAttribute");
-
                 // Collect services with attributes for processing
                 if (HasRelevantAttributes(classSymbol)) servicesWithAttributes.Add(classSymbol);
 
-                // Get service lifetime if it has [Service] attribute
+                // Get service lifetime
                 string? serviceLifetime = null;
                 // Check for ExternalService attribute - external services should be treated as valid dependencies
                 var hasExternalServiceAttribute = classSymbol.GetAttributes()
                     .Any(attr =>
                         attr.AttributeClass?.ToDisplayString() ==
                         "IoCTools.Abstractions.Annotations.ExternalServiceAttribute");
-                if (hasServiceAttribute || hasExternalServiceAttribute)
-                    serviceLifetime = GetServiceLifetime(classSymbol);
 
-                // Check for ExternalService attribute - external services should be treated as valid dependencies
+                // Check for service inference indicators using intelligent inference
+                var hasServiceIndicators = HasServiceInferenceIndicators(classSymbol);
+
+                if (hasServiceIndicators || hasExternalServiceAttribute)
+                    serviceLifetime = GetServiceLifetime(classSymbol);
 
                 // Collect all implementations for validation
                 foreach (var interfaceSymbol in classSymbol.AllInterfaces)
@@ -60,7 +59,7 @@ internal static class TypeAnalyzer
                         allImplementations[interfaceDisplayString] = new List<INamedTypeSymbol>();
                     allImplementations[interfaceDisplayString].Add(classSymbol);
 
-                    if (hasServiceAttribute || hasExternalServiceAttribute)
+                    if (hasServiceIndicators || hasExternalServiceAttribute)
                     {
                         allRegisteredServices.Add(interfaceDisplayString);
                         if (serviceLifetime != null) serviceLifetimes[interfaceDisplayString] = serviceLifetime;
@@ -99,8 +98,8 @@ internal static class TypeAnalyzer
                     }
                 }
 
-                // Also track the class itself if it has [Service] or [ExternalService] attribute
-                if (hasServiceAttribute || hasExternalServiceAttribute)
+                // Also track the class itself if it has service indicators or [ExternalService] attribute
+                if (hasServiceIndicators || hasExternalServiceAttribute)
                 {
                     var classDisplayString = classSymbol.ToDisplayString();
                     allRegisteredServices.Add(classDisplayString);
@@ -128,36 +127,64 @@ internal static class TypeAnalyzer
     }
 
     /// <summary>
-    ///     Gets the service lifetime for a class symbol
+    ///     Gets the service lifetime for a class symbol using individual lifetime attributes
     /// </summary>
     private static string GetServiceLifetime(INamedTypeSymbol classSymbol)
     {
-        var serviceAttribute = classSymbol.GetAttributes()
-            .FirstOrDefault(attr => attr.AttributeClass?.ToDisplayString() ==
-                                    "IoCTools.Abstractions.Annotations.ServiceAttribute");
+        // Check for individual lifetime attributes
+        var hasScopedAttribute = classSymbol.GetAttributes().Any(attr =>
+            attr.AttributeClass?.ToDisplayString() == "IoCTools.Abstractions.Annotations.ScopedAttribute");
+        var hasSingletonAttribute = classSymbol.GetAttributes().Any(attr =>
+            attr.AttributeClass?.ToDisplayString() == "IoCTools.Abstractions.Annotations.SingletonAttribute");
+        var hasTransientAttribute = classSymbol.GetAttributes().Any(attr =>
+            attr.AttributeClass?.ToDisplayString() == "IoCTools.Abstractions.Annotations.TransientAttribute");
 
-        if (serviceAttribute == null) return "Scoped"; // Default
-
-        // Check constructor arguments for lifetime
-        if (serviceAttribute.ConstructorArguments.Length > 0)
-        {
-            var lifetimeValue = serviceAttribute.ConstructorArguments[0].Value;
-            if (lifetimeValue != null)
-            {
-                // Convert enum value to string name
-                var lifetimeInt = (int)lifetimeValue;
-                return lifetimeInt switch
-                {
-                    0 => "Scoped",
-                    1 => "Transient",
-                    2 => "Singleton",
-                    _ => "Scoped" // Default fallback
-                };
-            }
-        }
+        // Return the corresponding lifetime based on which attribute is present
+        if (hasSingletonAttribute) return "Singleton";
+        if (hasTransientAttribute) return "Transient";
+        if (hasScopedAttribute) return "Scoped";
 
         // Default lifetime is Scoped
         return "Scoped";
+    }
+
+    /// <summary>
+    ///     Checks if a class has service inference indicators
+    /// </summary>
+    private static bool HasServiceInferenceIndicators(INamedTypeSymbol classSymbol)
+    {
+        // CRITICAL: Check for individual lifetime attributes - primary service registration mechanism
+        var hasScopedAttribute = classSymbol.GetAttributes().Any(attr =>
+            attr.AttributeClass?.ToDisplayString() == "IoCTools.Abstractions.Annotations.ScopedAttribute");
+        var hasSingletonAttribute = classSymbol.GetAttributes().Any(attr =>
+            attr.AttributeClass?.ToDisplayString() == "IoCTools.Abstractions.Annotations.SingletonAttribute");
+        var hasTransientAttribute = classSymbol.GetAttributes().Any(attr =>
+            attr.AttributeClass?.ToDisplayString() == "IoCTools.Abstractions.Annotations.TransientAttribute");
+        var hasLifetimeAttribute = hasScopedAttribute || hasSingletonAttribute || hasTransientAttribute;
+
+        var hasConditionalServiceAttribute = classSymbol.GetAttributes().Any(attr =>
+            attr.AttributeClass?.ToDisplayString() == "IoCTools.Abstractions.Annotations.ConditionalServiceAttribute");
+
+        var hasInjectFields = classSymbol.GetMembers().OfType<IFieldSymbol>()
+            .Any(field => field.GetAttributes().Any(attr => attr.AttributeClass?.Name == "InjectAttribute"));
+
+        var hasInjectConfigurationFields = classSymbol.GetMembers().OfType<IFieldSymbol>()
+            .Any(field =>
+                field.GetAttributes().Any(attr => attr.AttributeClass?.Name == "InjectConfigurationAttribute"));
+
+        var hasDependsOnAttribute = classSymbol.GetAttributes()
+            .Any(attr => attr.AttributeClass?.Name?.StartsWith("DependsOn") == true);
+
+        var hasRegisterAsAllAttribute = classSymbol.GetAttributes()
+            .Any(attr => attr.AttributeClass?.Name == "RegisterAsAllAttribute");
+        var hasRegisterAsAttribute = classSymbol.GetAttributes().Any(attr =>
+            attr.AttributeClass?.Name?.StartsWith("RegisterAsAttribute") == true &&
+            attr.AttributeClass?.IsGenericType == true);
+        var isHostedService = IsAssignableFromIHostedService(classSymbol);
+
+        return hasLifetimeAttribute || hasConditionalServiceAttribute || hasInjectFields ||
+               hasInjectConfigurationFields ||
+               hasDependsOnAttribute || hasRegisterAsAllAttribute || hasRegisterAsAttribute || isHostedService;
     }
 
     /// <summary>
@@ -170,12 +197,12 @@ internal static class TypeAnalyzer
 
         // Check for explicit attributes first
         var hasAttributes = type.GetAttributes().Any(attr =>
-            attr.AttributeClass?.Name == "ServiceAttribute" ||
+            attr.AttributeClass?.Name == "ScopedAttribute" ||
+            attr.AttributeClass?.Name == "SingletonAttribute" ||
+            attr.AttributeClass?.Name == "TransientAttribute" ||
             attr.AttributeClass?.Name == "InjectAttribute" ||
             attr.AttributeClass?.Name == "InjectConfigurationAttribute" ||
             attr.AttributeClass?.Name == "DependsOnAttribute" ||
-            attr.AttributeClass?.Name == "UnregisteredServiceAttribute" ||
-            attr.AttributeClass?.Name == "BackgroundServiceAttribute" ||
             attr.AttributeClass?.Name == "RegisterAsAllAttribute" ||
             attr.AttributeClass?.Name == "ExternalServiceAttribute" ||
             attr.AttributeClass?.Name == "ConditionalServiceAttribute" ||
@@ -202,12 +229,34 @@ internal static class TypeAnalyzer
                         return true;
                 }
 
-        // Also consider BackgroundService inheritance as relevant for service registration
-        var currentServiceType = type;
-        while (currentServiceType != null)
+        // Also consider any IHostedService assignable type as relevant for service registration
+        if (IsAssignableFromIHostedService(type)) return true;
+
+        return false;
+    }
+
+    /// <summary>
+    ///     Determines if a type is assignable from IHostedService (either directly implements it or inherits from a class that
+    ///     does)
+    /// </summary>
+    public static bool IsAssignableFromIHostedService(INamedTypeSymbol type)
+    {
+        // Check if type directly implements IHostedService
+        if (type.Interfaces.Any(i => i.ToDisplayString() == "Microsoft.Extensions.Hosting.IHostedService")) return true;
+
+        // Check inheritance chain for IHostedService implementations
+        // This covers BackgroundService and any other custom base classes that implement IHostedService
+        var currentType = type.BaseType;
+        while (currentType != null && currentType.SpecialType != SpecialType.System_Object)
         {
-            if (currentServiceType.ToDisplayString() == "Microsoft.Extensions.Hosting.BackgroundService") return true;
-            currentServiceType = currentServiceType.BaseType;
+            // Check if this base class implements IHostedService
+            if (currentType.Interfaces.Any(i => i.ToDisplayString() == "Microsoft.Extensions.Hosting.IHostedService"))
+                return true;
+
+            // Special case: BackgroundService is a well-known implementation of IHostedService
+            if (currentType.ToDisplayString() == "Microsoft.Extensions.Hosting.BackgroundService") return true;
+
+            currentType = currentType.BaseType;
         }
 
         return false;

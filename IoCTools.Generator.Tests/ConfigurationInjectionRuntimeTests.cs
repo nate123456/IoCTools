@@ -1,8 +1,8 @@
+namespace IoCTools.Generator.Tests;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-
-namespace IoCTools.Generator.Tests;
 
 /// <summary>
 ///     COMPREHENSIVE CONFIGURATION INJECTION RUNTIME TESTS
@@ -75,7 +75,6 @@ public class ConfigurationInjectionRuntimeTests
             ["Email:SmtpPort"] = "587",
             ["Email:ApiKey"] = "test-api-key-12345",
             ["Email:EnableSsl"] = "true",
-
             ["Database:CommandTimeout"] = "30",
             ["Database:EnableRetry"] = "true",
             ["Database:MaxPoolSize"] = "100",
@@ -271,8 +270,6 @@ using IoCTools.Abstractions.Annotations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
-
-[Service]
 public partial class DirectValueService
 {
     [InjectConfiguration(""Database:ConnectionString"")] private readonly string _connectionString;
@@ -344,8 +341,6 @@ public class DatabaseSettings
     public bool EnableRetry { get; set; }
     public int MaxPoolSize { get; set; }
 }
-
-[Service]
 public partial class SectionBindingService
 {
     [InjectConfiguration] private readonly EmailSettings _emailSettings;
@@ -429,8 +424,6 @@ public class DatabaseSettings
     public int CommandTimeout { get; set; }
     public bool EnableRetry { get; set; }
 }
-
-[Service]
 public partial class OptionsPatternService
 {
     [InjectConfiguration] private readonly IOptions<EmailSettings> _emailOptions;

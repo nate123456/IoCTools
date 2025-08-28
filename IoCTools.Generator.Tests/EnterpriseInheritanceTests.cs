@@ -1,7 +1,8 @@
-using System.Text.RegularExpressions;
-using Microsoft.CodeAnalysis;
-
 namespace IoCTools.Generator.Tests;
+
+using System.Text.RegularExpressions;
+
+using Microsoft.CodeAnalysis;
 
 /// <summary>
 ///     ENTERPRISE INHERITANCE TESTS - COMPREHENSIVE MULTI-LEVEL INHERITANCE SCENARIOS
@@ -25,21 +26,21 @@ public interface ILevel1Service { }
 public interface ILevel2Service { }
 public interface ILevel3Service { }
 
-[UnregisteredService]
+[Scoped]
 [DependsOn<ILevel1Service>]
 public abstract partial class Level1Base
 {
     [Inject] protected readonly string _level1String;
 }
 
-[UnregisteredService]
+[Scoped]
 [DependsOn<ILevel2Service>]
 public abstract partial class Level2Middle : Level1Base
 {
     [Inject] protected readonly int _level2Int;
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 [DependsOn<ILevel3Service>]
 public partial class Level3Final : Level2Middle
 {
@@ -103,33 +104,29 @@ public interface IService1 { }
 public interface IService2 { }
 public interface IService3 { }
 
-[UnregisteredService]
 public abstract partial class Level1<T> where T : class
 {
     [Inject] protected readonly IRepo<T> _repo;
 }
 
-[UnregisteredService]
 [DependsOn<IService1>]
 public abstract partial class Level2<T> : Level1<T> where T : class
 {
     [Inject] protected readonly IValidator<T> _validator;
 }
 
-[UnregisteredService]
 [DependsOn<IService2, IService3>]
 public abstract partial class Level3<T> : Level2<T> where T : class
 {
     [Inject] protected readonly IList<T> _items;
 }
 
-[UnregisteredService]
 public abstract partial class Level4 : Level3<string>
 {
     [Inject] protected readonly TimeSpan _timeout;
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class Level5Concrete : Level4
 {
     [Inject] private readonly DateTime _created;
@@ -187,7 +184,6 @@ public interface IMiddleService { }
 public interface IFinalService { }
 
 // Root of diamond
-[UnregisteredService]
 [DependsOn<IBaseService>]
 public abstract partial class DiamondRoot
 {
@@ -195,7 +191,6 @@ public abstract partial class DiamondRoot
 }
 
 // Left branch
-[UnregisteredService]
 [DependsOn<ILeftService>]
 public abstract partial class LeftBranch : DiamondRoot
 {
@@ -203,7 +198,6 @@ public abstract partial class LeftBranch : DiamondRoot
 }
 
 // Right branch
-[UnregisteredService]
 [DependsOn<IRightService>]
 public abstract partial class RightBranch : DiamondRoot
 {
@@ -211,7 +205,6 @@ public abstract partial class RightBranch : DiamondRoot
 }
 
 // Middle converger - inherits from left but also has right functionality
-[UnregisteredService]
 [DependsOn<IMiddleService>]
 public abstract partial class MiddleConverger : LeftBranch
 {
@@ -219,7 +212,7 @@ public abstract partial class MiddleConverger : LeftBranch
 }
 
 // Final diamond point - complex convergence
-[Service]
+
 [DependsOn<IFinalService>]
 public partial class DiamondFinal : MiddleConverger
 {
@@ -265,9 +258,9 @@ public partial class DiamondFinal : MiddleConverger
     }
 
     [Fact]
-    public void Enterprise_MixedServiceAttributes_ServiceInheritingFromUnregistered()
+    public void Enterprise_MixedLifetimeAttributes_ServiceInheritingFromUnmanaged()
     {
-        // Arrange - [Service] inheriting from [UnregisteredService] with complex patterns
+        // Arrange - Service inheriting from unregistered base classes with complex patterns
         var source = @"
 using IoCTools.Abstractions.Annotations;
 using IoCTools.Abstractions.Enumerations;
@@ -280,7 +273,6 @@ public interface IUtilityService { }
 public interface IBusinessService { }
 public interface IDomainService { }
 
-[UnregisteredService] // Base utility - not registered
 [DependsOn<IUtilityService>]
 public abstract partial class UtilityBase
 {
@@ -288,7 +280,6 @@ public abstract partial class UtilityBase
     [Inject] protected readonly string _connectionString;
 }
 
-[UnregisteredService] // Business layer - not registered  
 [DependsOn<IBusinessService>]
 public abstract partial class BusinessLayer : UtilityBase
 {
@@ -296,7 +287,7 @@ public abstract partial class BusinessLayer : UtilityBase
     [Inject] protected readonly int _retryCount;
 }
 
-[Service(Lifetime.Transient)] // Domain service - registered
+[Transient] // Domain service - registered
 [DependsOn<IDomainService>]
 public partial class DomainService : BusinessLayer
 {
@@ -305,7 +296,7 @@ public partial class DomainService : BusinessLayer
 }
 
 // Additional concrete service inheriting same chain
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class AlternateDomainService : BusinessLayer
 {
     [Inject] private readonly decimal _version;
@@ -360,7 +351,8 @@ public partial class AlternateDomainService : BusinessLayer
 
         Assert.Contains("services.AddTransient<global::Test.DomainService, global::Test.DomainService>()",
             registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.AlternateDomainService, global::Test.AlternateDomainService>()",
+        Assert.Contains(
+            "services.AddScoped<global::Test.AlternateDomainService, global::Test.AlternateDomainService>()",
             registrationSource.Content);
         Assert.DoesNotContain("UtilityBase>", registrationSource.Content);
         Assert.DoesNotContain("BusinessLayer>", registrationSource.Content);
@@ -383,7 +375,6 @@ public interface IRepository<TEntity, TKey> where TEntity : class, IEntity where
 public interface IValidator<T> where T : class { }
 public interface IMapper<TSource, TTarget> { }
 
-[UnregisteredService]
 public abstract partial class GenericBase<TEntity, TKey> 
     where TEntity : class, IEntity, new()
     where TKey : class, IKey
@@ -392,15 +383,12 @@ public abstract partial class GenericBase<TEntity, TKey>
     [Inject] protected readonly IValidator<TEntity> _validator;
 }
 
-[UnregisteredService]
 public abstract partial class GenericMiddle<TEntity> : GenericBase<TEntity, StringKey>
     where TEntity : class, IEntity, new()
 {
     [Inject] protected readonly IEnumerable<TEntity> _entities;
     [Inject] protected readonly IMapper<TEntity, string> _mapper;
 }
-
-[Service]
 public partial class ConcreteService : GenericMiddle<MyEntity>
 {
     [Inject] private readonly DateTime _created;
@@ -464,49 +452,48 @@ public interface IScopedService { }
 public interface ITransientService { }
 
 // Actual service implementations with proper lifetime attributes
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class SingletonServiceImpl : ISingletonService
 {
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class ScopedServiceImpl : IScopedService
 {
 }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class TransientServiceImpl : ITransientService
 {
 }
 
 // Singleton service depending on Scoped - should trigger IOC012
-[Service(Lifetime.Singleton)]
+[Singleton]
 [DependsOn<IScopedService>] // This should cause IOC012 error (direct dependency)
 public partial class ProblematicSingletonService
 {
 }
 
 // Proper hierarchy - compatible lifetimes
-[Service(Lifetime.Scoped)]
+[Scoped]
 [DependsOn<ISingletonService>] // OK - Scoped can depend on Singleton
 public partial class ValidScopedService
 {
 }
 
-[Service(Lifetime.Transient)]  
+[Transient]  
 [DependsOn<ISingletonService, IScopedService>] // OK - Transient can depend on both
 public partial class ValidTransientService
 {
 }
 
 // Inheritance chain with lifetime conflicts
-[UnregisteredService]
 [DependsOn<IScopedService>]
 public abstract partial class BaseWithScopedDependency
 {
 }
 
-[Service(Lifetime.Singleton)] // Should trigger IOC015 - Singleton inheriting Scoped dependency
+[Singleton] // Should trigger IOC015 - Singleton inheriting Scoped dependency
 public partial class InheritedLifetimeProblem : BaseWithScopedDependency
 {
 }";
@@ -552,7 +539,6 @@ public interface IService2 { }
 public interface IService3 { }
 public interface IService4 { }
 
-[UnregisteredService]
 [DependsOn<IService1, IService2>]
 public abstract partial class Level1
 {
@@ -560,15 +546,12 @@ public abstract partial class Level1
     [Inject] protected readonly int _level1Field2;
 }
 
-[UnregisteredService]
 [DependsOn<IService3>]
 public abstract partial class Level2 : Level1
 {
     [Inject] protected readonly bool _level2Field;
     [Inject] protected readonly DateTime _level2Time;
 }
-
-[Service]
 [DependsOn<IService4>]
 public partial class Level3 : Level2
 {
@@ -643,22 +626,18 @@ public interface IBaseService { }
 public interface IMiddleService { }
 public interface IFinalService { }
 
-[UnregisteredService]
 [DependsOn<IBaseService, ISharedService>]
 public abstract partial class BaseClass
 {
     [Inject] protected readonly string _baseString;
 }
 
-[UnregisteredService]
 public abstract partial class MiddleClass : BaseClass
 {
     [Inject] protected readonly ISharedService _sharedFromInject; // Same type as DependsOn in base
     [Inject] protected readonly IMiddleService _middleService;    // Middle-specific service via Inject
     [Inject] protected readonly int _middleInt;
 }
-
-[Service]
 [DependsOn<IFinalService>]
 public partial class FinalClass : MiddleClass
 {
@@ -729,7 +708,6 @@ public class FeatureConfig
     public string LogLevel { get; set; }
 }
 
-[UnregisteredService]
 public abstract partial class ConfigurableBase
 {
     [Inject]
@@ -738,7 +716,6 @@ public abstract partial class ConfigurableBase
     [Inject] protected readonly IConfiguration _configuration;
 }
 
-[UnregisteredService]
 public abstract partial class ApiLayer : ConfigurableBase
 {
     [Inject]
@@ -746,8 +723,6 @@ public abstract partial class ApiLayer : ConfigurableBase
     
     [Inject] protected readonly string _serviceName;
 }
-
-[Service]
 public partial class FeatureService : ApiLayer
 {
     [Inject]
@@ -813,7 +788,6 @@ namespace Test;
 
 {string.Join("\n", interfaces)}
 
-[UnregisteredService]
 [DependsOn<IService1, IService2, IService3, IService4, IService5>]
 public abstract partial class Level1
 {{
@@ -822,7 +796,6 @@ public abstract partial class Level1
     [Inject] protected readonly bool _level1C;
 }}
 
-[UnregisteredService]
 [DependsOn<IService6, IService7, IService8, IService9, IService10>]
 public abstract partial class Level2 : Level1
 {{
@@ -831,7 +804,6 @@ public abstract partial class Level2 : Level1
     [Inject] protected readonly TimeSpan _level2C;
 }}
 
-[UnregisteredService]
 [DependsOn<IService11, IService12, IService13, IService14, IService15>]
 public abstract partial class Level3 : Level2
 {{
@@ -839,7 +811,6 @@ public abstract partial class Level3 : Level2
     [Inject] protected readonly float _level3B;
 }}
 
-[UnregisteredService]  
 [DependsOn<IService16, IService17, IService18, IService19, IService20>]
 public abstract partial class Level4 : Level3
 {{
@@ -847,7 +818,6 @@ public abstract partial class Level4 : Level3
     [Inject] protected readonly short _level4B;
 }}
 
-[UnregisteredService]
 [DependsOn<IService21, IService22, IService23, IService24, IService25>]
 public abstract partial class Level5 : Level4
 {{
@@ -855,14 +825,11 @@ public abstract partial class Level5 : Level4
     [Inject] protected readonly char _level5B;
 }}
 
-[UnregisteredService]
 [DependsOn<IService26, IService27, IService28, IService29, IService30>]
 public abstract partial class Level6 : Level5
 {{
     [Inject] protected readonly Guid _level6A;
 }}
-
-[Service]
 [DependsOn<IService31, IService32, IService33, IService34, IService35>]
 public partial class Level7Final : Level6
 {{

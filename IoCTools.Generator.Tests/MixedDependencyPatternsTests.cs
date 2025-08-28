@@ -1,7 +1,8 @@
-using System.Text.RegularExpressions;
-using Microsoft.CodeAnalysis;
-
 namespace IoCTools.Generator.Tests;
+
+using System.Text.RegularExpressions;
+
+using Microsoft.CodeAnalysis;
 
 /// <summary>
 ///     Tests for Mixed Dependency Patterns as documented in README.md lines 460-488
@@ -22,8 +23,6 @@ public interface IMediator { }
 public interface IOtherService { }
 public interface IAnotherService { }
 public interface ISomeService { }
-
-[Service]
 [DependsOn<IMediator>]
 public partial class MixedService : ISomeService
 {
@@ -88,14 +87,10 @@ namespace Test;
 public interface IBaseService { }
 public interface IDerivedService { }
 public interface IInjectService { }
-
-[Service]
 [DependsOn<IBaseService>]
 public abstract partial class BaseService
 {
 }
-
-[Service]
 [DependsOn<IDerivedService>]
 public partial class DerivedService : BaseService
 {
@@ -136,8 +131,6 @@ public interface IFirst { }
 public interface ISecond { }
 public interface IThird { }
 public interface IFourth { }
-
-[Service]
 [DependsOn<IFirst, ISecond>]
 public partial class OrderingTestService
 {
@@ -184,8 +177,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 public interface IConflictService { }
-
-[Service]
 [DependsOn<IConflictService>]
 public partial class ConflictService
 {

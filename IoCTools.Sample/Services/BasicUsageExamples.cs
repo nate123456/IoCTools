@@ -1,10 +1,10 @@
-using IoCTools.Abstractions.Annotations;
-using IoCTools.Abstractions.Enumerations;
+namespace IoCTools.Sample.Services;
+
+using Abstractions.Annotations;
+
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-
-namespace IoCTools.Sample.Services;
 
 // CLEAN IMPLEMENTATION MATCHING BASIC-USAGE.MD DOCUMENTATION
 
@@ -14,7 +14,7 @@ public interface IGreetingService
     string GetGreeting(string name);
 }
 
-[Service] // ← This registers the service automatically
+// ← Service registration inferred from [Inject] attribute
 public partial class GreetingService : IGreetingService
 {
     [Inject] private readonly ILogger<GreetingService> _logger; // ← Auto-injected dependency
@@ -40,10 +40,12 @@ public interface IPaymentService
 public interface IEmailService
 {
     Task SendConfirmationAsync(string email);
-    Task SendEmailAsync(string to, string subject, string body);
+
+    Task SendEmailAsync(string to,
+        string subject,
+        string body);
 }
 
-[Service]
 public partial class OrderService : IOrderService
 {
     [Inject] private readonly IEmailService _emailService;
@@ -59,7 +61,7 @@ public partial class OrderService : IOrderService
     }
 }
 
-[Service]
+[Scoped]
 public partial class PaymentService : IPaymentService
 {
     [Inject] private readonly ILogger<PaymentService> _logger;
@@ -72,7 +74,7 @@ public partial class PaymentService : IPaymentService
     }
 }
 
-[Service]
+[Scoped]
 public partial class EmailService : IEmailService
 {
     [Inject] private readonly ILogger<EmailService> _logger;
@@ -83,7 +85,9 @@ public partial class EmailService : IEmailService
         await Task.Delay(50); // Simulate sending
     }
 
-    public async Task SendEmailAsync(string to, string subject, string body)
+    public async Task SendEmailAsync(string to,
+        string subject,
+        string body)
     {
         _logger.LogInformation("Sending email to {To} with subject: {Subject}", to, subject);
         await Task.Delay(50); // Simulate sending
@@ -97,20 +101,17 @@ public interface ICacheService
         Func<T> factory);
 }
 
-[Service(Lifetime.Singleton)] // ← Override default Scoped lifetime
+[Singleton] // ← Override default Scoped lifetime
 public partial class CacheService : ICacheService
 {
     [Inject] private readonly IMemoryCache _cache;
 
     public T GetOrSet<T>(string key,
-        Func<T> factory)
-    {
-        return _cache.GetOrCreate(key, _ => factory());
-    }
+        Func<T> factory) => _cache.GetOrCreate(key, _ => factory());
 }
 
 // === 4. SERVICE WITHOUT INTERFACE ===
-[Service] // ← Registers as concrete type only
+// ← Registers as concrete type only, inferred from [Inject] attribute
 public partial class BackgroundTaskService
 {
     [Inject] private readonly IServiceProvider _serviceProvider;
@@ -128,7 +129,6 @@ public interface INotificationService
     Task SendNotificationAsync(string message);
 }
 
-[Service]
 public partial class EmailNotificationService : INotificationService
 {
     [Inject] private readonly ILogger<EmailNotificationService> _logger;
@@ -140,7 +140,6 @@ public partial class EmailNotificationService : INotificationService
     }
 }
 
-[Service]
 public partial class SmsNotificationService : INotificationService
 {
     [Inject] private readonly ILogger<SmsNotificationService> _logger;
@@ -157,7 +156,6 @@ public interface IAdvancedInjectionService
     Task DemonstrateAdvancedPatternsAsync();
 }
 
-[Service]
 public partial class AdvancedInjectionService : IAdvancedInjectionService
 {
     // Cache service for demonstration

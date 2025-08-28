@@ -1,17 +1,18 @@
-using IoCTools.Abstractions.Annotations;
-using IoCTools.Abstractions.Enumerations;
-using Microsoft.Extensions.Logging;
+namespace IoCTools.Sample.Services;
+
 using System.Text.RegularExpressions;
 
-namespace IoCTools.Sample.Services;
+using Abstractions.Annotations;
+
+using Microsoft.Extensions.Logging;
 
 // === TRANSIENT SERVICE EXAMPLES ===
 // Transient services are created each time they are requested from the DI container
 // Perfect for stateless operations like validation, transformation, and generation
 
 /// <summary>
-/// Email validation service - perfect candidate for Transient lifetime
-/// Stateless operation that doesn't need to maintain state between calls
+///     Email validation service - perfect candidate for Transient lifetime
+///     Stateless operation that doesn't need to maintain state between calls
 /// </summary>
 public interface IEmailValidator
 {
@@ -19,17 +20,16 @@ public interface IEmailValidator
     EmailValidationResult ValidateWithDetails(string email);
 }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class EmailValidator : IEmailValidator
 {
-    [Inject] private readonly ILogger<EmailValidator> _logger;
-
     private static readonly Regex EmailRegex = new(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", RegexOptions.Compiled);
+    [Inject] private readonly ILogger<EmailValidator> _logger;
 
     public bool IsValid(string email)
     {
         if (string.IsNullOrWhiteSpace(email)) return false;
-        
+
         var isValid = EmailRegex.IsMatch(email);
         _logger.LogDebug("Email validation for {Email}: {IsValid}", email, isValid);
         return isValid;
@@ -38,7 +38,7 @@ public partial class EmailValidator : IEmailValidator
     public EmailValidationResult ValidateWithDetails(string email)
     {
         _logger.LogInformation("Performing detailed email validation for: {Email}", email);
-        
+
         if (string.IsNullOrWhiteSpace(email))
             return new EmailValidationResult(false, "Email cannot be empty");
 
@@ -56,23 +56,29 @@ public partial class EmailValidator : IEmailValidator
 }
 
 /// <summary>
-/// Data transformation service - another excellent Transient candidate
-/// Performs stateless transformations without maintaining any state
+///     Data transformation service - another excellent Transient candidate
+///     Performs stateless transformations without maintaining any state
 /// </summary>
 public interface IDataTransformer
 {
-    T Transform<T>(T input, Func<T, T> transformer);
+    T Transform<T>(T input,
+        Func<T, T> transformer);
+
     string NormalizeText(string text);
-    decimal CalculatePercentage(decimal value, decimal total);
+
+    decimal CalculatePercentage(decimal value,
+        decimal total);
+
     Dictionary<string, object> TransformToDictionary<T>(T obj);
 }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class DataTransformer : IDataTransformer
 {
     [Inject] private readonly ILogger<DataTransformer> _logger;
 
-    public T Transform<T>(T input, Func<T, T> transformer)
+    public T Transform<T>(T input,
+        Func<T, T> transformer)
     {
         _logger.LogDebug("Transforming object of type {Type}", typeof(T).Name);
         return transformer(input);
@@ -83,7 +89,7 @@ public partial class DataTransformer : IDataTransformer
         if (string.IsNullOrWhiteSpace(text)) return string.Empty;
 
         _logger.LogDebug("Normalizing text of length {Length}", text.Length);
-        
+
         return text.Trim()
             .ToLowerInvariant()
             .Replace("  ", " ") // Remove double spaces
@@ -92,7 +98,8 @@ public partial class DataTransformer : IDataTransformer
             .Replace("\n", " ");
     }
 
-    public decimal CalculatePercentage(decimal value, decimal total)
+    public decimal CalculatePercentage(decimal value,
+        decimal total)
     {
         if (total == 0)
         {
@@ -100,7 +107,7 @@ public partial class DataTransformer : IDataTransformer
             return 0;
         }
 
-        var percentage = (value / total) * 100;
+        var percentage = value / total * 100;
         _logger.LogDebug("Calculated percentage: {Value}/{Total} = {Percentage}%", value, total, percentage);
         return Math.Round(percentage, 2);
     }
@@ -108,7 +115,7 @@ public partial class DataTransformer : IDataTransformer
     public Dictionary<string, object> TransformToDictionary<T>(T obj)
     {
         _logger.LogDebug("Transforming {Type} to dictionary", typeof(T).Name);
-        
+
         if (obj == null) return new Dictionary<string, object>();
 
         return typeof(T).GetProperties()
@@ -117,9 +124,9 @@ public partial class DataTransformer : IDataTransformer
 }
 
 /// <summary>
-/// Request processor - ideal for Transient lifetime
-/// Processes individual requests without maintaining state
-/// Each request should get a fresh instance
+///     Request processor - ideal for Transient lifetime
+///     Processes individual requests without maintaining state
+///     Each request should get a fresh instance
 /// </summary>
 public interface IRequestProcessor
 {
@@ -128,23 +135,23 @@ public interface IRequestProcessor
     Task<BatchRequestProcessingResult> ProcessBatchAsync(IEnumerable<ProcessingRequest> requests);
 }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class RequestProcessor : IRequestProcessor
 {
-    [Inject] private readonly ILogger<RequestProcessor> _logger;
     [Inject] private readonly IDataTransformer _dataTransformer;
     [Inject] private readonly IEmailValidator _emailValidator;
+    [Inject] private readonly ILogger<RequestProcessor> _logger;
 
     public async Task<RequestProcessingResult> ProcessAsync(ProcessingRequest request)
     {
-        _logger.LogInformation("Processing request {RequestId} of type {Type}", 
+        _logger.LogInformation("Processing request {RequestId} of type {Type}",
             request.Id, request.Type);
 
         // Simulate processing work
         await Task.Delay(50);
 
         var normalizedData = _dataTransformer.NormalizeText(request.Data);
-        
+
         return new RequestProcessingResult(
             request.Id,
             true,
@@ -158,13 +165,11 @@ public partial class RequestProcessor : IRequestProcessor
 
         // Use injected validator (also Transient)
         if (request.Type == "email" && !_emailValidator.IsValid(request.Data))
-        {
             return new RequestProcessingResult(
                 request.Id,
                 false,
                 "Email validation failed",
                 request.Data);
-        }
 
         return await ProcessAsync(request);
     }
@@ -182,7 +187,7 @@ public partial class RequestProcessor : IRequestProcessor
         {
             var result = await ProcessWithValidationAsync(request);
             results.Add(result);
-            
+
             if (result.Success) successful++;
             else failed++;
         }
@@ -192,8 +197,8 @@ public partial class RequestProcessor : IRequestProcessor
 }
 
 /// <summary>
-/// GUID generator - perfect example of when to use Transient
-/// Stateless, lightweight, should create fresh instance each time
+///     GUID generator - perfect example of when to use Transient
+///     Stateless, lightweight, should create fresh instance each time
 /// </summary>
 public interface IGuidGenerator
 {
@@ -203,7 +208,7 @@ public interface IGuidGenerator
     string NewShortId(int length = 8);
 }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class GuidGenerator : IGuidGenerator
 {
     [Inject] private readonly ILogger<GuidGenerator> _logger;
@@ -218,7 +223,7 @@ public partial class GuidGenerator : IGuidGenerator
     public string NewGuidString(GuidFormat format = GuidFormat.Default)
     {
         var guid = NewGuid();
-        
+
         return format switch
         {
             GuidFormat.Default => guid.ToString(),
@@ -232,11 +237,8 @@ public partial class GuidGenerator : IGuidGenerator
     public IEnumerable<Guid> GenerateBatch(int count)
     {
         _logger.LogDebug("Generating batch of {Count} GUIDs", count);
-        
-        for (int i = 0; i < count; i++)
-        {
-            yield return NewGuid();
-        }
+
+        for (var i = 0; i < count; i++) yield return NewGuid();
     }
 
     public string NewShortId(int length = 8)
@@ -246,15 +248,15 @@ public partial class GuidGenerator : IGuidGenerator
             .Replace("/", "_")
             .Replace("+", "-")
             .Substring(0, Math.Min(length, 22));
-            
+
         _logger.LogTrace("Generated short ID: {ShortId}", shortId);
         return shortId;
     }
 }
 
 /// <summary>
-/// Comparison service - demonstrates Transient services with dependencies
-/// Shows how Transient services can depend on other services of different lifetimes
+///     Comparison service - demonstrates Transient services with dependencies
+///     Shows how Transient services can depend on other services of different lifetimes
 /// </summary>
 public interface ILifetimeComparisonService
 {
@@ -263,15 +265,15 @@ public interface ILifetimeComparisonService
     ServiceLifetimeInfo GetServiceInfo();
 }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class LifetimeComparisonService : ILifetimeComparisonService
 {
-    [Inject] private readonly ILogger<LifetimeComparisonService> _logger;
+    [Inject] private readonly ICacheService _cacheService; // Transient -> Singleton
+    [Inject] private readonly IEmailService _emailService; // Transient -> Scoped
     [Inject] private readonly IGuidGenerator _guidGenerator; // Transient -> Transient
-    [Inject] private readonly ICacheService _cacheService;   // Transient -> Singleton
-    [Inject] private readonly IEmailService _emailService;  // Transient -> Scoped
 
     private readonly string _instanceId = Guid.NewGuid().ToString("N")[..8];
+    [Inject] private readonly ILogger<LifetimeComparisonService> _logger;
 
     public async Task DemonstrateTransientBehaviorAsync()
     {
@@ -281,7 +283,7 @@ public partial class LifetimeComparisonService : ILifetimeComparisonService
         // Each call to a Transient service creates a new instance
         var guid1 = _guidGenerator.NewGuid();
         var guid2 = _guidGenerator.NewGuid();
-        
+
         _logger.LogInformation("Generated GUIDs from Transient service: {Guid1}, {Guid2}", guid1, guid2);
 
         // Cache service is Singleton - same instance across all calls
@@ -309,23 +311,20 @@ public partial class LifetimeComparisonService : ILifetimeComparisonService
         await Task.CompletedTask;
     }
 
-    public ServiceLifetimeInfo GetServiceInfo()
-    {
-        return new ServiceLifetimeInfo(
-            "LifetimeComparisonService",
-            "Transient",
-            _instanceId,
-            DateTime.UtcNow,
-            new Dictionary<string, string>
-            {
-                ["InstanceCreatedAt"] = DateTime.UtcNow.ToString("HH:mm:ss.fff"),
-                ["DependencyCount"] = "4",
-                ["TransientDependencies"] = "1 (IGuidGenerator)",
-                ["ScopedDependencies"] = "1 (IEmailService)",
-                ["SingletonDependencies"] = "1 (ICacheService)",
-                ["FrameworkDependencies"] = "1 (ILogger)"
-            });
-    }
+    public ServiceLifetimeInfo GetServiceInfo() => new(
+        "LifetimeComparisonService",
+        "Transient",
+        _instanceId,
+        DateTime.UtcNow,
+        new Dictionary<string, string>
+        {
+            ["InstanceCreatedAt"] = DateTime.UtcNow.ToString("HH:mm:ss.fff"),
+            ["DependencyCount"] = "4",
+            ["TransientDependencies"] = "1 (IGuidGenerator)",
+            ["ScopedDependencies"] = "1 (IEmailService)",
+            ["SingletonDependencies"] = "1 (ICacheService)",
+            ["FrameworkDependencies"] = "1 (ILogger)"
+        });
 }
 
 // === DATA MODELS FOR TRANSIENT SERVICES ===
@@ -343,8 +342,8 @@ public record RequestProcessingResult(string RequestId, bool Success, string Mes
 }
 
 public record BatchRequestProcessingResult(
-    IReadOnlyList<RequestProcessingResult> Results, 
-    int SuccessfulCount, 
+    IReadOnlyList<RequestProcessingResult> Results,
+    int SuccessfulCount,
     int FailedCount)
 {
     public DateTime CompletedAt { get; init; } = DateTime.UtcNow;

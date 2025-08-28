@@ -1,7 +1,8 @@
-using System.Text.RegularExpressions;
-using Microsoft.CodeAnalysis;
-
 namespace IoCTools.Generator.Tests;
+
+using System.Text.RegularExpressions;
+
+using Microsoft.CodeAnalysis;
 
 /// <summary>
 ///     Tests for generated code structure and compilation verification of Conditional Service Registration.
@@ -23,7 +24,7 @@ namespace Test;
 public interface ITestService { }
 
 [ConditionalService(Environment = ""Development"")]
-[Service]
+
 public partial class DevService : ITestService
 {
 }";
@@ -61,22 +62,18 @@ namespace Test;
 public interface ITestService { }
 
 [ConditionalService(Environment = ""Development"", ConfigValue = ""Feature:Enabled"", Equals = ""true"")]
-[Service]
+
 public partial class ConditionalService : ITestService
 {
 }";
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-
-
         // Assert
         Assert.False(result.HasErrors);
 
         var registrationSource = result.GetServiceRegistrationSource();
         Assert.NotNull(registrationSource);
-
-
         // Should declare environment variable once when environment conditions are present
         Assert.Contains("var environment = Environment.GetEnvironmentVariable(\"ASPNETCORE_ENVIRONMENT\") ?? \"\"",
             registrationSource.Content);
@@ -104,13 +101,13 @@ namespace Test;
 public interface ITestService { }
 
 [ConditionalService(Environment = ""Development"")]
-[Service]
+
 public partial class DevService : ITestService
 {
 }
 
 [ConditionalService(Environment = ""Production"")]
-[Service]
+
 public partial class ProdService : ITestService
 {
 }";
@@ -125,8 +122,10 @@ public partial class ProdService : ITestService
         Assert.NotNull(registrationSource);
 
         // Should use proper if-else structure with StringComparison
-        Assert.Contains("if (string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase))", registrationSource.Content);
-        Assert.Contains("else if (string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase))", registrationSource.Content);
+        Assert.Contains("if (string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase))",
+            registrationSource.Content);
+        Assert.Contains("else if (string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase))",
+            registrationSource.Content);
 
         // Should have proper braces
         var ifCount = Regex.Matches(registrationSource.Content, @"\bif\s*\(").Count;
@@ -149,13 +148,13 @@ namespace Test;
 public interface ITestService { }
 
 [ConditionalService(Environment = ""Development,Testing"")]
-[Service]
+
 public partial class MultiEnvService : ITestService
 {
 }
 
 [ConditionalService(Environment = ""Production"", ConfigValue = ""Feature:Enabled"", Equals = ""true"")]
-[Service]
+
 public partial class CombinedConditionService : ITestService
 {
 }";
@@ -171,14 +170,16 @@ public partial class CombinedConditionService : ITestService
 
         // Should use OR for multiple environments with StringComparison
         var hasOrCondition =
-            registrationSource.Content.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase) || string.Equals(environment, \"Testing\", StringComparison.OrdinalIgnoreCase)");
+            registrationSource.Content.Contains(
+                "string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase) || string.Equals(environment, \"Testing\", StringComparison.OrdinalIgnoreCase)");
         Assert.True(hasOrCondition, "Should use OR logic for multiple environments with proper string comparison");
 
         // Should use AND for combined conditions with proper configuration access patterns
         var hasEnvironmentCondition = registrationSource.Content.Contains("string.Equals(environment,");
         var hasConfigurationCondition = registrationSource.Content.Contains("string.Equals(configuration[") ||
-                                       registrationSource.Content.Contains("configuration.GetValue<string>");
-        Assert.True(hasEnvironmentCondition && hasConfigurationCondition, "Should generate both environment and configuration condition checks");
+                                        registrationSource.Content.Contains("configuration.GetValue<string>");
+        Assert.True(hasEnvironmentCondition && hasConfigurationCondition,
+            "Should generate both environment and configuration condition checks");
 
         // Parentheses should be balanced
         var openParenCount = registrationSource.Content.Count(c => c == '(');
@@ -202,7 +203,7 @@ namespace Test;
 public interface ITestService { }
 
 [ConditionalService(Environment = ""Development"", ConfigValue = ""Feature:Enabled"", Equals = ""true"")]
-[Service]
+
 public partial class ConditionalService : ITestService
 {
 }";
@@ -246,7 +247,7 @@ namespace MyCustomNamespace.Services;
 public interface ITestService { }
 
 [ConditionalService(Environment = ""Development"")]
-[Service]
+
 public partial class DevService : ITestService
 {
 }";
@@ -260,9 +261,8 @@ public partial class DevService : ITestService
         var registrationSource = result.GetServiceRegistrationSource();
         Assert.NotNull(registrationSource);
 
-        // Should use appropriate namespace (generator uses the compilation assembly name TestAssembly)
-        var hasCorrectNamespace = registrationSource.Content.Contains("namespace TestAssembly") ||
-                                  registrationSource.Content.Contains("namespace TestAssembly;");
+        // Should use appropriate namespace (generator uses the compilation assembly name TestAssembly + .Extensions)
+        var hasCorrectNamespace = registrationSource.Content.Contains("namespace TestAssembly.Extensions");
 
         Assert.True(hasCorrectNamespace,
             $"Should use correct compilation assembly namespace. Generated content: {registrationSource.Content}");
@@ -285,19 +285,19 @@ namespace Test;
 public interface ITestService { }
 
 [ConditionalService(Environment = ""Development"")]
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class SingletonService : ITestService
 {
 }
 
 [ConditionalService(Environment = ""Production"")]
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class TransientService : ITestService
 {
 }
 
 [ConditionalService(Environment = ""Testing"")]
-[Service] // Default Scoped
+[Scoped] // Default Scoped
 public partial class ScopedService : ITestService
 {
 }";
@@ -312,8 +312,10 @@ public partial class ScopedService : ITestService
         Assert.NotNull(registrationSource);
 
         // Should generate correct registration method calls (conditional services use simplified type names)
-        Assert.Contains("services.AddSingleton<Test.ITestService, Test.SingletonService>()", registrationSource.Content);
-        Assert.Contains("services.AddTransient<Test.ITestService, Test.TransientService>()", registrationSource.Content);
+        Assert.Contains("services.AddSingleton<Test.ITestService, Test.SingletonService>()",
+            registrationSource.Content);
+        Assert.Contains("services.AddTransient<Test.ITestService, Test.TransientService>()",
+            registrationSource.Content);
         Assert.Contains("services.AddScoped<Test.ITestService, Test.ScopedService>()", registrationSource.Content);
 
         // Should have proper semicolons with simplified type names
@@ -334,13 +336,13 @@ namespace Test;
 public interface IRepository<T> { }
 
 [ConditionalService(Environment = ""Development"")]
-[Service]
+
 public partial class InMemoryRepository<T> : IRepository<T>
 {
 }
 
 [ConditionalService(Environment = ""Production"")]
-[Service]
+
 public partial class DatabaseRepository<T> : IRepository<T>
 {
 }";
@@ -380,7 +382,7 @@ public interface IService1 { }
 public interface IService2 { }
 
 [ConditionalService(Environment = ""Development"")]
-[Service]
+
 [RegisterAsAll(RegistrationMode.All)]
 public partial class MultiInterfaceService : IService1, IService2
 {
@@ -396,11 +398,14 @@ public partial class MultiInterfaceService : IService1, IService2
         Assert.NotNull(registrationSource);
 
         // Should register all interfaces when using RegisterAsAll (using factory pattern for shared instances with simplified type names)
-        Assert.Contains("AddScoped<Test.IService1>(provider => provider.GetRequiredService<Test.MultiInterfaceService>())",
+        Assert.Contains(
+            "AddScoped<Test.IService1>(provider => provider.GetRequiredService<Test.MultiInterfaceService>())",
             registrationSource.Content);
-        Assert.Contains("AddScoped<Test.IService2>(provider => provider.GetRequiredService<Test.MultiInterfaceService>())",
+        Assert.Contains(
+            "AddScoped<Test.IService2>(provider => provider.GetRequiredService<Test.MultiInterfaceService>())",
             registrationSource.Content);
-        Assert.Contains("AddScoped<Test.MultiInterfaceService, Test.MultiInterfaceService>", registrationSource.Content);
+        Assert.Contains("AddScoped<Test.MultiInterfaceService, Test.MultiInterfaceService>",
+            registrationSource.Content);
     }
 
     #endregion
@@ -419,7 +424,7 @@ namespace Test;
 public interface ITestService { }
 
 [ConditionalService(Environment = ""Dev\""Test"", ConfigValue = ""Path\\With\\Backslashes"", Equals = ""Value\nWith\tEscapes"")]
-[Service]
+
 public partial class EscapedStringService : ITestService
 {
 }";
@@ -458,7 +463,7 @@ namespace Test;
 public interface ITestService { }
 
 [ConditionalService(Environment = ""环境"", ConfigValue = ""功能:启用"", Equals = ""是"")]
-[Service]
+
 public partial class UnicodeService : ITestService
 {
 }";
@@ -498,13 +503,13 @@ namespace Test;
 public interface ITestService { }
 
 [ConditionalService(Environment = ""Development"")]
-[Service]
+
 public partial class DevService : ITestService
 {
 }
 
 [ConditionalService(Environment = ""Production"")]
-[Service]
+
 public partial class ProdService : ITestService
 {
 }";
@@ -540,7 +545,7 @@ namespace Test;
 public interface ITestService { }
 
 [ConditionalService(Environment = ""Development"")]
-[Service]
+
 public partial class DevService : ITestService
 {
 }";
@@ -576,19 +581,19 @@ public interface ITestService { }
 public interface IRepository<T> { }
 
 [ConditionalService(Environment = ""Development"")]
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class DevService : ITestService
 {
 }
 
 [ConditionalService(ConfigValue = ""Feature:Enabled"", Equals = ""true"")]
-[Service]
+
 public partial class FeatureService : ITestService
 {
 }
 
 [ConditionalService(Environment = ""Production"", ConfigValue = ""Cache:UseRedis"", Equals = ""true"")]
-[Service]
+
 public partial class CacheService : IRepository<string>
 {
 }";
@@ -631,7 +636,7 @@ public interface ICacheService { }
 public interface INotificationService { }
 
 [ConditionalService(Environment = ""Development"")]
-[Service]
+
 [RegisterAsAll(RegistrationMode.All)]
 public partial class DevPaymentService : IPaymentService, INotificationService
 {
@@ -639,24 +644,24 @@ public partial class DevPaymentService : IPaymentService, INotificationService
 }
 
 [ConditionalService(Environment = ""Production"")]
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class ProdPaymentService : IPaymentService
 {
 }
 
 [ConditionalService(ConfigValue = ""Cache:Provider"", Equals = ""Redis"")]
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class RedisCacheService : ICacheService
 {
 }
 
 [ConditionalService(ConfigValue = ""Cache:Provider"", NotEquals = ""Redis"")]
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class MemoryCacheService : ICacheService
 {
 }
 
-[Service] // Regular unconditional service
+[Scoped] // Regular unconditional service
 public partial class EmailService : IEmailService
 {
 }";

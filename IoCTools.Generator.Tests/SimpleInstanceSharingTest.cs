@@ -18,7 +18,7 @@ namespace Test;
 public interface IUserService { }
 public interface INotificationService { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 [RegisterAsAll(RegistrationMode.All, InstanceSharing.Shared)]
 public partial class SharedUserNotificationService : IUserService, INotificationService
 {
@@ -33,8 +33,8 @@ public partial class SharedUserNotificationService : IUserService, INotification
         var registrationSource = result.GetServiceRegistrationSource();
         Assert.NotNull(registrationSource);
 
-        // Verify shared instance pattern: concrete class with direct registration, interfaces with factory lambdas
-        Assert.Contains("AddScoped<global::Test.SharedUserNotificationService, global::Test.SharedUserNotificationService>",
+        // Verify shared instance pattern: concrete class with single parameter registration, interfaces with factory lambdas
+        Assert.Contains("AddScoped<global::Test.SharedUserNotificationService>",
             registrationSource.Content);
         Assert.Contains(
             "AddScoped<global::Test.IUserService>(provider => provider.GetRequiredService<global::Test.SharedUserNotificationService>())",
@@ -57,7 +57,7 @@ namespace Test;
 public interface IUserService { }
 public interface INotificationService { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 [RegisterAsAll(RegistrationMode.All, InstanceSharing.Separate)]
 public partial class SeparateUserNotificationService : IUserService, INotificationService
 {
@@ -72,10 +72,12 @@ public partial class SeparateUserNotificationService : IUserService, INotificati
         var registrationSource = result.GetServiceRegistrationSource();
         Assert.NotNull(registrationSource);
 
-        // Verify separate instance pattern: direct registrations (generator correctly uses direct pattern)
-        Assert.Contains("AddScoped<global::Test.SeparateUserNotificationService, global::Test.SeparateUserNotificationService>",
+        // Verify separate instance pattern: direct registrations (generator correctly uses single parameter form)
+        Assert.Contains("AddScoped<global::Test.SeparateUserNotificationService>",
             registrationSource.Content);
-        Assert.Contains("AddScoped<global::Test.IUserService, global::Test.SeparateUserNotificationService>", registrationSource.Content);
-        Assert.Contains("AddScoped<global::Test.INotificationService, global::Test.SeparateUserNotificationService>", registrationSource.Content);
+        Assert.Contains("AddScoped<global::Test.IUserService, global::Test.SeparateUserNotificationService>",
+            registrationSource.Content);
+        Assert.Contains("AddScoped<global::Test.INotificationService, global::Test.SeparateUserNotificationService>",
+            registrationSource.Content);
     }
 }

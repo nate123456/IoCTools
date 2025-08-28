@@ -1,7 +1,8 @@
-using System.Text.RegularExpressions;
-using Microsoft.CodeAnalysis;
-
 namespace IoCTools.Generator.Tests;
+
+using System.Text.RegularExpressions;
+
+using Microsoft.CodeAnalysis;
 
 /// <summary>
 ///     Critical test that exposes the Conditional Service logic failures.
@@ -24,15 +25,11 @@ public interface IPaymentProcessor
 {
     string ProcessPayment(decimal amount);
 }
-
-[Service]
 [ConditionalService(ConfigValue = ""FeatureFlags:NewPaymentProcessor"", Equals = ""enabled"")]
 public partial class NewPaymentProcessor : IPaymentProcessor
 {
     public string ProcessPayment(decimal amount) => $""New processor: {amount}"";
 }
-
-[Service]
 [ConditionalService(ConfigValue = ""FeatureFlags:NewPaymentProcessor"", NotEquals = ""enabled"")]
 public partial class LegacyPaymentProcessor : IPaymentProcessor
 {
@@ -44,8 +41,6 @@ public partial class LegacyPaymentProcessor : IPaymentProcessor
 
         // Assert: Should NOT generate impossible logic conditions
         Assert.NotNull(generatedCode);
-
-
         // CRITICAL: This currently FAILS - generates impossible condition:
         // if ((config.GetValue("FeatureFlags:NewPaymentProcessor") ?? "") == "enabled" && 
         //     (config.GetValue("FeatureFlags:NewPaymentProcessor") ?? "") != "enabled")
@@ -94,15 +89,11 @@ public interface IEmailService
 {
     void SendEmail(string to, string subject);
 }
-
-[Service]
 [ConditionalService(Environment = ""Development"")]
 public partial class DevelopmentEmailService : IEmailService
 {
     public void SendEmail(string to, string subject) => Console.WriteLine($""DEV: {subject}"");
 }
-
-[Service]
 [ConditionalService(Environment = ""Production"")]
 public partial class ProductionEmailService : IEmailService
 {
@@ -150,8 +141,6 @@ public interface ISecurityService
 {
     bool ValidateToken(string token);
 }
-
-[Service]
 [ConditionalService(Environment = ""Production"", ConfigValue = ""Features:UseAdvancedSecurity"", Equals = ""true"")]
 public partial class ProductionAdvancedSecurityService : ISecurityService
 {
@@ -176,10 +165,8 @@ public partial class ProductionAdvancedSecurityService : ISecurityService
         // Should not contain impossible logic
         var impossiblePatterns = new[]
         {
-            @"== ""Production"" && != ""Production""",
-            @"== ""true"" && != ""true""",
-            @"!= ""Production"" && == ""Production""",
-            @"!= ""true"" && == ""true"""
+            @"== ""Production"" && != ""Production""", @"== ""true"" && != ""true""",
+            @"!= ""Production"" && == ""Production""", @"!= ""true"" && == ""true"""
         };
 
         foreach (var pattern in impossiblePatterns)

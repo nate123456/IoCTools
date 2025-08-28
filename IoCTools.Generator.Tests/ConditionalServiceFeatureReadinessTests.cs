@@ -1,6 +1,6 @@
-using Microsoft.CodeAnalysis;
-
 namespace IoCTools.Generator.Tests;
+
+using Microsoft.CodeAnalysis;
 
 /// <summary>
 ///     Tests to validate the fully implemented Conditional Service Registration feature.
@@ -9,7 +9,7 @@ namespace IoCTools.Generator.Tests;
 public class ConditionalServiceFeatureValidationTests
 {
     [Fact]
-    public void ConditionalServiceAttribute_EnvironmentBased_WorksCorrectly()
+    public void ConditionalService_EnvironmentBased_WorksCorrectly()
     {
         // Arrange - Verify environment-based conditional service registration is implemented and working
         var source = @"
@@ -21,7 +21,7 @@ public interface ITestService { }
 
 // ConditionalService attribute should now work correctly
 [ConditionalService(Environment = ""Development"")]
-[Service]
+
 public partial class TestService : ITestService
 {
 }";
@@ -42,24 +42,26 @@ public partial class TestService : ITestService
             registrationSource.Content);
 
         // Should contain conditional registration logic with robust case-insensitive comparison
-        Assert.Contains("if (string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase))", registrationSource.Content);
+        Assert.Contains("if (string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase))",
+            registrationSource.Content);
 
         // Should contain the service registration (using simplified qualified names)
         Assert.Contains("AddScoped<Test.ITestService, Test.TestService>", registrationSource.Content);
     }
 
     [Fact]
-    public void ExistingServiceAttribute_WorksCorrectly_BaselineTest()
+    public void ExistingLifetimeAttributes_WorkCorrectly_BaselineTest()
     {
         // Arrange - Verify existing Service attribute still works (baseline test)
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace Test;
 
 public interface ITestService { }
 
-[Service]
+[Scoped]
 public partial class TestService : ITestService
 {
     [Inject] private readonly ITestService _dependency;
@@ -92,22 +94,15 @@ public partial class TestService : ITestService
         {
             "✓ Environment-based conditionals - READY/IMPLEMENTED",
             "✓ Configuration-based conditionals - READY/IMPLEMENTED",
-            "✓ Combined condition logic - READY/IMPLEMENTED",
-            "✓ String escaping - READY/IMPLEMENTED",
-            "✓ If-else chains - READY/IMPLEMENTED",
-            "✓ ConditionalServiceAttribute in IoCTools.Abstractions",
-            "✓ Environment and NotEnvironment properties",
-            "✓ ConfigValue, Equals, and NotEquals properties",
-            "✓ DependencyInjectionGenerator integration",
-            "✓ Validation diagnostics (IOC020-IOC026)",
-            "✓ Environment detection code generation",
-            "✓ Configuration access code generation",
-            "✓ Conditional registration logic generation",
-            "✓ Complex condition combinations (AND/OR logic)",
+            "✓ Combined condition logic - READY/IMPLEMENTED", "✓ String escaping - READY/IMPLEMENTED",
+            "✓ If-else chains - READY/IMPLEMENTED", "✓ ConditionalService attribute in IoCTools.Abstractions",
+            "✓ Environment and NotEnvironment properties", "✓ ConfigValue, Equals, and NotEquals properties",
+            "✓ DependencyInjectionGenerator integration", "✓ Validation diagnostics (IOC020-IOC026)",
+            "✓ Environment detection code generation", "✓ Configuration access code generation",
+            "✓ Conditional registration logic generation", "✓ Complex condition combinations (AND/OR logic)",
             "✓ Performance-optimized generated code",
             "✓ Proper using statements for Environment and IConfiguration",
-            "✓ String escaping and special character handling",
-            "✓ Null-safe code generation"
+            "✓ String escaping and special character handling", "✓ Null-safe code generation"
         };
 
         // All features are implemented and validated
@@ -141,8 +136,6 @@ public class NamespaceTest
         // IConfiguration will be injected at runtime
     }
 }
-
-[Service]
 public partial class TestService
 {
 }";
@@ -161,14 +154,20 @@ public partial class TestService
         // Arrange - Verify the generator can create basic registration methods
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
 public interface ITestService { }
+public interface ILogger { }
 
-[Service]
+[Scoped]
+public partial class Logger : ILogger { }
+
+[Scoped]
 public partial class TestService : ITestService
 {
+    [Inject] private readonly ILogger _logger;
 }";
 
         // Act
@@ -184,7 +183,8 @@ public partial class TestService : ITestService
         Assert.Contains("public static IServiceCollection", registrationSource.Content);
         Assert.Contains("this IServiceCollection services", registrationSource.Content);
         Assert.Contains("return services;", registrationSource.Content);
-        Assert.Contains("AddScoped<global::TestNamespace.ITestService, global::TestNamespace.TestService>", registrationSource.Content);
+        Assert.Contains("AddScoped<global::TestNamespace.ITestService, global::TestNamespace.TestService>",
+            registrationSource.Content);
 
         // ConditionalService builds upon this foundation and is fully implemented
         Assert.True(true,
@@ -203,7 +203,7 @@ namespace Test;
 public interface IFeatureService { }
 
 [ConditionalService(ConfigValue = ""Feature:Enabled"", Equals = ""true"")]
-[Service]
+
 public partial class FeatureService : IFeatureService
 {
 }";
@@ -222,7 +222,9 @@ public partial class FeatureService : IFeatureService
         Assert.Contains("configuration[\"Feature:Enabled\"]", registrationSource.Content);
 
         // Should contain conditional registration logic with robust case-insensitive comparison
-        Assert.Contains("string.Equals(configuration[\"Feature:Enabled\"], \"true\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains(
+            "string.Equals(configuration[\"Feature:Enabled\"], \"true\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
 
         // Should contain the service registration with simplified names
         Assert.Contains("AddScoped<Test.IFeatureService, Test.FeatureService>", registrationSource.Content);
@@ -240,7 +242,7 @@ namespace Test;
 public interface IComplexService { }
 
 [ConditionalService(Environment = ""Development"", ConfigValue = ""Debug:Enabled"", Equals = ""true"")]
-[Service]
+
 public partial class ComplexService : IComplexService
 {
 }";
@@ -256,30 +258,33 @@ public partial class ComplexService : IComplexService
         Assert.NotNull(registrationSource);
 
         // Should contain both environment and configuration checks with robust patterns
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
         Assert.Contains("configuration[\"Debug:Enabled\"]", registrationSource.Content);
-        Assert.Contains("string.Equals(configuration[\"Debug:Enabled\"], \"true\", StringComparison.OrdinalIgnoreCase)", registrationSource.Content);
+        Assert.Contains("string.Equals(configuration[\"Debug:Enabled\"], \"true\", StringComparison.OrdinalIgnoreCase)",
+            registrationSource.Content);
     }
 
     [Fact]
     public void ConditionalService_IfElseChains_WorksCorrectly()
     {
         // This test validates the implemented if-else chain pattern
-        
+
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace Test;
 
 public interface ITestService { }
 
 [ConditionalService(Environment = ""Development"")]
-[Service]
+[Scoped]
 public partial class DevTestService : ITestService { }
 
 [ConditionalService(Environment = ""Production"")]
-[Service]
+[Scoped]
 public partial class ProdTestService : ITestService { }";
 
         // Act
@@ -294,9 +299,11 @@ public partial class ProdTestService : ITestService { }";
 
         // Should generate proper if-else structure with robust patterns
         Assert.Contains("var environment = Environment.GetEnvironmentVariable", registrationSource.Content);
-        Assert.Contains("if (string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase))", registrationSource.Content);
-        Assert.Contains("if (string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase))", registrationSource.Content);
-        
+        Assert.Contains("if (string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase))",
+            registrationSource.Content);
+        Assert.Contains("if (string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase))",
+            registrationSource.Content);
+
         // Should contain both service registrations with simplified names
         Assert.Contains("AddScoped<Test.ITestService, Test.DevTestService>", registrationSource.Content);
         Assert.Contains("AddScoped<Test.ITestService, Test.ProdTestService>", registrationSource.Content);

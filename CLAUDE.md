@@ -4,29 +4,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-IoCTools is a .NET source generator library that simplifies dependency injection and service registration in .NET applications. The project has evolved to include comprehensive feature coverage with robust diagnostic validation.
+IoCTools is a .NET source generator library that simplifies dependency injection and service registration in .NET applications. The project has evolved to include comprehensive feature coverage with robust diagnostic validation and production-ready architecture.
 
 **Core Components:**
-- **IoCTools.Abstractions**: Core attributes and enums (`ServiceAttribute`, `InjectAttribute`, `DependsOn`, etc.)
-- **IoCTools.Generator**: Advanced source generator with full inheritance support and comprehensive diagnostics (IOC001-IOC026)
-- **IoCTools.Sample**: Comprehensive demonstration project with complete feature coverage across 14 service example files
+- **IoCTools.Abstractions**: Individual lifetime attributes (`[Scoped]`, `[Singleton]`, `[Transient]`) plus dependency injection annotations (`InjectAttribute`, `DependsOn`, etc.)
+- **IoCTools.Generator**: Advanced source generator with intelligent service registration, full inheritance support, and comprehensive diagnostics (IOC001-IOC031)
+- **IoCTools.Sample**: Comprehensive demonstration project with complete feature coverage across 18 service example files
 
 **Sample Application Coverage:**
-The sample project now provides complete coverage of all IoCTools features:
-- Basic usage patterns and field injection
-- Advanced patterns with complex scenarios
+The sample project provides complete coverage of all IoCTools features:
+- Basic usage patterns with modern lifetime attributes (`[Scoped]`, `[Singleton]`, `[Transient]`)
+- Intelligent service registration with automatic partial class detection
+- Advanced patterns with complex scenarios and architectural enhancements
 - Inheritance hierarchies with proper constructor generation
-- Generic services with various constraint patterns
+- Generic services with enhanced collection injection patterns
 - Configuration injection with comprehensive binding examples
-- Multi-interface registration patterns
+- Multi-interface registration patterns with automatic collection wrappers
+- Selective interface registration with RegisterAs<T> attributes supporting InstanceSharing (Separate/Shared) and RegisterAs-only service patterns
 - Conditional service deployment scenarios
-- Background service integration
-- Collection injection patterns
-- External service integration
-- Transient service patterns
-- Unregistered service examples
-- Comprehensive diagnostic examples (IOC001-IOC026)
-- Performance and architectural best practices
+- Background service integration with unified IHostedService detection
+- Collection injection with intelligent dependency resolution
+- External service integration with cross-assembly awareness
+- Mixed dependency patterns (field + configuration injection)
+- Unregistered service examples with enhanced diagnostics
+- Comprehensive diagnostic examples (IOC001-IOC031) with configurable severity
+- Performance optimizations and architectural best practices
 
 ## Development Commands
 
@@ -47,10 +49,19 @@ dotnet pack
 ```
 
 ### Running Tests
-No formal test projects exist, but the comprehensive sample application serves as an extensive integration test suite with 14 service example files demonstrating every feature and edge case.
+The project includes both formal test suites and comprehensive sample integration tests:
+
+**Formal Test Suite:**
+```bash
+cd IoCTools.Generator.Tests
+dotnet test  # Runs 57+ comprehensive test files covering all generator scenarios
+```
+
+**Sample Application Integration Tests:**
+The comprehensive sample application serves as an extensive integration test suite with 18 service example files demonstrating every feature and edge case.
 
 ### Diagnostics and Validation
-IoCTools includes a comprehensive diagnostic system (IOC001-IOC026) that validates dependency injection configuration at build time. The diagnostic system provides configurable severity levels and can catch common DI mistakes before runtime.
+IoCTools includes a comprehensive diagnostic system (IOC001-IOC031) that validates dependency injection configuration at build time with cross-assembly awareness. The diagnostic system provides configurable MSBuild severity levels and catches common DI mistakes before runtime.
 
 **Quick Diagnostic Test:**
 ```bash
@@ -77,76 +88,121 @@ Add these MSBuild properties to your project file:
 **Severity Options**: `Error`, `Warning`, `Info`, `Hidden`
 
 **Key Diagnostics:**
-- **IOC001**: Missing implementation warnings
-- **IOC002**: Unregistered implementation detection  
-- **IOC012/IOC013**: Lifetime violation errors (Singleton→Scoped/Transient)
-- **IOC015**: Inheritance chain lifetime conflicts
-- **IOC006-IOC009**: Registration conflict detection
-- **IOC014**: Background service lifetime validation
+- **IOC001/IOC002**: Cross-assembly aware missing/unregistered implementation detection with intelligent fix suggestions
+- **IOC011**: IHostedService partial class validation with enhanced detection
+- **IOC012/IOC013**: Lifetime violation errors (Singleton→Scoped/Transient) with inheritance chain analysis
+- **IOC014**: Enhanced background service lifetime validation with unified IHostedService detection
+- **IOC015**: Inheritance chain lifetime conflicts with deep hierarchy support
+- **IOC006-IOC009**: Registration conflict detection with deduplication strategies
+- **IOC029-IOC031**: RegisterAs attribute validation (interface implementation, non-interface types, duplicates)
+- **Enhanced Error Messages**: All diagnostics now reference individual lifetime attributes (`[Scoped]`, `[Singleton]`, `[Transient]`)
 
-See `IoCTools.Sample/DIAGNOSTIC_EXAMPLES.md` for complete diagnostic reference and examples.
+Comprehensive diagnostic examples are available in `DiagnosticExamples.cs` within the sample application.
 
 ## Architecture
 
 ### Core Generator Logic
 The main source generator is located in `IoCTools.Generator/DependencyInjectionGenerator.cs`. This advanced generator provides:
 
-1. **Service Discovery**: Scans for classes with `[Service]` attributes across the entire compilation
+1. **Intelligent Service Discovery**: Automatically detects services through lifetime attributes (`[Scoped]`, `[Singleton]`, `[Transient]`), dependency injection patterns (`[Inject]`, `[DependsOn]`), and partial classes implementing interfaces
 2. **Constructor Generation**: Creates constructors for classes with `[Inject]` fields and `[DependsOn]` attributes
 3. **Inheritance Support**: Full inheritance chain analysis with proper base constructor calling
-4. **Registration Methods**: Generates extension methods (e.g., `AddIoCToolsSampleRegisteredServices()`)
-5. **Lifetime Management**: Supports Singleton, Scoped, Transient with validation
-6. **Generic Support**: Handles generic services with various constraint patterns
-7. **Diagnostic Validation**: Comprehensive compile-time validation (IOC001-IOC026)
-8. **Configuration Integration**: Binds configuration sections to service properties
+4. **Registration Methods**: Generates extension methods with cross-assembly type discovery
+5. **Enhanced Lifetime Management**: Individual lifetime attributes (`[Scoped]`, `[Singleton]`, `[Transient]`) with comprehensive validation and inheritance chain analysis
+6. **Advanced Generic Support**: Handles generic services with intelligent collection wrapper generation and automatic `IEnumerable<T>` injection
+7. **Comprehensive Diagnostic Validation**: Cross-assembly aware compile-time validation (IOC001-IOC031) with configurable MSBuild severity levels
+8. **Configuration Integration**: Enhanced configuration binding with primitive type support
+9. **IHostedService Integration**: Unified detection and registration of background services
 
 ### Key Patterns and Best Practices
 - **Service Declaration**: Services must be marked `partial` to enable constructor generation
-- **Lifetime Specification**: `[Service(Lifetime.X)]` defines service lifetime with validation
-- **Field Injection**: `[Inject]` fields automatically get constructor parameters
+- **Modern Lifetime Specification**: Use individual attributes `[Scoped]`, `[Singleton]`, or `[Transient]` for clean lifetime specification
+- **Intelligent Service Registration**: Partial classes implementing interfaces are automatically detected and registered
+- **Field Injection**: `[Inject]` fields automatically get constructor parameters with type safety
 - **Declarative Dependencies**: `[DependsOn<T1, T2>]` with naming conventions and multiple generic parameters
-- **Registration Control**: `[UnregisteredService]` excludes classes from automatic registration
+- **Configuration Binding**: `[InjectConfiguration]` for automatic configuration section binding with validation
+- **External Services**: `[ExternalService]` marks manually registered dependencies with cross-assembly awareness
 - **Interface Mapping**: `[RegisterAsAll]` with `RegistrationMode` control registration patterns
-- **Background Services**: `[BackgroundService]` attribute for hosted service registration
-- **Configuration Binding**: `[InjectConfiguration]` for automatic configuration section binding
-- **External Services**: `[ExternalService]` marks manually registered dependencies
+- **Selective Interface Registration**: `[RegisterAs<T1, T2, ...>]` with InstanceSharing control:
+  - `InstanceSharing.Separate` (default): Different instances per interface  
+  - `InstanceSharing.Shared`: Same instance across all interfaces (factory pattern)
+  - Supports up to 8 type parameters and RegisterAs-only services
+- **Background Services**: Automatic IHostedService detection with unified registration patterns
+- **Collection Injection**: Automatic `IEnumerable<T>` wrapper generation for service collections
+- **Mixed Dependencies**: Services can combine field injection, configuration injection, and DependsOn patterns
 
 ### Generated Code Location
 Generated files are placed in the compilation output and include:
 - Service registration extension methods
-- Constructor generation for partial classes
+- Constructor generation for partial classes  
 - Dependency field generation for `DependsOn` attributes
+
+### RegisterAs InstanceSharing Examples
+
+**InstanceSharing.Separate (Default):**
+```csharp
+[RegisterAs<IUserService, INotificationService>]  // or InstanceSharing.Separate
+public partial class MyService : IUserService, INotificationService { }
+// Generates: services.AddScoped<IUserService, MyService>(); 
+//           services.AddScoped<INotificationService, MyService>();
+```
+
+**InstanceSharing.Shared (Factory Pattern):**  
+```csharp
+[Scoped]
+[RegisterAs<IUserService, INotificationService>(InstanceSharing.Shared)]
+public partial class SharedService : IUserService, INotificationService { }
+// Generates: services.AddScoped<SharedService>();
+//           services.AddScoped<IUserService>(provider => provider.GetRequiredService<SharedService>());
+//           services.AddScoped<INotificationService>(provider => provider.GetRequiredService<SharedService>());
+```
+
+**EF Core DbContext Integration:**
+```csharp
+[RegisterAs<ITransactionService>(InstanceSharing.Shared)]  // No [Scoped] - registered by EF Core
+public partial class MyDbContext : DbContext, ITransactionService { }
+// Generates: services.AddScoped<ITransactionService>(provider => provider.GetRequiredService<MyDbContext>());
+// DbContext registered separately by services.AddDbContext<MyDbContext>()
+```
 
 ## Project Structure
 
 ```
 IoCTools/
-├── IoCTools.Abstractions/           # Core attributes and enums
-│   ├── Annotations/                 # ServiceAttribute, InjectAttribute, DependsOn, etc.
-│   └── Enumerations/                # Lifetime, NamingConvention
-├── IoCTools.Generator/              # Advanced source generator implementation
-│   └── IoCTools.Generator/          # Main generator with full inheritance & diagnostics
-└── IoCTools.Sample/                 # Comprehensive demonstration project
+├── IoCTools.Abstractions/           # Individual lifetime attributes and dependency injection annotations
+│   ├── Annotations/                 # [Scoped], [Singleton], [Transient], InjectAttribute, DependsOn, etc.
+│   └── Enumerations/                # RegistrationMode, NamingConvention, conditional enums
+├── IoCTools.Generator/              # Advanced source generator with intelligent service registration
+│   ├── Analysis/                    # DependencyAnalyzer, TypeAnalyzer with enhanced logic
+│   ├── CodeGeneration/              # ServiceRegistrationGenerator, ConstructorGenerator
+│   ├── Diagnostics/                 # Comprehensive IOC001-IOC031 diagnostic system
+│   ├── Models/                      # ServiceRegistration, ConditionalServiceRegistration
+│   ├── Utilities/                   # Helper classes for symbol analysis
+│   └── IoCTools.Generator/          # Main generator with intelligent detection & cross-assembly validation
+├── IoCTools.Generator.Tests/        # Formal test suite with 57+ comprehensive test files
+│   └── **/*Tests.cs                # Complete coverage of generator scenarios
+└── IoCTools.Sample/                 # Comprehensive demonstration project with architectural enhancements
     ├── Configuration/               # Configuration models and injection examples
-    ├── Services/                    # 14 comprehensive service example files:
-    │   ├── BasicUsageExamples.cs           # Core patterns and field injection
-    │   ├── AdvancedPatternsDemo.cs         # Complex scenarios and edge cases  
-    │   ├── InheritanceExamples.cs          # Multi-level inheritance chains
-    │   ├── GenericServiceExamples.cs       # Generic patterns and constraints
-    │   ├── ConfigurationInjectionExamples.cs # Configuration binding
-    │   ├── MultiInterfaceExamples.cs       # Interface registration patterns
-    │   ├── ConditionalServiceExamples.cs   # Conditional registration
-    │   ├── BackgroundServiceExamples.cs    # Hosted service patterns
-    │   ├── CollectionInjectionExamples.cs  # Collection dependency injection
-    │   ├── ExternalServiceExamples.cs      # External service integration
-    │   ├── TransientServiceExamples.cs     # Transient lifetime patterns
-    │   ├── UnregisteredServiceExamples.cs  # Manual registration scenarios
-    │   ├── DiagnosticExamples.cs          # Diagnostic system demonstration
-    │   └── DependsOnExamples.cs           # DependsOn attribute patterns
-    ├── Interfaces/                  # Service contracts and abstractions
-    ├── DIAGNOSTIC_EXAMPLES.md       # Comprehensive diagnostic reference
-    ├── CONFIGURATION_VALIDATION.md  # Configuration binding guide
-    └── CONFIGURATION_INJECTION_README.md # Configuration patterns guide
+    ├── Services/                    # 18 comprehensive service example files:
+    │   ├── BasicUsageExamples.cs               # Core patterns with modern lifetime attributes
+    │   ├── ArchitecturalEnhancementsExamples.cs # Showcases architectural enhancements
+    │   ├── AdvancedPatternsDemo.cs             # Complex scenarios and edge cases  
+    │   ├── InheritanceExamples.cs              # Multi-level inheritance chains
+    │   ├── GenericServiceExamples.cs           # Generic patterns with collection injection
+    │   ├── ConfigurationInjectionExamples.cs   # Configuration binding with validation
+    │   ├── MultiInterfaceExamples.cs           # Interface registration with automatic collections
+    │   ├── ConditionalServiceExamples.cs       # Conditional registration patterns
+    │   ├── BackgroundServiceExamples.cs        # Hosted service patterns with unified detection
+    │   ├── CollectionInjectionExamples.cs      # Enhanced collection dependency injection
+    │   ├── ExternalServiceExamples.cs          # External service integration
+    │   ├── TransientServiceExamples.cs         # Transient lifetime patterns
+    │   ├── ManualServiceExamples.cs            # Manual registration scenarios
+    │   ├── RegisterAsExamples.cs               # Selective interface registration with InstanceSharing (Separate/Shared) patterns
+    │   ├── DiagnosticExamples.cs               # Comprehensive diagnostic system demonstration
+    │   ├── DependsOnExamples.cs                # DependsOn attribute patterns
+    │   ├── UnregisteredServiceExamples.cs      # Unregistered service scenarios
+    │   └── SharedModels.cs                     # Common models and interfaces
+    └── Interfaces/                  # Service contracts and abstractions
 ```
 
 ## Development Notes
@@ -155,8 +211,9 @@ IoCTools/
 - **Platform**: .NET 9.0 project using the latest C# language features
 - **Compatibility**: Generator targets `netstandard2.0` for broad framework support
 - **Packaging**: Both packages configured for automatic NuGet packaging (`GeneratePackageOnBuild`)
-- **Maturity**: v1.0.0-alpha release with production-ready architecture and comprehensive validation
-- **Testing**: 100% success rate across 784 test scenarios via comprehensive sample application and extensive integration testing
+- **Maturity**: v1.0.0 release with production-ready architecture and comprehensive validation
+- **Testing**: Comprehensive test coverage across formal test suite (57+ test files) and sample application integration testing
+- **Architecture**: Intelligent service registration with individual lifetime attributes and cross-assembly diagnostic validation
 
 ### Performance Considerations
 - **Build Performance**: Generator optimized for incremental compilation
@@ -173,10 +230,13 @@ The sample application serves multiple purposes:
 5. **Performance Reference**: Includes performance-conscious implementations
 
 **Key Sample Navigation:**
-- Start with `BasicUsageExamples.cs` for core patterns
-- Review `DiagnosticExamples.cs` for validation understanding  
-- Examine `InheritanceExamples.cs` for complex inheritance scenarios
-- Check `AdvancedPatternsDemo.cs` for sophisticated use cases
+- **Start Here**: `ArchitecturalEnhancementsExamples.cs` for modern patterns and architectural enhancements
+- **Core Patterns**: `BasicUsageExamples.cs` for fundamental usage with individual lifetime attributes
+- **Diagnostics**: `DiagnosticExamples.cs` for comprehensive validation understanding (IOC001-IOC031)
+- **Advanced Scenarios**: `InheritanceExamples.cs` for complex inheritance with enhanced constructor generation
+- **Registration Patterns**: `RegisterAsExamples.cs` for selective interface registration with InstanceSharing modes
+- **Collections**: `CollectionInjectionExamples.cs` for intelligent collection dependency injection
+- **Complex Use Cases**: `AdvancedPatternsDemo.cs` for sophisticated architectural patterns
 
 ## Architectural Limits
 
@@ -195,11 +255,12 @@ These limits represent deliberate engineering trade-offs prioritizing:
 3. **Performance**: Fast compilation over theoretical capability coverage
 
 **Real-World Impact:**
-- **784 passing test scenarios** cover all common dependency injection patterns
+- **Comprehensive test coverage** across formal test suite and sample application
+- **Intelligent service registration** handles 90%+ of real-world scenarios automatically
 - **Workarounds available** for every limited scenario (manual constructors, `[DependsOn]` alternatives)
-- **Zero impact** on standard business application patterns
+- **Zero impact** on standard business application patterns with enhanced performance
 
-See [ARCHITECTURAL_LIMITS.md](ARCHITECTURAL_LIMITS.md) for complete details, workarounds, and migration strategies. The generator excels at standard patterns while maintaining architectural integrity.
+The generator excels at standard patterns while maintaining architectural integrity. Workarounds are available for edge cases through manual constructors and `[DependsOn]` alternatives.
 
 ## Source Generator Development Insights
 
@@ -256,11 +317,12 @@ while (currentType != null && currentType.SpecialType != SpecialType.System_Obje
 - **Isolation Strategy**: Use simple mock implementations to avoid external dependencies
 - **Diagnostic Testing**: Deliberately problematic examples verify diagnostic system behavior
 
-**7. Diagnostic System Architecture**
-- **Comprehensive Coverage**: IOC001-IOC026 covering all common DI mistakes and architectural issues
-- **Configurable Severity**: MSBuild integration allows per-project diagnostic customization
-- **Real-time Feedback**: Build-time validation catches issues before runtime
-- **Performance Impact**: Minimal build overhead despite comprehensive analysis
+**7. Enhanced Diagnostic System Architecture**
+- **Comprehensive Coverage**: IOC001-IOC031 covering all common DI mistakes and architectural issues
+- **Configurable MSBuild Severity**: Full integration allows per-project diagnostic customization with granular control
+- **Cross-Assembly Awareness**: Validates dependencies across project boundaries with intelligent fix suggestions
+- **Real-time Feedback**: Build-time validation catches issues before runtime with modern lifetime attribute references
+- **Performance Impact**: Minimal build overhead despite comprehensive analysis and intelligent service detection
 
 ### Proven Architecture Patterns
 
@@ -288,19 +350,19 @@ while (currentType != null && currentType.SpecialType != SpecialType.System_Obje
 // Proper scoping and lifetime management for configuration objects
 ```
 
-### Development Lessons from Audit Process
+### Development Lessons from Implementation
 
 **Systematic Approach Success:**
-- Comprehensive audit of all 784 test scenarios revealed architectural strengths and limits
-- Methodical testing across diverse inheritance patterns validated generator stability
+- Delivered individual lifetime attributes (`[Scoped]`, `[Singleton]`, `[Transient]`) for modern, clean syntax
+- Implemented intelligent service registration with automatic partial class detection
+- Enhanced collection injection with intelligent `IEnumerable<T>` wrapper generation
 - Performance profiling confirmed minimal build-time overhead despite comprehensive analysis
 
 **Architectural Decision Validation:**
-- Limits documentation proved essential for managing user expectations
 - Focus on 90% use cases delivered superior reliability over edge case support
 - Diagnostic system integration provided significant developer productivity improvements
 
 **Sample Application Strategy:**
-- Comprehensive examples proved more valuable than extensive unit test suites
+- Expanded to 18 comprehensive example files showcasing all features
 - Real-world scenario coverage validated practical applicability
-- Documentation integration created single source of truth for features and limitations
+- Formal test suite complements sample application for complete coverage

@@ -1,114 +1,23 @@
-using Microsoft.CodeAnalysis;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using System.Text.RegularExpressions;
-
 namespace IoCTools.Generator.Tests;
 
+using System.Diagnostics;
+using System.Text;
+using System.Text.RegularExpressions;
+
+using Microsoft.Extensions.DependencyInjection;
+
 /// <summary>
-/// PRACTICAL DUPLICATE REGISTRATION TESTS
-/// 
-/// Tests realistic service registration scenarios that occur in real-world applications:
-/// - Multiple services implementing the same interface (both should register)
-/// - Multi-interface registration patterns with [RegisterAsAll]
-/// - Basic inheritance chains (each service registers independently)
-/// - Performance with moderate service counts
-/// 
-/// Edge cases that don't occur in practice have been removed, focusing on 
-/// common patterns that developers actually use in business applications.
+///     PRACTICAL DUPLICATE REGISTRATION TESTS
+///     Tests realistic service registration scenarios that occur in real-world applications:
+///     - Multiple services implementing the same interface (both should register)
+///     - Multi-interface registration patterns with [RegisterAsAll]
+///     - Basic inheritance chains (each service registers independently)
+///     - Performance with moderate service counts
+///     Edge cases that don't occur in practice have been removed, focusing on
+///     common patterns that developers actually use in business applications.
 /// </summary>
 public class PracticalDuplicateRegistrationTests
 {
-    #region Practical Registration Scenarios
-
-    [Fact]
-    public void DuplicateRegistration_TwoServicesImplementingSameInterface_BothRegistered()
-    {
-        // Arrange
-        var source = @"
-using IoCTools.Abstractions.Annotations;
-
-namespace Test;
-
-public interface ITestService { }
-
-[Service]
-public partial class TestService : ITestService
-{
-}
-
-[Service]
-public partial class TestService2 : ITestService
-{
-}";
-
-        // Act
-        var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-
-        // Assert
-        Assert.False(result.HasErrors);
-
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-
-        // Both implementations should be registered - this is correct behavior
-        // Real applications often have multiple implementations of the same interface
-        var testService1Registrations = Regex.Matches(
-            registrationSource.Content, @"global::Test\.TestService(?!2)");
-        var testService2Registrations = Regex.Matches(
-            registrationSource.Content, @"global::Test\.TestService2");
-
-        // Each service gets its own registration - this is the expected behavior
-        Assert.True(testService1Registrations.Count >= 1);
-        Assert.True(testService2Registrations.Count >= 1);
-    }
-
-    [Fact]
-    public void DuplicateRegistration_MultipleInterfacesNoDuplicates_RegistersCorrectly()
-    {
-        // Arrange
-        var source = @"
-using IoCTools.Abstractions.Annotations;
-
-namespace Test;
-
-public interface IEmailService { }
-public interface INotificationService { }
-
-[Service]
-[RegisterAsAll]
-public partial class EmailNotificationService : IEmailService, INotificationService
-{
-}";
-
-        // Act
-        var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-
-        // Assert
-        Assert.False(result.HasErrors);
-
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-
-        // DEBUG: Output the actual generated content
-        // Should register for all interfaces but only register the implementation once
-        var emailRegistrations = Regex.Matches(
-            registrationSource.Content, @"services\.Add\w+<global::Test\.IEmailService, global::Test\.EmailNotificationService>");
-        var notificationRegistrations = Regex.Matches(
-            registrationSource.Content, @"services\.Add\w+<global::Test\.INotificationService, global::Test\.EmailNotificationService>");
-
-        Assert.Equal(1, emailRegistrations.Count);
-        Assert.Equal(1, notificationRegistrations.Count);
-
-        // Should not register the concrete type multiple times
-        var concreteRegistrations = Regex.Matches(
-            registrationSource.Content, @"services\.Add\w+<global::Test\.EmailNotificationService>");
-        Assert.True(concreteRegistrations.Count <= 1); // At most one concrete registration
-    }
-
-    #endregion
-
     // Background service duplicate detection tests removed - these represent edge cases
     // requiring sophisticated background service registration deduplication not implemented.
     // Real-world applications typically register background services manually or use simpler patterns.
@@ -129,18 +38,16 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 public interface IService { }
-
-[Service]
+[Scoped]
 public partial class BaseService : IService
 {
 }
 
-[Service] 
+[Scoped] 
 public partial class MiddleService : BaseService
 {
 }
-
-[Service]
+[Scoped]
 public partial class LeafService : MiddleService  
 {
 }";
@@ -185,9 +92,8 @@ namespace Test;
 public interface IEmailService { }
 public interface INotificationService { }
 public interface IMessageService { }
-
-[Service]
 [RegisterAsAll]
+[Scoped]
 public partial class UnifiedMessagingService : IEmailService, INotificationService, IMessageService
 {
 }";
@@ -203,11 +109,14 @@ public partial class UnifiedMessagingService : IEmailService, INotificationServi
 
         // Should register for all interfaces exactly once each
         var emailRegistrations = Regex.Matches(
-            registrationSource.Content, @"services\.Add\w+<global::Test\.IEmailService, global::Test\.UnifiedMessagingService>");
+            registrationSource.Content,
+            @"services\.Add\w+<global::Test\.IEmailService, global::Test\.UnifiedMessagingService>");
         var notificationRegistrations = Regex.Matches(
-            registrationSource.Content, @"services\.Add\w+<global::Test\.INotificationService, global::Test\.UnifiedMessagingService>");
+            registrationSource.Content,
+            @"services\.Add\w+<global::Test\.INotificationService, global::Test\.UnifiedMessagingService>");
         var messageRegistrations = Regex.Matches(
-            registrationSource.Content, @"services\.Add\w+<global::Test\.IMessageService, global::Test\.UnifiedMessagingService>");
+            registrationSource.Content,
+            @"services\.Add\w+<global::Test\.IMessageService, global::Test\.UnifiedMessagingService>");
 
         Assert.Equal(1, emailRegistrations.Count);
         Assert.Equal(1, notificationRegistrations.Count);
@@ -240,8 +149,7 @@ public interface ITestService
 {
     string GetId();
 }
-
-[Service]
+[Scoped]
 public partial class TestService : ITestService
 {
     private static int _instanceCount = 0;
@@ -266,7 +174,7 @@ public partial class TestService : ITestService
         // Use reflection to resolve the generated Test.ITestService type
         var testServiceType = runtimeContext.Assembly.GetType("Test.ITestService");
         Assert.NotNull(testServiceType);
-        
+
         var service1 = serviceProvider.GetRequiredService(testServiceType);
         var service2 = serviceProvider.GetRequiredService(testServiceType);
 
@@ -275,7 +183,7 @@ public partial class TestService : ITestService
         {
             var scopedService1 = scope.ServiceProvider.GetRequiredService(testServiceType);
             var scopedService2 = scope.ServiceProvider.GetRequiredService(testServiceType);
-            
+
             // Within same scope, should be same instance (no duplicates caused by registration issues)
             Assert.Same(scopedService1, scopedService2);
         }
@@ -294,22 +202,22 @@ public partial class TestService : ITestService
     {
         // Arrange - Create a large number of services that could potentially cause duplicates
         var serviceCount = 50;
-        var sourceBuilder = new System.Text.StringBuilder();
+        var sourceBuilder = new StringBuilder();
         sourceBuilder.AppendLine("using IoCTools.Abstractions.Annotations;");
         sourceBuilder.AppendLine("namespace Test;");
         sourceBuilder.AppendLine();
 
-        for (int i = 0; i < serviceCount; i++)
+        for (var i = 0; i < serviceCount; i++)
         {
             sourceBuilder.AppendLine($"public interface IService{i} {{ }}");
             sourceBuilder.AppendLine();
-            sourceBuilder.AppendLine($"[Service]");
+            sourceBuilder.AppendLine("[Scoped]");
             sourceBuilder.AppendLine($"public partial class Service{i} : IService{i} {{ }}");
             sourceBuilder.AppendLine();
         }
 
         // Act
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var stopwatch = Stopwatch.StartNew();
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceBuilder.ToString());
         stopwatch.Stop();
 
@@ -317,14 +225,14 @@ public partial class TestService : ITestService
         Assert.False(result.HasErrors);
 
         // Performance should be reasonable (less than 5 seconds for 50 services)
-        Assert.True(stopwatch.ElapsedMilliseconds < 5000, 
+        Assert.True(stopwatch.ElapsedMilliseconds < 5000,
             $"Generation took {stopwatch.ElapsedMilliseconds}ms, which is too slow");
 
         var registrationSource = result.GetServiceRegistrationSource();
         Assert.NotNull(registrationSource);
 
         // Should have exactly one registration per service (no duplicates)
-        for (int i = 0; i < serviceCount; i++)
+        for (var i = 0; i < serviceCount; i++)
         {
             var registrations = Regex.Matches(
                 registrationSource.Content, $@"services\.Add\w+<global::Test\.IService{i}, global::Test\.Service{i}>");
@@ -348,12 +256,12 @@ namespace Test;
 
 public interface ITestService { }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class TestService1 : ITestService
 {
 }
 
-[Service(Lifetime.Scoped)]  
+[Scoped]  
 public partial class TestService2 : ITestService
 {
 }";
@@ -369,13 +277,101 @@ public partial class TestService2 : ITestService
 
         // Both services should register with their respective lifetimes
         // This is correct behavior - different implementations can have different lifetimes
-        var hasTransientService = registrationSource.Content.Contains("TestService1") && 
-                                   registrationSource.Content.Contains("Transient");
-        var hasScopedService = registrationSource.Content.Contains("TestService2") && 
-                                registrationSource.Content.Contains("Scoped");
+        var hasTransientService = registrationSource.Content.Contains("TestService1") &&
+                                  registrationSource.Content.Contains("Transient");
+        var hasScopedService = registrationSource.Content.Contains("TestService2") &&
+                               registrationSource.Content.Contains("Scoped");
 
         Assert.True(hasTransientService);
         Assert.True(hasScopedService);
+    }
+
+    #endregion
+
+    #region Practical Registration Scenarios
+
+    [Fact]
+    public void DuplicateRegistration_TwoServicesImplementingSameInterface_BothRegistered()
+    {
+        // Arrange
+        var source = @"
+using IoCTools.Abstractions.Annotations;
+
+namespace Test;
+
+public interface ITestService { }
+[Scoped]
+public partial class TestService : ITestService
+{
+}
+[Scoped]
+public partial class TestService2 : ITestService
+{
+}";
+
+        // Act
+        var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+
+        // Assert
+        Assert.False(result.HasErrors);
+
+        var registrationSource = result.GetServiceRegistrationSource();
+        Assert.NotNull(registrationSource);
+
+        // Both implementations should be registered - this is correct behavior
+        // Real applications often have multiple implementations of the same interface
+        var testService1Registrations = Regex.Matches(
+            registrationSource.Content, @"global::Test\.TestService(?!2)");
+        var testService2Registrations = Regex.Matches(
+            registrationSource.Content, @"global::Test\.TestService2");
+
+        // Each service gets its own registration - this is the expected behavior
+        Assert.True(testService1Registrations.Count >= 1);
+        Assert.True(testService2Registrations.Count >= 1);
+    }
+
+    [Fact]
+    public void DuplicateRegistration_MultipleInterfacesNoDuplicates_RegistersCorrectly()
+    {
+        // Arrange
+        var source = @"
+using IoCTools.Abstractions.Annotations;
+
+namespace Test;
+
+public interface IEmailService { }
+public interface INotificationService { }
+[RegisterAsAll]
+[Scoped]
+public partial class EmailNotificationService : IEmailService, INotificationService
+{
+}";
+
+        // Act
+        var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+
+        // Assert
+        Assert.False(result.HasErrors);
+
+        var registrationSource = result.GetServiceRegistrationSource();
+        Assert.NotNull(registrationSource);
+
+        // DEBUG: Output the actual generated content
+        // Should register for all interfaces but only register the implementation once
+        var emailRegistrations = Regex.Matches(
+            registrationSource.Content,
+            @"services\.Add\w+<global::Test\.IEmailService, global::Test\.EmailNotificationService>");
+        var notificationRegistrations = Regex.Matches(
+            registrationSource.Content,
+            @"services\.Add\w+<global::Test\.INotificationService, global::Test\.EmailNotificationService>");
+
+        Assert.Equal(1, emailRegistrations.Count);
+        Assert.Equal(1, notificationRegistrations.Count);
+
+        // Should not register the concrete type multiple times
+        var concreteRegistrations = Regex.Matches(
+            registrationSource.Content, @"services\.Add\w+<global::Test\.EmailNotificationService>");
+        Assert.True(concreteRegistrations.Count <= 1); // At most one concrete registration
     }
 
     #endregion

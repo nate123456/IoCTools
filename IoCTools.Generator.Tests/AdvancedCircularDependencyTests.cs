@@ -1,6 +1,6 @@
-using Microsoft.CodeAnalysis;
-
 namespace IoCTools.Generator.Tests;
+
+using Microsoft.CodeAnalysis;
 
 /// <summary>
 ///     Advanced circular dependency tests covering edge cases and complex scenarios.
@@ -14,26 +14,24 @@ public class AdvancedCircularDependencyTests
         // Arrange - Circular dependency through inheritance chain
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace Test;
 
 public interface IBase { }
 public interface IChild { }
 public interface IGrandchild { }
-
-[Service]
+[Scoped]
 public partial class BaseService : IBase
 {
     [Inject] private readonly IChild _child;
 }
-
-[Service]
+[Scoped]
 public partial class ChildService : BaseService, IChild
 {
     [Inject] private readonly IGrandchild _grandchild;
 }
-
-[Service]
+[Scoped]
 public partial class GrandchildService : IGrandchild
 {
     [Inject] private readonly IBase _base;
@@ -58,6 +56,7 @@ public partial class GrandchildService : IGrandchild
         // Arrange - Deep 10-service circular chain
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace Test;
 
@@ -66,16 +65,16 @@ public interface I4 { } public interface I5 { } public interface I6 { }
 public interface I7 { } public interface I8 { } public interface I9 { } 
 public interface I10 { }
 
-[Service] public partial class S1 : I1 { [Inject] private readonly I2 _s2; }
-[Service] public partial class S2 : I2 { [Inject] private readonly I3 _s3; }
-[Service] public partial class S3 : I3 { [Inject] private readonly I4 _s4; }
-[Service] public partial class S4 : I4 { [Inject] private readonly I5 _s5; }
-[Service] public partial class S5 : I5 { [Inject] private readonly I6 _s6; }
-[Service] public partial class S6 : I6 { [Inject] private readonly I7 _s7; }
-[Service] public partial class S7 : I7 { [Inject] private readonly I8 _s8; }
-[Service] public partial class S8 : I8 { [Inject] private readonly I9 _s9; }
-[Service] public partial class S9 : I9 { [Inject] private readonly I10 _s10; }
-[Service] public partial class S10 : I10 { [Inject] private readonly I1 _s1; }";
+[Scoped] public partial class S1 : I1 { [Inject] private readonly I2 _s2; }
+[Scoped] public partial class S2 : I2 { [Inject] private readonly I3 _s3; }
+[Scoped] public partial class S3 : I3 { [Inject] private readonly I4 _s4; }
+[Scoped] public partial class S4 : I4 { [Inject] private readonly I5 _s5; }
+[Scoped] public partial class S5 : I5 { [Inject] private readonly I6 _s6; }
+[Scoped] public partial class S6 : I6 { [Inject] private readonly I7 _s7; }
+[Scoped] public partial class S7 : I7 { [Inject] private readonly I8 _s8; }
+[Scoped] public partial class S8 : I8 { [Inject] private readonly I9 _s9; }
+[Scoped] public partial class S9 : I9 { [Inject] private readonly I10 _s10; }
+[Scoped] public partial class S10 : I10 { [Inject] private readonly I1 _s1; }";
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
@@ -102,19 +101,20 @@ public interface I10 { }
         // Arrange - Two separate circular dependency groups
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace Test;
 
 // First cycle: A ↔ B
 public interface IA { } public interface IB { }
-[Service] public partial class A : IA { [Inject] private readonly IB _b; }
-[Service] public partial class B : IB { [Inject] private readonly IA _a; }
+[Scoped] public partial class A : IA { [Inject] private readonly IB _b; }
+[Scoped] public partial class B : IB { [Inject] private readonly IA _a; }
 
 // Second cycle: X → Y → Z → X
 public interface IX { } public interface IY { } public interface IZ { }
-[Service] public partial class X : IX { [Inject] private readonly IY _y; }
-[Service] public partial class Y : IY { [Inject] private readonly IZ _z; }
-[Service] public partial class Z : IZ { [Inject] private readonly IX _x; }";
+[Scoped] public partial class X : IX { [Inject] private readonly IY _y; }
+[Scoped] public partial class Y : IY { [Inject] private readonly IZ _z; }
+[Scoped] public partial class Z : IZ { [Inject] private readonly IX _x; }";
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
@@ -139,13 +139,12 @@ public interface IX { } public interface IY { } public interface IZ { }
         // Arrange - Service implementing multiple interfaces, depending on itself through different interface
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace Test;
 
 public interface IProcessor { }
 public interface IHandler { }
-
-[Service]
 public partial class ProcessorHandler : IProcessor, IHandler
 {
     [Inject] private readonly IHandler _handler; // Self-reference through different interface
@@ -170,12 +169,13 @@ public partial class ProcessorHandler : IProcessor, IHandler
         // Arrange - Circular dependencies across different namespaces
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace ServiceGroup.Alpha
 {
     public interface IAlphaService { }
     
-    [Service]
+    
     public partial class AlphaService : IAlphaService
     {
         [Inject] private readonly ServiceGroup.Beta.IBetaService _beta;
@@ -186,7 +186,7 @@ namespace ServiceGroup.Beta
 {
     public interface IBetaService { }
     
-    [Service]
+    
     public partial class BetaService : IBetaService
     {
         [Inject] private readonly ServiceGroup.Alpha.IAlphaService _alpha;
@@ -217,19 +217,16 @@ namespace ServiceGroup.Beta
         // Arrange - Mixing generic and non-generic services in circular dependency
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace Test;
 
 public interface IGenericRepo<T> { }
 public interface INonGenericService { }
-
-[Service]
 public partial class StringRepo : IGenericRepo<string>
 {
     [Inject] private readonly INonGenericService _service;
 }
-
-[Service]
 public partial class NonGenericService : INonGenericService
 {
     [Inject] private readonly IGenericRepo<string> _repo;
@@ -259,30 +256,23 @@ public partial class NonGenericService : INonGenericService
         // Arrange - Complex multi-parameter DependsOn creating cycles
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace Test;
 
 public interface IAlpha { } public interface IBeta { } 
 public interface IGamma { } public interface IDelta { }
-
-[Service]
 [DependsOn<IBeta, IGamma>]
 public partial class Alpha : IAlpha { }
-
-[Service]
 [DependsOn<IDelta>]
 public partial class Beta : IBeta
 {
     [Inject] private readonly IGamma _gamma;
 }
-
-[Service]
 public partial class Gamma : IGamma
 {
     [Inject] private readonly IDelta _delta;
 }
-
-[Service]
 [DependsOn<IAlpha>]
 public partial class Delta : IDelta { }";
 
@@ -307,21 +297,18 @@ public partial class Delta : IDelta { }";
         // Arrange - IEnumerable with specific concrete types should not create cycles
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using System.Collections.Generic;
 
 namespace Test;
 
 public interface IMessageHandler { }
 public interface IMessageProcessor { }
-
-[Service]
 public partial class MessageProcessor : IMessageProcessor
 {
     [Inject] private readonly IList<IMessageHandler> _handlers;
     [Inject] private readonly IEnumerable<MessageHandler> _concreteHandlers;
 }
-
-[Service]
 public partial class MessageHandler : IMessageHandler
 {
     [Inject] private readonly IMessageProcessor _processor;
@@ -342,32 +329,25 @@ public partial class MessageHandler : IMessageHandler
         // Arrange - Complex scenario with some external services in potential cycle
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace Test;
 
 public interface IInternalA { } public interface IExternalB { } 
 public interface IInternalC { } public interface IInternalD { }
-
-[Service]
 public partial class InternalA : IInternalA
 {
     [Inject] private readonly IExternalB _external;
 }
-
-[Service]
 [ExternalService]
 public partial class ExternalB : IExternalB
 {
     [Inject] private readonly IInternalC _internalC;
 }
-
-[Service]
 public partial class InternalC : IInternalC
 {
     [Inject] private readonly IInternalD _internalD;
 }
-
-[Service]
 public partial class InternalD : IInternalD
 {
     [Inject] private readonly IInternalA _internalA;
@@ -389,36 +369,27 @@ public partial class InternalD : IInternalD
         // Arrange - Complex diamond pattern (valid - no cycles)
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace Test;
 
 public interface IRoot { } public interface ILeft { } 
 public interface IRight { } public interface IBottom { }
 public interface IFinal { }
-
-[Service]
 public partial class Root : IRoot { }
-
-[Service]
 public partial class Left : ILeft
 {
     [Inject] private readonly IRoot _root;
 }
-
-[Service]
 public partial class Right : IRight
 {
     [Inject] private readonly IRoot _root; // Diamond: both Left and Right depend on Root
 }
-
-[Service]
 public partial class Bottom : IBottom
 {
     [Inject] private readonly ILeft _left;
     [Inject] private readonly IRight _right; // Bottom depends on both branches
 }
-
-[Service]
 public partial class Final : IFinal
 {
     [Inject] private readonly IBottom _bottom;
@@ -449,13 +420,12 @@ public partial class Final : IFinal
         // Arrange - Various collection types should not create cycles
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using System.Collections.Generic;
 
 namespace Test;
 
 public interface ICollectionService { } public interface IItemService { }
-
-[Service]
 public partial class CollectionService : ICollectionService
 {
     [Inject] private readonly IEnumerable<IItemService> _enumerable;
@@ -464,8 +434,6 @@ public partial class CollectionService : ICollectionService
     [Inject] private readonly List<IItemService> _concreteList;
     [Inject] private readonly IItemService[] _array;
 }
-
-[Service]
 public partial class ItemService : IItemService
 {
     [Inject] private readonly ICollectionService _collectionService;
@@ -492,19 +460,16 @@ public partial class ItemService : IItemService
         // Arrange - Open generic services in circular dependency
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace Test;
 
 public interface IOpenGenericA<T> { }
 public interface IOpenGenericB<T> { }
-
-[Service]
 public partial class OpenGenericA<T> : IOpenGenericA<T>
 {
     [Inject] private readonly IOpenGenericB<T> _genericB;
 }
-
-[Service]
 public partial class OpenGenericB<T> : IOpenGenericB<T>
 {
     [Inject] private readonly IOpenGenericA<T> _genericA;
@@ -534,20 +499,17 @@ public partial class OpenGenericB<T> : IOpenGenericB<T>
         // Arrange - Nested generics in circular dependency
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using System.Collections.Generic;
 
 namespace Test;
 
 public interface INestedGenericService<T> { }
 public interface INestedGenericProcessor<T> { }
-
-[Service]
 public partial class NestedGenericService<T> : INestedGenericService<T>
 {
     [Inject] private readonly INestedGenericProcessor<List<T>> _processor;
 }
-
-[Service]
 public partial class NestedGenericProcessor<T> : INestedGenericProcessor<T>
 {
     // This creates a cycle if T becomes List<SomeType> and we depend on INestedGenericService<SomeType>
@@ -571,20 +533,17 @@ public partial class NestedGenericProcessor<T> : INestedGenericProcessor<T>
         // Arrange - Generic services with constraints in circular dependency
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using System;
 
 namespace Test;
 
 public interface IConstrainedRepo<T> where T : class { }
 public interface IConstrainedService<T> where T : class, IComparable { }
-
-[Service]
 public partial class ConstrainedRepo<T> : IConstrainedRepo<T> where T : class
 {
     [Inject] private readonly IConstrainedService<T> _service;
 }
-
-[Service]
 public partial class ConstrainedService<T> : IConstrainedService<T> where T : class, IComparable
 {
     [Inject] private readonly IConstrainedRepo<T> _repo;

@@ -1,46 +1,53 @@
-using Microsoft.Extensions.Hosting;
-using System.ComponentModel.DataAnnotations;
-
 namespace IoCTools.Sample.Interfaces;
+
+using Services;
 
 // ===== 1. CONDITIONAL SERVICES INTERFACES =====
 
 /// <summary>
-/// Email provider interface for conditional service examples
+///     Email provider interface for conditional service examples
 /// </summary>
 public interface IEmailProvider
 {
-    Task SendEmailAsync(string to, string subject, string body);
     string ProviderType { get; }
+
+    Task SendEmailAsync(string to,
+        string subject,
+        string body);
+
     Task<bool> IsAvailableAsync();
 }
 
 /// <summary>
-/// Cache provider interface for conditional service examples
+///     Cache provider interface for conditional service examples
 /// </summary>
 public interface ICacheProvider
 {
+    string CacheType { get; }
     Task<T?> GetAsync<T>(string key) where T : class;
-    Task SetAsync<T>(string key, T value, TimeSpan? expiration = null) where T : class;
+
+    Task SetAsync<T>(string key,
+        T value,
+        TimeSpan? expiration = null) where T : class;
+
     Task RemoveAsync(string key);
     Task ClearAsync();
-    string CacheType { get; }
 }
 
 /// <summary>
-/// Optional service interface for feature flag demonstrations
+///     Optional service interface for feature flag demonstrations
 /// </summary>
 public interface IOptionalService
 {
-    Task<string> ExecuteFeatureAsync(string input);
     bool IsEnabled { get; }
     string FeatureName { get; }
+    Task<string> ExecuteFeatureAsync(string input);
 }
 
 // ===== 2. DEPENDSON EXAMPLES INTERFACES =====
 
 /// <summary>
-/// Payment service interface for DependsOn examples
+///     Payment service interface for DependsOn examples
 /// </summary>
 public interface IPaymentService
 {
@@ -50,42 +57,51 @@ public interface IPaymentService
 }
 
 /// <summary>
-/// Inventory service interface for stock management
+///     Inventory service interface for stock management
 /// </summary>
 public interface IInventoryService
 {
-    Task<bool> CheckStockAsync(int productId, int quantity);
-    Task ReserveAsync(int productId, int quantity);
-    Task ReleaseReservationAsync(int productId, int quantity);
+    Task<bool> CheckStockAsync(int productId,
+        int quantity);
+
+    Task ReserveAsync(int productId,
+        int quantity);
+
+    Task ReleaseReservationAsync(int productId,
+        int quantity);
+
     Task<int> GetAvailableStockAsync(int productId);
 }
 
 /// <summary>
-/// Report generator interface for business reports
+///     Report generator interface for business reports
 /// </summary>
 public interface IReportGenerator
 {
     Task<string> GenerateOrderReportAsync(int orderId);
     Task<string> GenerateInventoryReportAsync();
-    Task<string> GenerateCustomReportAsync(string reportType, Dictionary<string, object> parameters);
+
+    Task<string> GenerateCustomReportAsync(string reportType,
+        Dictionary<string, object> parameters);
+
     Task<byte[]> ExportReportToPdfAsync(string reportContent);
 }
 
 // ===== 3. BACKGROUND SERVICES INTERFACES =====
 
 /// <summary>
-/// Email queue processor interface for background processing
+///     Email queue processor interface for background processing
 /// </summary>
 public interface IEmailQueueProcessor
 {
+    bool IsProcessing { get; }
     Task ProcessEmailQueueAsync(CancellationToken cancellationToken);
     Task<int> GetQueueSizeAsync();
     Task EnqueueEmailAsync(EmailMessage email);
-    bool IsProcessing { get; }
 }
 
 /// <summary>
-/// Data cleanup service interface for maintenance tasks
+///     Data cleanup service interface for maintenance tasks
 /// </summary>
 public interface IDataCleanupService
 {
@@ -96,31 +112,37 @@ public interface IDataCleanupService
 }
 
 /// <summary>
-/// Health monitor interface for system monitoring
+///     Health monitor interface for system monitoring
 /// </summary>
 public interface IHealthMonitor
 {
     Task<HealthStatus> CheckSystemHealthAsync();
     Task<bool> IsServiceHealthyAsync(string serviceName);
-    Task RecordHealthMetricAsync(string metric, double value);
+
+    Task RecordHealthMetricAsync(string metric,
+        double value);
+
     Task<HealthReport> GetHealthReportAsync(TimeSpan period);
 }
 
 // ===== 4. MULTI-INTERFACE REGISTRATION INTERFACES =====
 
 /// <summary>
-/// User service interface for user management
+///     User service interface for user management
 /// </summary>
 public interface IUserService
 {
     Task<User> GetUserAsync(int userId);
-    Task<User> CreateUserAsync(string name, string email);
+
+    Task<User> CreateUserAsync(string name,
+        string email);
+
     Task<bool> UpdateUserAsync(User user);
     Task<bool> DeleteUserAsync(int userId);
 }
 
 /// <summary>
-/// User repository interface for data access
+///     User repository interface for data access
 /// </summary>
 public interface IUserRepository
 {
@@ -132,20 +154,22 @@ public interface IUserRepository
 }
 
 /// <summary>
-/// User validator interface for validation logic
+///     User validator interface for validation logic
 /// </summary>
 public interface IUserValidator
 {
     bool IsValidEmail(string email);
     bool IsValidName(string name);
     ValidationResult ValidateUser(User user);
-    Task<bool> IsEmailUniqueAsync(string email, int? excludeUserId = null);
+
+    Task<bool> IsEmailUniqueAsync(string email,
+        int? excludeUserId = null);
 }
 
 // ===== 5. GENERIC SERVICE INTERFACES =====
 
 /// <summary>
-/// Generic repository interface with comprehensive CRUD operations
+///     Generic repository interface with comprehensive CRUD operations
 /// </summary>
 public interface IRepository<T> where T : class
 {
@@ -160,7 +184,7 @@ public interface IRepository<T> where T : class
 }
 
 /// <summary>
-/// Generic validator interface for entity validation
+///     Generic validator interface for entity validation
 /// </summary>
 public interface IValidator<T> where T : class
 {
@@ -170,12 +194,15 @@ public interface IValidator<T> where T : class
 }
 
 /// <summary>
-/// Generic processor interface for input/output transformations
+///     Generic processor interface for input/output transformations
 /// </summary>
 public interface IProcessor<TInput, TOutput>
 {
     Task<TOutput> ProcessAsync(TInput input);
-    Task<TOutput> ProcessAsync(TInput input, ProcessingOptions options);
+
+    Task<TOutput> ProcessAsync(TInput input,
+        ProcessingOptions options);
+
     Task<IEnumerable<TOutput>> ProcessBatchAsync(IEnumerable<TInput> inputs);
     bool CanProcess(TInput input);
 }
@@ -183,7 +210,7 @@ public interface IProcessor<TInput, TOutput>
 // ===== 6. INHERITANCE CHAIN INTERFACES =====
 
 /// <summary>
-/// Base entity interface for common properties
+///     Base entity interface for common properties
 /// </summary>
 public interface IBaseEntity
 {
@@ -194,7 +221,7 @@ public interface IBaseEntity
 }
 
 /// <summary>
-/// Generic base repository interface
+///     Generic base repository interface
 /// </summary>
 public interface IBaseRepository<T> where T : class, IBaseEntity
 {
@@ -208,19 +235,21 @@ public interface IBaseRepository<T> where T : class, IBaseEntity
 }
 
 /// <summary>
-/// Business service interface for domain logic
+///     Business service interface for domain logic
 /// </summary>
 public interface IBusinessService
 {
     Task<BusinessResult> ExecuteBusinessLogicAsync(BusinessRequest request);
     Task<bool> ValidateBusinessRulesAsync(BusinessRequest request);
-    Task AuditBusinessActionAsync(string action, object data);
+
+    Task AuditBusinessActionAsync(string action,
+        object data);
 }
 
 // ===== 7. TRANSIENT SERVICE INTERFACES =====
 
 /// <summary>
-/// Email validator interface for email validation
+///     Email validator interface for email validation
 /// </summary>
 public interface IEmailValidator
 {
@@ -231,54 +260,66 @@ public interface IEmailValidator
 }
 
 /// <summary>
-/// Data transformer interface for data manipulation
+///     Data transformer interface for data manipulation
 /// </summary>
 public interface IDataTransformer
 {
     T Transform<T>(object source) where T : class, new();
     Task<T> TransformAsync<T>(object source) where T : class, new();
     IEnumerable<T> TransformCollection<T>(IEnumerable<object> sources) where T : class, new();
-    bool CanTransform(Type sourceType, Type targetType);
+
+    bool CanTransform(Type sourceType,
+        Type targetType);
 }
 
 /// <summary>
-/// Request processor interface for HTTP request processing
+///     Request processor interface for HTTP request processing
 /// </summary>
 public interface IRequestProcessor
 {
+    string ProcessorName { get; }
     Task<RequestResult> ProcessRequestAsync(ProcessingRequest request);
     Task<bool> ValidateRequestAsync(ProcessingRequest request);
-    Task<RequestResult> ProcessWithRetryAsync(ProcessingRequest request, int maxRetries = 3);
-    string ProcessorName { get; }
+
+    Task<RequestResult> ProcessWithRetryAsync(ProcessingRequest request,
+        int maxRetries = 3);
 }
 
 // ===== 8. SPECIALIZED INTERFACES FOR COMPLEX SCENARIOS =====
 
 /// <summary>
-/// File processor interface for file operations
+///     File processor interface for file operations
 /// </summary>
 public interface IFileProcessor
 {
-    Task<FileProcessingResult> ProcessFileAsync(Stream fileStream, string fileName);
+    Task<FileProcessingResult> ProcessFileAsync(Stream fileStream,
+        string fileName);
+
     Task<bool> IsValidFileTypeAsync(string fileName);
     Task<IEnumerable<string>> GetSupportedExtensionsAsync();
     Task<long> GetMaxFileSizeAsync();
 }
 
 /// <summary>
-/// Configuration manager interface for settings management
+///     Configuration manager interface for settings management
 /// </summary>
 public interface IConfigurationManager
 {
-    T GetValue<T>(string key, T defaultValue = default);
-    Task<T> GetValueAsync<T>(string key, T defaultValue = default);
-    Task SetValueAsync<T>(string key, T value);
+    T GetValue<T>(string key,
+        T defaultValue = default);
+
+    Task<T> GetValueAsync<T>(string key,
+        T defaultValue = default);
+
+    Task SetValueAsync<T>(string key,
+        T value);
+
     Task<bool> ExistsAsync(string key);
     Task<Dictionary<string, object>> GetSectionAsync(string sectionName);
 }
 
 /// <summary>
-/// Notification dispatcher interface for notification management
+///     Notification dispatcher interface for notification management
 /// </summary>
 public interface INotificationDispatcher
 {
@@ -291,48 +332,68 @@ public interface INotificationDispatcher
 // ===== 9. AUDIT AND LOGGING INTERFACES =====
 
 /// <summary>
-/// Audit service interface for tracking changes
+///     Audit service interface for tracking changes
 /// </summary>
 public interface IAuditService
 {
-    Task LogActionAsync(string action, string details);
-    Task LogActionAsync(string action, object data, string userId = null);
-    Task<IEnumerable<AuditEntry>> GetAuditTrailAsync(string entityType, int entityId);
-    Task<IEnumerable<AuditEntry>> GetUserActionsAsync(string userId, DateTime? from = null, DateTime? to = null);
+    Task LogActionAsync(string action,
+        string details);
+
+    Task LogActionAsync(string action,
+        object data,
+        string userId = null);
+
+    Task<IEnumerable<AuditEntry>> GetAuditTrailAsync(string entityType,
+        int entityId);
+
+    Task<IEnumerable<AuditEntry>> GetUserActionsAsync(string userId,
+        DateTime? from = null,
+        DateTime? to = null);
 }
 
 /// <summary>
-/// Security service interface for security operations
+///     Security service interface for security operations
 /// </summary>
 public interface ISecurityService
 {
-    Task<bool> ValidatePermissionsAsync(int userId, string action);
-    Task LogSecurityEventAsync(string eventType, string details);
+    Task<bool> ValidatePermissionsAsync(int userId,
+        string action);
+
+    Task LogSecurityEventAsync(string eventType,
+        string details);
+
     Task<SecurityContext> GetUserSecurityContextAsync(int userId);
-    Task<bool> IsActionAllowedAsync(int userId, string resource, string action);
+
+    Task<bool> IsActionAllowedAsync(int userId,
+        string resource,
+        string action);
 }
 
 // ===== DATA MODELS AND SUPPORTING TYPES =====
 
-public class User : IoCTools.Sample.Services.IEntity
+public class User : IEntity
 {
-    public int Id { get; set; }
+    public User()
+    {
+    }
+
+    public User(int id,
+        string name,
+        string email)
+    {
+        Id = id;
+        Name = name;
+        Email = email;
+    }
+
     public string Name { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string Username { get; set; } = string.Empty;
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
+    public int Id { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-    public User() { }
-
-    public User(int id, string name, string email)
-    {
-        Id = id;
-        Name = name;
-        Email = email;
-    }
 }
 
 public record Order(int Id, string CustomerEmail, Payment Payment)
@@ -465,7 +526,7 @@ public enum NotificationStatus
 // ===== SPECIALIZED CONSTRAINT INTERFACES =====
 
 /// <summary>
-/// Constraint interface for auditable entities
+///     Constraint interface for auditable entities
 /// </summary>
 public interface IAuditable
 {
@@ -476,7 +537,7 @@ public interface IAuditable
 }
 
 /// <summary>
-/// Constraint interface for soft-deletable entities
+///     Constraint interface for soft-deletable entities
 /// </summary>
 public interface ISoftDeletable
 {
@@ -486,7 +547,7 @@ public interface ISoftDeletable
 }
 
 /// <summary>
-/// Constraint interface for versioned entities
+///     Constraint interface for versioned entities
 /// </summary>
 public interface IVersioned
 {
@@ -495,7 +556,7 @@ public interface IVersioned
 }
 
 /// <summary>
-/// Constraint interface for tenant-aware entities
+///     Constraint interface for tenant-aware entities
 /// </summary>
 public interface ITenantAware
 {

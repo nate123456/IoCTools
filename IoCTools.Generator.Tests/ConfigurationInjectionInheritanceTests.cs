@@ -1,7 +1,8 @@
-using System.Text.RegularExpressions;
-using Microsoft.CodeAnalysis;
-
 namespace IoCTools.Generator.Tests;
+
+using System.Text.RegularExpressions;
+
+using Microsoft.CodeAnalysis;
 
 /// <summary>
 ///     COMPREHENSIVE CONFIGURATION INJECTION IN INHERITANCE TESTS
@@ -17,18 +18,18 @@ public class ConfigurationInjectionInheritanceTests
         // Arrange - Base class with configuration, derived class without
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
 
-[UnregisteredService]
+[Scoped]
 public abstract partial class BaseService
 {
     [InjectConfiguration(""Database:ConnectionString"")] protected readonly string _connectionString;
     [InjectConfiguration(""Cache:TTL"")] protected readonly int _cacheTtl;
 }
-
-[Service]
+[Scoped]
 public partial class DerivedService : BaseService
 {
 }";
@@ -66,19 +67,19 @@ public partial class DerivedService : BaseService
         // Arrange - Base class without configuration, derived class with configuration
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
 
 public interface IBaseService { }
 
-[UnregisteredService]
+[Scoped]
 [DependsOn<IBaseService>]
 public abstract partial class BaseService
 {
 }
-
-[Service]
+[Scoped]
 public partial class DerivedService : BaseService
 {
     [InjectConfiguration(""Email:SmtpHost"")] private readonly string _smtpHost;
@@ -112,18 +113,18 @@ public partial class DerivedService : BaseService
         // Arrange - Base class with config, derived class inherits (hierarchical approach)
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
 
-[UnregisteredService]
 public abstract partial class BaseService
 {
     [InjectConfiguration(""Database:ConnectionString"")] protected readonly string _connectionString;
     [InjectConfiguration(""Database:Timeout"")] protected readonly int _timeout;
 }
 
-[Service]
+[Scoped]
 public partial class DerivedService : BaseService
 {
     // Derived class inherits base configuration requirements
@@ -133,13 +134,8 @@ public partial class DerivedService : BaseService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        if (result.HasErrors)
-        {
-            var errors = string.Join("\n",
-                result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
-                    .Select(d => $"{d.Id}: {d.GetMessage()}"));
-            Assert.True(false, $"Compilation errors:\n{errors}");
-        }
+        Assert.False(result.HasErrors,
+            $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
 
         var derivedConstructorSource = result.GetConstructorSource("DerivedService");
 
@@ -165,17 +161,15 @@ public partial class DerivedService : BaseService
         // Arrange - Configuration field name conflicts across inheritance
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
 
-[UnregisteredService]
 public abstract partial class BaseService
 {
     [InjectConfiguration(""Base:ConnectionString"")] protected readonly string _connectionString;
 }
-
-[Service]
 public partial class DerivedService : BaseService
 {
     [InjectConfiguration(""Derived:ConnectionString"")] private readonly string _connectionString; // Same field name
@@ -211,29 +205,25 @@ public partial class DerivedService : BaseService
         // Arrange - Multi-level inheritance (3+ levels) with configuration
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
 
-[UnregisteredService]
 public abstract partial class Level1Base
 {
     [InjectConfiguration(""Level1:Setting"")] protected readonly string _level1Setting;
 }
 
-[UnregisteredService]
 public abstract partial class Level2Middle : Level1Base
 {
     [InjectConfiguration(""Level2:Setting"")] protected readonly string _level2Setting;
 }
 
-[UnregisteredService]
 public abstract partial class Level3Deep : Level2Middle
 {
     [InjectConfiguration(""Level3:Setting"")] protected readonly string _level3Setting;
 }
-
-[Service]
 public partial class Level4Final : Level3Deep
 {
     [InjectConfiguration(""Level4:Setting"")] private readonly string _level4Setting;
@@ -269,6 +259,7 @@ public partial class Level4Final : Level3Deep
         // Arrange - Generic base classes with configuration injection
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
@@ -279,14 +270,11 @@ public class EntitySettings
     public int Timeout { get; set; }
 }
 
-[UnregisteredService]
 public abstract partial class GenericBase<T> where T : class
 {
     [InjectConfiguration] protected readonly EntitySettings _entitySettings;
     [InjectConfiguration(""Generic:Setting"")] protected readonly string _genericSetting;
 }
-
-[Service]
 public partial class StringService : GenericBase<string>
 {
     [InjectConfiguration(""String:Specific"")] private readonly string _stringSpecific;
@@ -321,26 +309,23 @@ public partial class StringService : GenericBase<string>
         // Arrange - Abstract base classes with configuration fields
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
 
 public interface IRepository<T> { }
 
-[UnregisteredService]
 public abstract partial class AbstractService<T> where T : class
 {
     [InjectConfiguration(""Repository:ConnectionString"")] protected readonly string _connectionString;
     [Inject] protected readonly IRepository<T> _repository;
 }
 
-[UnregisteredService]
 public abstract partial class AbstractEmailService : AbstractService<string>
 {
     [InjectConfiguration(""Email:SmtpHost"")] protected readonly string _smtpHost;
 }
-
-[Service]
 public partial class ConcreteEmailService : AbstractEmailService
 {
     [InjectConfiguration(""Email:ApiKey"")] private readonly string _apiKey;
@@ -381,17 +366,15 @@ public partial class ConcreteEmailService : AbstractEmailService
         // Arrange - Derived class overriding base configuration with same key
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
 
-[UnregisteredService]
 public abstract partial class BaseService
 {
     [InjectConfiguration(""ConnectionString"")] protected readonly string _connectionString;
 }
-
-[Service]
 public partial class DerivedService : BaseService
 {
     [InjectConfiguration(""ConnectionString"")] private readonly string _derivedConnectionString; // Same key
@@ -419,6 +402,7 @@ public partial class DerivedService : BaseService
         // Arrange - Derived class providing different configuration keys
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
@@ -435,13 +419,10 @@ public class CacheSettings
     public string Provider { get; set; } = string.Empty;
 }
 
-[UnregisteredService]
 public abstract partial class BaseService
 {
     [InjectConfiguration] protected readonly DatabaseSettings _databaseSettings;
 }
-
-[Service]
 public partial class DerivedService : BaseService
 {
     [InjectConfiguration] private readonly CacheSettings _cacheSettings;
@@ -483,14 +464,11 @@ public class EmailSettings
     public int SmtpPort { get; set; }
 }
 
-[UnregisteredService]
 public abstract partial class BaseService
 {
     [InjectConfiguration(""Database:ConnectionString"")] protected readonly string _connectionString;
     [InjectConfiguration] protected readonly IOptions<EmailSettings> _emailOptions;
 }
-
-[Service]
 public partial class DerivedService : BaseService
 {
     [InjectConfiguration] private readonly EmailSettings _directEmailSettings;
@@ -536,15 +514,12 @@ namespace Test;
 public interface IBaseService { }
 public interface IDerivedService { }
 
-[UnregisteredService]
 [DependsOn<IBaseService>]
 public abstract partial class BaseController
 {
     [InjectConfiguration(""Base:ConnectionString"")] protected readonly string _connectionString;
     [Inject] protected readonly ILogger _logger;
 }
-
-[Service]
 [DependsOn<IDerivedService>]
 public partial class DerivedController : BaseController
 {
@@ -583,7 +558,7 @@ public partial class DerivedController : BaseController
     [Fact]
     public void ConfigurationInheritance_WithServiceLifetime_RegistersCorrectly()
     {
-        // Arrange - Inheritance + [Service] lifetime + configuration injection
+        // Arrange - Inheritance + [Scoped] lifetime + configuration injection
         // FIXED: Base service needs dependencies to trigger generator pipeline
         var source = @"
 using IoCTools.Abstractions.Annotations;
@@ -595,14 +570,13 @@ namespace Test;
 
 public interface IBaseService { }
 
-[UnregisteredService]
 [DependsOn<IBaseService>]
 public abstract partial class BaseService
 {
     [InjectConfiguration(""Database:ConnectionString"")] protected readonly string _connectionString;
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class SingletonService : BaseService
 {
     [InjectConfiguration(""Cache:TTL"")] private readonly int _cacheTtl;
@@ -635,12 +609,13 @@ public partial class SingletonService : BaseService
     }
 
     [Fact]
-    public void ConfigurationInheritance_WithUnregisteredService_SkipsRegistration()
+    public void ConfigurationInheritance_WithoutExplicitLifetime_SkipsRegistration()
     {
-        // Arrange - Inheritance + [UnregisteredService] + configuration
-        // FIXED: Services with only [InjectConfiguration] need either [Service] attribute or other dependencies
+        // Arrange - Inheritance + no explicit lifetime + configuration
+        // Both services have injection attributes, but only one has explicit lifetime
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -648,21 +623,19 @@ namespace Test;
 
 public interface ITestService { }
 
-[UnregisteredService]
 [DependsOn<ITestService>]
 public abstract partial class BaseService
 {
     [InjectConfiguration(""Database:ConnectionString"")] protected readonly string _connectionString;
 }
 
-[UnregisteredService]
-public partial class UnregisteredService : BaseService
+public partial class UnmanagedService : BaseService
 {
     [InjectConfiguration(""Cache:TTL"")] private readonly int _cacheTtl;
-    [Inject] private readonly ILogger<UnregisteredService> _logger;
+    [Inject] private readonly ILogger<UnmanagedService> _logger;
 }
 
-[Service]
+[Scoped]
 public partial class RegisteredService : BaseService
 {
     [InjectConfiguration(""Email:ApiKey"")] private readonly string _apiKey;
@@ -677,16 +650,16 @@ public partial class RegisteredService : BaseService
         var registrationSource = result.GetServiceRegistrationSource();
         Assert.NotNull(registrationSource);
 
-        // Only RegisteredService should be registered
+        // Only RegisteredService should be registered (has Lifetime attribute)
         Assert.Contains("RegisteredService", registrationSource.Content);
-        Assert.DoesNotContain("UnregisteredService>", registrationSource.Content);
+        Assert.DoesNotContain("UnmanagedService>", registrationSource.Content);
 
         // Both should have constructors with configuration
-        var unregisteredConstructorSource = result.GetConstructorSource("UnregisteredService");
+        var unmanagedConstructorSource = result.GetConstructorSource("UnmanagedService");
         var registeredConstructorSource = result.GetConstructorSource("RegisteredService");
 
-        if (unregisteredConstructorSource != null)
-            Assert.Contains("IConfiguration configuration", unregisteredConstructorSource.Content);
+        if (unmanagedConstructorSource != null)
+            Assert.Contains("IConfiguration configuration", unmanagedConstructorSource.Content);
 
         if (registeredConstructorSource != null)
             Assert.Contains("IConfiguration configuration", registeredConstructorSource.Content);
@@ -702,6 +675,7 @@ public partial class RegisteredService : BaseService
         // Arrange - Test proper parameter ordering (base dependencies first)
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
@@ -709,14 +683,11 @@ namespace Test;
 public interface IService1 { }
 public interface IService2 { }
 
-[UnregisteredService]
 [DependsOn<IService1>]
 public abstract partial class BaseClass
 {
     [InjectConfiguration(""Base:Setting"")] protected readonly string _baseSetting;
 }
-
-[Service]
 [DependsOn<IService2>]
 public partial class DerivedClass : BaseClass
 {
@@ -751,20 +722,18 @@ public partial class DerivedClass : BaseClass
         // Arrange - Test correct base constructor calls
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
 
 public interface IBaseService { }
 
-[UnregisteredService]
 [DependsOn<IBaseService>]
 public abstract partial class BaseService
 {
     [InjectConfiguration(""Database:ConnectionString"")] protected readonly string _connectionString;
 }
-
-[Service]
 public partial class DerivedService : BaseService
 {
     [InjectConfiguration(""Cache:TTL"")] private readonly int _cacheTtl;
@@ -796,18 +765,16 @@ public partial class DerivedService : BaseService
         // Arrange - Test field assignment order in inheritance chains
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
 
-[UnregisteredService]
 public abstract partial class BaseService
 {
     [InjectConfiguration(""Base:Setting1"")] protected readonly string _setting1;
     [InjectConfiguration(""Base:Setting2"")] protected readonly string _setting2;
 }
-
-[Service]
 public partial class DerivedService : BaseService
 {
     [InjectConfiguration(""Derived:Setting1"")] private readonly string _derivedSetting1;
@@ -840,23 +807,20 @@ public partial class DerivedService : BaseService
         // Arrange - Test IConfiguration parameter handling across levels
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
 
-[UnregisteredService]
 public abstract partial class Level1
 {
     [InjectConfiguration(""Level1:Setting"")] protected readonly string _level1Setting;
 }
 
-[UnregisteredService]
 public partial class Level2 : Level1
 {
     [InjectConfiguration(""Level2:Setting"")] protected readonly string _level2Setting;
 }
-
-[Service]
 public partial class Level3 : Level2
 {
     [InjectConfiguration(""Level3:Setting"")] private readonly string _level3Setting;
@@ -895,6 +859,7 @@ public partial class Level3 : Level2
         // Arrange - Generic base class with configuration injection
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
@@ -907,14 +872,11 @@ public class EntitySettings<T> where T : IEntity
     public int Timeout { get; set; }
 }
 
-[UnregisteredService]
 public abstract partial class GenericService<T> where T : class, IEntity
 {
     [InjectConfiguration] protected readonly EntitySettings<T> _entitySettings;
     [InjectConfiguration(""Generic:ApiKey"")] protected readonly string _apiKey;
 }
-
-[Service]
 public partial class ConcreteService : GenericService<MyEntity>
 {
     [InjectConfiguration(""Concrete:Setting"")] private readonly string _concreteSetting;
@@ -945,23 +907,20 @@ public class MyEntity : IEntity { }";
         // Arrange - Open vs constructed generic inheritance
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
 
-[UnregisteredService]
 public abstract partial class GenericBase<T> where T : class
 {
     [InjectConfiguration(""Generic:Setting"")] protected readonly string _genericSetting;
 }
 
-[UnregisteredService]
 public abstract partial class GenericMiddle<T> : GenericBase<T> where T : class
 {
     [InjectConfiguration(""Middle:Setting"")] protected readonly string _middleSetting;
 }
-
-[Service]
 public partial class ConcreteService<T> : GenericMiddle<T> where T : class
 {
     [InjectConfiguration(""Concrete:Setting"")] private readonly string _concreteSetting;
@@ -1011,14 +970,11 @@ using System.Collections.Generic;
 
 namespace Test;
 
-[UnregisteredService]
 public abstract partial class CollectionService<T> where T : class
 {
     [InjectConfiguration(""Collection:MaxSize"")] protected readonly int _maxSize;
     [InjectConfiguration(""Collection:Items"")] protected readonly List<T> _items;
 }
-
-[Service]
 public partial class StringCollectionService : CollectionService<string>
 {
     [InjectConfiguration(""StringCollection:Prefix"")] private readonly string _prefix;
@@ -1052,17 +1008,15 @@ public partial class StringCollectionService : CollectionService<string>
         // Arrange - Configuration conflicts across inheritance levels
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
 
-[UnregisteredService]
 public abstract partial class BaseService
 {
     [InjectConfiguration(""ConflictKey"")] protected readonly string _baseConflict;
 }
-
-[Service]
 public partial class DerivedService : BaseService
 {
     [InjectConfiguration(""ConflictKey"")] private readonly int _derivedConflict; // Same key, different type
@@ -1090,17 +1044,15 @@ public partial class DerivedService : BaseService
         // Arrange - Missing configuration in inheritance chains
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
 
-[UnregisteredService]
 public abstract partial class BaseService
 {
     [InjectConfiguration("""")] private readonly string _emptyKey; // Invalid key
 }
-
-[Service]
 public partial class DerivedService : BaseService
 {
     [InjectConfiguration(""Valid:Key"")] private readonly string _validKey;
@@ -1124,17 +1076,14 @@ public partial class DerivedService : BaseService
         // Arrange - Invalid inheritance + configuration combinations
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
-
-[Service]
 public partial class NonPartialBase // Missing partial
 {
     [InjectConfiguration(""Base:Setting"")] protected readonly string _baseSetting;
 }
-
-[Service]
 public partial class DerivedFromNonPartial : NonPartialBase
 {
     [InjectConfiguration(""Derived:Setting"")] private readonly string _derivedSetting;
@@ -1186,7 +1135,6 @@ public class EmailSettings
     public string ApiKey { get; set; } = string.Empty;
 }
 
-[UnregisteredService]
 [DependsOn<IRepository<string>>]
 public abstract partial class BaseService
 {
@@ -1195,7 +1143,7 @@ public abstract partial class BaseService
     [Inject] protected readonly ILogger _logger;
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 [DependsOn<IEmailService>]
 public partial class ConcreteService : BaseService
 {
@@ -1215,7 +1163,8 @@ public partial class ConcreteService : BaseService
         // Validate service registration
         var registrationSource = result.GetServiceRegistrationSource();
         Assert.NotNull(registrationSource);
-        Assert.Contains("services.AddSingleton<global::Test.ConcreteService, global::Test.ConcreteService>", registrationSource.Content);
+        Assert.Contains("services.AddSingleton<global::Test.ConcreteService, global::Test.ConcreteService>",
+            registrationSource.Content);
 
         // Validate constructor generation
         var constructorSource = result.GetConstructorSource("ConcreteService");
@@ -1226,14 +1175,10 @@ public partial class ConcreteService : BaseService
         // Should include key dependency types
         var expectedParams = new[]
         {
-            "IRepository<string>",
-            "ILogger", 
-            "IConfiguration",
-            "IEmailService",
-            "ILogger<ConcreteService>"
+            "IRepository<string>", "ILogger", "IConfiguration", "IEmailService", "ILogger<ConcreteService>"
         };
 
-        foreach (var param in expectedParams) 
+        foreach (var param in expectedParams)
             Assert.Contains(param, constructorSource.Content);
 
         // Should handle ONLY derived class configuration bindings (hierarchical approach to prevent CS0191)
@@ -1242,7 +1187,8 @@ public partial class ConcreteService : BaseService
         Assert.Contains("configuration.GetSection(\"Email\").Get<EmailSettings>()", constructorSource.Content);
 
         // Should NOT handle base class configuration bindings (handled by base constructors)
-        Assert.DoesNotContain("configuration.GetSection(\"Database\").Get<DatabaseSettings>()", constructorSource.Content);
+        Assert.DoesNotContain("configuration.GetSection(\"Database\").Get<DatabaseSettings>()",
+            constructorSource.Content);
         Assert.DoesNotContain("configuration.GetValue<string>(\"Base:ApiKey\")", constructorSource.Content);
 
         // Should have base constructor call
@@ -1271,7 +1217,6 @@ public class Settings1 { public string Value { get; set; } = string.Empty; }
 public class Settings2 { public string Value { get; set; } = string.Empty; }
 public class Settings3 { public string Value { get; set; } = string.Empty; }
 
-[UnregisteredService]
 [DependsOn<IService1>]
 public abstract partial class Level1<T> where T : class
 {
@@ -1280,7 +1225,6 @@ public abstract partial class Level1<T> where T : class
     [Inject] protected readonly IEnumerable<T> _items;
 }
 
-[UnregisteredService]
 [DependsOn<IService2>]
 public abstract partial class Level2<T> : Level1<T> where T : class
 {
@@ -1288,14 +1232,11 @@ public abstract partial class Level2<T> : Level1<T> where T : class
     [InjectConfiguration(""Level2:DirectValue"")] protected readonly int _directValue2;
 }
 
-[UnregisteredService]
 public abstract partial class Level3<T> : Level2<T> where T : class
 {
     [InjectConfiguration] protected readonly IOptionsSnapshot<Settings3> _settings3Snapshot;
     [InjectConfiguration(""Level3:Collection"")] protected readonly List<string> _collection3;
 }
-
-[Service]
 [DependsOn<IService3>]
 public partial class FinalLevel : Level3<string>
 {
@@ -1356,17 +1297,15 @@ public partial class FinalLevel : Level3<string>
 
         var source = $@"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
 
-[UnregisteredService]
 public abstract partial class BaseService
 {{
     {string.Join("\n    ", baseConfigFields)}
 }}
-
-[Service]
 public partial class DerivedService : BaseService
 {{
     {string.Join("\n    ", derivedConfigFields)}
@@ -1399,7 +1338,6 @@ public partial class DerivedService : BaseService
     {
         // Arrange - Very deep inheritance chain with configuration at each level
         var levels = Enumerable.Range(1, 8).Select(i => $@"
-[UnregisteredService]
 public abstract partial class Level{i}{(i == 1 ? "" : $" : Level{i - 1}")}
 {{
     [InjectConfiguration(""Level{i}:Setting"")] protected readonly string _level{i}Setting;
@@ -1407,13 +1345,12 @@ public abstract partial class Level{i}{(i == 1 ? "" : $" : Level{i - 1}")}
 
         var source = $@"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
 
 {string.Join("\n", levels)}
-
-[Service]
 public partial class FinalLevel : Level8
 {{
     [InjectConfiguration(""Final:Setting"")] private readonly string _finalSetting;

@@ -1,6 +1,6 @@
-using Microsoft.CodeAnalysis;
-
 namespace IoCTools.Generator.Tests;
+
+using Microsoft.CodeAnalysis;
 
 /// <summary>
 ///     COMPREHENSIVE CONFIGURATION INJECTION DIAGNOSTICS TESTS
@@ -16,11 +16,10 @@ public class ConfigurationInjectionDiagnosticsTests
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
-
-[Service]
 public partial class EmptyKeyService
 {
     [InjectConfiguration("""")] private readonly string _emptyKey;
@@ -45,11 +44,10 @@ public partial class EmptyKeyService
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
-
-[Service]
 public partial class WhitespaceKeyService
 {
     [InjectConfiguration(""   "")] private readonly string _whitespaceKey;
@@ -79,11 +77,10 @@ public partial class WhitespaceKeyService
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
-
-[Service]
 public partial class DoubleColonKeyService
 {
     [InjectConfiguration(""Database::ConnectionString"")] private readonly string _doubleColon;
@@ -110,11 +107,10 @@ public partial class DoubleColonKeyService
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
-
-[Service]
 public partial class LeadingTrailingColonService
 {
     [InjectConfiguration("":DatabaseConnection"")] private readonly string _leadingColon;
@@ -142,11 +138,10 @@ public partial class LeadingTrailingColonService
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
-
-[Service]
 public partial class InvalidCharactersService
 {
     [InjectConfiguration(""Database\0Connection"")] private readonly string _nullChar;
@@ -175,11 +170,10 @@ public partial class InvalidCharactersService
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
-
-[Service]
 public partial class ValidKeysService
 {
     [InjectConfiguration(""Database:ConnectionString"")] private readonly string _nestedKey;
@@ -204,6 +198,7 @@ public partial class ValidKeysService
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
@@ -212,8 +207,6 @@ public class DatabaseSettings
 {
     public string ConnectionString { get; set; } = string.Empty;
 }
-
-[Service]
 public partial class InferredKeyService
 {
     [InjectConfiguration] private readonly DatabaseSettings _databaseSettings;
@@ -237,14 +230,13 @@ public partial class InferredKeyService
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 using System.Collections.Generic;
 
 namespace Test;
 
 public interface IConfigService { }
-
-[Service]
 public partial class InterfaceTypeService
 {
     [InjectConfiguration(""Service:Config"")] private readonly IConfigService _configService;
@@ -270,6 +262,7 @@ public partial class InterfaceTypeService
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
@@ -278,8 +271,6 @@ public abstract class AbstractConfigBase
 {
     public string Name { get; set; } = string.Empty;
 }
-
-[Service]
 public partial class AbstractTypeService
 {
     [InjectConfiguration(""Config:Base"")] private readonly AbstractConfigBase _abstractConfig;
@@ -304,6 +295,7 @@ public partial class AbstractTypeService
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
@@ -318,8 +310,6 @@ public class ComplexConfigWithoutDefaultConstructor
     public string RequiredParam { get; }
     public string OptionalValue { get; set; } = string.Empty;
 }
-
-[Service]
 public partial class ComplexTypeService
 {
     [InjectConfiguration(""Complex:Config"")] private readonly ComplexConfigWithoutDefaultConstructor _complexConfig;
@@ -344,6 +334,7 @@ public partial class ComplexTypeService
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 using System.Collections.Generic;
 using System.IO;
@@ -351,8 +342,6 @@ using System.IO;
 namespace Test;
 
 public interface IUnsupportedElement { }
-
-[Service]
 public partial class CollectionElementTypeService
 {
     [InjectConfiguration(""Interface:Elements"")] private readonly List<IUnsupportedElement> _interfaceElements;
@@ -379,12 +368,11 @@ public partial class CollectionElementTypeService
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 using System.Threading.Tasks;
 
 namespace Test;
-
-[Service]
 public partial class ArrayElementTypeService
 {
     [InjectConfiguration(""Tasks:Running"")] private readonly Task[] _runningTasks;
@@ -411,6 +399,7 @@ public partial class ArrayElementTypeService
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using System;
@@ -429,8 +418,6 @@ public enum ConfigMode
     Development,
     Production
 }
-
-[Service]
 public partial class SupportedTypesService
 {
     // Primitive types
@@ -477,13 +464,12 @@ public partial class SupportedTypesService
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 using System.IO;
 using System.Threading.Tasks;
 
 namespace Test;
-
-[Service]
 public partial class UnsupportedTypesService
 {
     [InjectConfiguration(""File:Stream"")] private readonly FileStream _fileStream;
@@ -515,11 +501,10 @@ public partial class UnsupportedTypesService
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
-
-[Service]
 public class NonPartialConfigService // Missing 'partial' keyword
 {
     [InjectConfiguration(""Database:ConnectionString"")] private readonly string _connectionString;
@@ -544,11 +529,10 @@ public class NonPartialConfigService // Missing 'partial' keyword
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
-
-[Service]
 public record NonPartialConfigRecord // Missing 'partial' keyword
 {
     [InjectConfiguration(""Database:ConnectionString"")] private readonly string _connectionString;
@@ -573,11 +557,10 @@ public record NonPartialConfigRecord // Missing 'partial' keyword
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
-
-[Service]
 public partial class PartialConfigService
 {
     [InjectConfiguration(""Database:ConnectionString"")] private readonly string _connectionString;
@@ -597,11 +580,10 @@ public partial class PartialConfigService
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
-
-[Service]
 public partial record PartialConfigRecord
 {
     [InjectConfiguration(""Database:ConnectionString"")] private readonly string _connectionString;
@@ -621,23 +603,18 @@ public partial record PartialConfigRecord
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
-
-[Service]
 public class FirstNonPartialService
 {
     [InjectConfiguration(""First:Config"")] private readonly string _firstConfig;
 }
-
-[Service]
 public class SecondNonPartialService
 {
     [InjectConfiguration(""Second:Config"")] private readonly string _secondConfig;
 }
-
-[Service]
 public partial class ValidPartialService
 {
     [InjectConfiguration(""Valid:Config"")] private readonly string _validConfig;
@@ -665,11 +642,10 @@ public partial class ValidPartialService
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
-
-[Service]
 public partial class StaticFieldService
 {
     [InjectConfiguration(""App:Version"")] private static readonly string _appVersion;
@@ -696,11 +672,10 @@ public partial class StaticFieldService
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
-
-[Service]
 public partial class MultipleStaticFieldsService
 {
     [InjectConfiguration(""App:Version"")] private static readonly string _appVersion;
@@ -734,11 +709,10 @@ public partial class MultipleStaticFieldsService
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
-
-[Service]
 public partial class InstanceFieldsOnlyService
 {
     [InjectConfiguration(""Database:ConnectionString"")] private readonly string _connectionString;
@@ -763,6 +737,7 @@ public partial class InstanceFieldsOnlyService
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
@@ -772,8 +747,6 @@ public class DatabaseSettings
 {
     public string ConnectionString { get; set; } = string.Empty;
 }
-
-[Service]
 public partial class StaticComplexFieldService
 {
     [InjectConfiguration] private static readonly DatabaseSettings _staticDatabaseSettings;
@@ -809,12 +782,11 @@ public partial class StaticComplexFieldService
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 using System.IO;
 
 namespace Test;
-
-[Service]
 public class MultipleViolationsService // Missing partial (IOC018)
 {
     [InjectConfiguration("""")] private readonly string _emptyKey; // IOC016
@@ -850,18 +822,15 @@ public class MultipleViolationsService // Missing partial (IOC018)
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 
 namespace Test;
-
-[Service]
 public partial class BaseConfigService
 {
     [InjectConfiguration(""Base:Setting"")] protected readonly string _baseSetting;
     [InjectConfiguration("""")] protected readonly string _baseInvalidKey; // IOC016
 }
-
-[Service]
 public partial class DerivedConfigService : BaseConfigService
 {
     [InjectConfiguration(""Derived:Setting"")] private readonly string _derivedSetting;
@@ -880,11 +849,12 @@ public partial class DerivedConfigService : BaseConfigService
     }
 
     [Fact]
-    public void ConfigurationDiagnostic_ExternalServiceAttribute_SkipsValidation()
+    public void ConfigurationDiagnostic_ExternalServiceIndicator_SkipsValidation()
     {
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 using System.IO;
 
@@ -919,10 +889,9 @@ public class ExternalConfigService // Missing partial, but should be skipped
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace Test;
-
-[Service]
 public class NoConfigFieldsService // Not partial, but no config fields
 {
     private readonly string _regularField = ""default"";
@@ -951,6 +920,7 @@ public class NoConfigFieldsService // Not partial, but no config fields
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using System;
@@ -980,7 +950,7 @@ public enum LogLevel
     Error
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class ComplexValidConfigurationService
 {
     // Regular DI removed to avoid test compilation issues
@@ -1044,10 +1014,9 @@ public partial class ComplexValidConfigurationService
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace Test;
-
-[Service]
 public partial class DiagnosticMessageTestService
 {
     [InjectConfiguration("""")] private readonly string _empty;
@@ -1081,6 +1050,7 @@ public partial class DiagnosticMessageTestService
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using System.IO;
 
 namespace Test;
@@ -1088,8 +1058,6 @@ namespace Test;
 public interface IUnsupported { }
 
 public abstract class AbstractUnsupported { }
-
-[Service]
 public partial class UnsupportedTypesMessageService
 {
     [InjectConfiguration(""Interface"")] private readonly IUnsupported _interface;
@@ -1114,11 +1082,10 @@ public partial class UnsupportedTypesMessageService
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 using System.IO;
 
 namespace Test;
-
-[Service]
 public class SeverityTestService // Non-partial (IOC018 - Error)
 {
     [InjectConfiguration("""")] private readonly string _empty; // IOC016 - Error

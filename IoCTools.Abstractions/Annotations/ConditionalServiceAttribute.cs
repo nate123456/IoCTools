@@ -1,6 +1,6 @@
-using System;
-
 namespace IoCTools.Abstractions.Annotations;
+
+using System;
 
 /// <summary>
 ///     Marks a service for conditional registration based on environment variables and/or configuration values.
@@ -17,19 +17,19 @@ namespace IoCTools.Abstractions.Annotations;
 ///     </para>
 ///     <code>
 /// [ConditionalService(Environment = "Development")]
-/// [Service]
+/// [Scoped]
 /// public partial class MockPaymentService : IPaymentService { }
 /// 
 /// [ConditionalService(Environment = "Production")]
-/// [Service]
+/// [Scoped]
 /// public partial class StripePaymentService : IPaymentService { }
 /// 
 /// [ConditionalService(Environment = "Testing,Staging")] // Multiple environments
-/// [Service]
+/// [Scoped]
 /// public partial class TestPaymentService : IPaymentService { }
 /// 
 /// [ConditionalService(NotEnvironment = "Production")] // Exclude specific environments
-/// [Service]
+/// [Scoped]
 /// public partial class DebugService : IDebugService { }
 /// </code>
 ///     <para>
@@ -37,15 +37,15 @@ namespace IoCTools.Abstractions.Annotations;
 ///     </para>
 ///     <code>
 /// [ConditionalService(ConfigValue = "Features:UseRedisCache", Equals = "true")]
-/// [Service]
+/// [Scoped]
 /// public partial class RedisCacheService : ICacheService { }
 /// 
 /// [ConditionalService(ConfigValue = "Database:Type", NotEquals = "InMemory")]
-/// [Service]
+/// [Scoped]
 /// public partial class SqlDatabaseService : IDatabaseService { }
 /// 
 /// [ConditionalService(ConfigValue = "Cache:Provider", Equals = "Redis")]
-/// [Service]
+/// [Scoped]
 /// public partial class RedisProvider : ICacheProvider { }
 /// </code>
 ///     <para>
@@ -53,11 +53,11 @@ namespace IoCTools.Abstractions.Annotations;
 ///     </para>
 ///     <code>
 /// [ConditionalService(Environment = "Development", ConfigValue = "Features:UseMocks", Equals = "true")]
-/// [Service]
+/// [Scoped]
 /// public partial class MockEmailService : IEmailService { }
 /// 
 /// [ConditionalService(Environment = "Production", ConfigValue = "Features:PremiumTier", Equals = "true")]
-/// [Service]
+/// [Scoped]
 /// public partial class PremiumFeatureService : IPremiumService { }
 /// </code>
 ///     <para>
@@ -65,11 +65,11 @@ namespace IoCTools.Abstractions.Annotations;
 ///     </para>
 ///     <code>
 /// [ConditionalService(Environment = "Development,Testing", ConfigValue = "Features:EnableDebug", NotEquals = "false")]
-/// [Service]
+/// [Scoped]
 /// public partial class DebugLoggerService : ILoggerService { }
 /// 
 /// [ConditionalService(NotEnvironment = "Development", ConfigValue = "External:ApiEnabled", Equals = "true")]
-/// [Service]
+/// [Scoped]
 /// public partial class ExternalApiService : IApiService { }
 /// </code>
 /// </remarks>
@@ -78,7 +78,7 @@ namespace IoCTools.Abstractions.Annotations;
 ///     <code>
 /// // Development: Use mock implementation
 /// [ConditionalService(Environment = "Development")]
-/// [Service]
+/// [Scoped]
 /// public partial class MockPaymentService : IPaymentService
 /// {
 ///     public Task&lt;PaymentResult&gt; ProcessPaymentAsync(decimal amount)
@@ -89,7 +89,7 @@ namespace IoCTools.Abstractions.Annotations;
 /// 
 /// // Production: Use real Stripe implementation
 /// [ConditionalService(Environment = "Production")]
-/// [Service]
+/// [Scoped]
 /// public partial class StripePaymentService : IPaymentService
 /// {
 ///     [Inject] private readonly IStripeClient _stripeClient;
@@ -104,7 +104,7 @@ namespace IoCTools.Abstractions.Annotations;
 /// 
 /// // Testing: Use configurable test implementation
 /// [ConditionalService(Environment = "Testing", ConfigValue = "Testing:PaymentSuccess", Equals = "true")]
-/// [Service]
+/// [Scoped]
 /// public partial class SuccessTestPaymentService : IPaymentService
 /// {
 ///     public Task&lt;PaymentResult&gt; ProcessPaymentAsync(decimal amount)
@@ -114,7 +114,7 @@ namespace IoCTools.Abstractions.Annotations;
 /// }
 /// 
 /// [ConditionalService(Environment = "Testing", ConfigValue = "Testing:PaymentSuccess", NotEquals = "true")]
-/// [Service]
+/// [Scoped]
 /// public partial class FailureTestPaymentService : IPaymentService
 /// {
 ///     public Task&lt;PaymentResult&gt; ProcessPaymentAsync(decimal amount)

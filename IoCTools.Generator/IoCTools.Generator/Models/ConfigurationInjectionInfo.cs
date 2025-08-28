@@ -1,6 +1,6 @@
-using Microsoft.CodeAnalysis;
-
 namespace IoCTools.Generator.Models;
+
+using Microsoft.CodeAnalysis;
 
 /// <summary>
 ///     Represents configuration injection information for a field
@@ -79,7 +79,7 @@ internal class ConfigurationInjectionInfo
     public string GetSectionName()
     {
         if (!string.IsNullOrEmpty(ConfigurationKey))
-            return ConfigurationKey;
+            return ConfigurationKey!;
 
         var targetType = IsOptionsPattern ? GetOptionsInnerType() : FieldType;
         if (targetType == null)

@@ -1,7 +1,8 @@
-using IoCTools.Generator.Diagnostics;
-using Microsoft.CodeAnalysis;
-
 namespace IoCTools.Generator.Tests;
+
+using Diagnostics;
+
+using Microsoft.CodeAnalysis;
 
 /// <summary>
 ///     Simple validation tests for diagnostic improvements made
@@ -9,10 +10,11 @@ namespace IoCTools.Generator.Tests;
 public class SimpleDiagnosticValidationTests
 {
     /// <summary>
-    ///     Test that IOC014 diagnostic is generated for background services with wrong lifetime
+    ///     Test that IOC014 diagnostic is NOT generated for background services - their lifetime is managed by
+    ///     AddHostedService()
     /// </summary>
     [Fact]
-    public void IOC014_BackgroundServiceWithWrongLifetime_ShouldGenerateDiagnostic()
+    public void IOC014_BackgroundServiceWithAnyLifetime_NoError()
     {
         var sourceCode = @"
 using IoCTools.Abstractions.Annotations;
@@ -21,7 +23,7 @@ using Microsoft.Extensions.Hosting;
 
 namespace Test;
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class TestBackgroundService : BackgroundService
 {
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
@@ -33,9 +35,8 @@ public partial class TestBackgroundService : BackgroundService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var ioc014Diagnostics = result.GetDiagnosticsByCode("IOC014");
 
-        Assert.Single(ioc014Diagnostics);
-        Assert.Contains("TestBackgroundService", ioc014Diagnostics[0].GetMessage());
-        Assert.Contains("Scoped", ioc014Diagnostics[0].GetMessage());
+        // No IOC014 errors for hosted services - their lifetime is managed by AddHostedService()
+        Assert.Empty(ioc014Diagnostics);
     }
 
     /// <summary>
@@ -62,8 +63,6 @@ public partial class TestBackgroundService : BackgroundService
 using IoCTools.Abstractions.Annotations;
 
 namespace Test;
-
-[Service]
 public partial class TestService
 {
     [Inject] IUnknownService unknownService;
@@ -90,8 +89,7 @@ public interface IUnknownService { }";
     {
         var keyDiagnostics = new[]
         {
-            DiagnosticDescriptors.NoImplementationFound,
-            DiagnosticDescriptors.ImplementationNotRegistered,
+            DiagnosticDescriptors.NoImplementationFound, DiagnosticDescriptors.ImplementationNotRegistered,
             DiagnosticDescriptors.SingletonDependsOnScoped,
             DiagnosticDescriptors.BackgroundServiceLifetimeValidation
         };

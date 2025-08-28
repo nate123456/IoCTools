@@ -1,8 +1,8 @@
+namespace IoCTools.Generator.Tests;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-
-namespace IoCTools.Generator.Tests;
 
 /// <summary>
 ///     Comprehensive tests that validate the actual generated source code structure and content.
@@ -18,12 +18,12 @@ public class GeneratedCodeValidationTests
         // Arrange
         var sourceCode = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace TestProject;
 
 public interface ITestService { }
-
-[Service]
+[Scoped]
 public partial class SimpleTestService
 {
     [Inject] private readonly ITestService _testService;
@@ -61,12 +61,12 @@ public partial class SimpleTestService
         var sourceCode = @"
 using System.Collections.Generic;
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace TestProject;
 
 public interface ITestService { }
-
-[Service]
+[Scoped]
 public partial class CollectionTestService
 {
     [Inject] private readonly IEnumerable<ITestService> _services;
@@ -99,12 +99,11 @@ public partial class CollectionTestService
         var sourceCode = @"
 using System.Collections.Generic;
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace TestProject;
 
 public interface ITestService { }
-
-[Service]
 public partial class NestedGenericService
 {
     [Inject] private readonly IEnumerable<IEnumerable<ITestService>> _nestedServices;
@@ -152,7 +151,7 @@ namespace TestProject
     using ServiceLayer;
     using DataLayer;
 
-    [Service]
+    
     public partial class MultiNamespaceService
     {
         [Inject] private readonly IBusinessService _businessService;
@@ -189,12 +188,11 @@ namespace TestProject
         var sourceCode = @"
 using System.Collections.Generic;
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace TestProject;
 
 public interface ITestService<T> { }
-
-[Service]
 public partial class GenericTestService<T> where T : class
 {
     [Inject] private readonly ITestService<T> _service;
@@ -225,12 +223,11 @@ public partial class GenericTestService<T> where T : class
         // Arrange
         var sourceCode = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace TestProject;
 
 public interface ITestService { }
-
-[Service]
 public partial class ConflictTestService
 {
     [Inject] private readonly ITestService _testService;
@@ -267,12 +264,11 @@ public partial class ConflictTestService
 using System;
 using System.IO;
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace TestProject;
 
 public interface ITestService { }
-
-[Service]
 public partial class ExternalTypeService : ITestService
 {
     [Inject] private readonly IServiceProvider _serviceProvider;
@@ -308,6 +304,7 @@ public partial class ExternalTypeService : ITestService
         // Arrange
         var sourceCode = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace TestProject;
 
@@ -323,8 +320,6 @@ public abstract class BaseService
         _baseConfig = baseConfig;
     }
 }
-
-[Service]
 public partial class DerivedService : BaseService, IDerivedService
 {
     [Inject] private readonly IDerivedService _otherService;
@@ -358,9 +353,9 @@ public partial class DerivedService : BaseService, IDerivedService
     #region Error Condition Testing
 
     [Fact]
-    public void Generator_InvalidAttributeCombination_ProducesError()
+    public void Generator_RegisterAsAllWithoutLifetime_NoLongerProducesError()
     {
-        // Arrange - RegisterAsAll without Service attribute
+        // Arrange - RegisterAsAll without explicit lifetime attribute (now valid with intelligent inference)
         var sourceCode = @"
 using IoCTools.Abstractions.Annotations;
 
@@ -369,7 +364,7 @@ namespace TestProject;
 public interface ITestService { }
 
 [RegisterAsAll]
-public partial class InvalidService : ITestService
+public partial class ValidService : ITestService
 {
     [Inject] private readonly ITestService _service;
 }";
@@ -377,11 +372,19 @@ public partial class InvalidService : ITestService
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
-        // Assert
+        // Assert - Should NOT produce IOC004 error (intelligent inference allows RegisterAsAll standalone)
         var diagnostics = result.GetDiagnosticsByCode("IOC004");
-        Assert.NotEmpty(diagnostics);
-        Assert.Contains(diagnostics, d => d.GetMessage().Contains("RegisterAsAll"));
-        Assert.Contains(diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+        Assert.Empty(diagnostics); // IOC004 diagnostic was removed with intelligent inference
+
+        // Verify service registration is generated correctly through intelligent inference
+        var registrationSource = result.GetServiceRegistrationSource();
+        Assert.NotNull(registrationSource);
+        Assert.Contains("ValidService", registrationSource.Content);
+
+        // Verify constructor generation works
+        var constructorSource = result.GetConstructorSource("ValidService");
+        Assert.NotNull(constructorSource);
+        Assert.Contains("public ValidService(ITestService service)", constructorSource.Content);
     }
 
     [Fact]
@@ -390,19 +393,16 @@ public partial class InvalidService : ITestService
         // Arrange - Services that depend on each other
         var sourceCode = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace TestProject;
 
 public interface IServiceA { }
 public interface IServiceB { }
-
-[Service]
 public partial class ServiceA : IServiceA
 {
     [Inject] private readonly IServiceB _serviceB;
 }
-
-[Service]
 public partial class ServiceB : IServiceB  
 {
     [Inject] private readonly IServiceA _serviceA;
@@ -423,12 +423,11 @@ public partial class ServiceB : IServiceB
         // Arrange - Service depends on interface with no implementation
         var sourceCode = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace TestProject;
 
 public interface IMissingService { }
-
-[Service]
 public partial class TestService
 {
     [Inject] private readonly IMissingService _missing;
@@ -450,17 +449,16 @@ public partial class TestService
         // Arrange - Implementation exists but lacks Service attribute
         var sourceCode = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace TestProject;
 
-public interface IUnregisteredService { }
+public interface IUnmanagedService { }
 
-public class UnregisteredImplementation : IUnregisteredService { }
-
-[Service]
+public class UnmanagedImplementation : IUnmanagedService { }
 public partial class TestService
 {
-    [Inject] private readonly IUnregisteredService _service;
+    [Inject] private readonly IUnmanagedService _service;
 }";
 
         // Act
@@ -478,12 +476,11 @@ public partial class TestService
         // Arrange - Invalid generic type constraint
         var sourceCode = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace TestProject;
 
 public interface ITestService<T> where T : struct, class { } // Invalid constraint
-
-[Service]
 public partial class TestService
 {
     [Inject] private readonly ITestService<string> _service;
@@ -543,7 +540,7 @@ namespace TestProject;
 
 public interface ITestService { }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class TestService : ITestService
 {
     [Inject] private readonly string _config;
@@ -574,7 +571,7 @@ namespace TestProject;
 
 public interface ITestService { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class TestService : ITestService
 {
     [Inject] private readonly string _config;
@@ -605,7 +602,7 @@ namespace TestProject;
 
 public interface ITestService { }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class TestService : ITestService
 {
     [Inject] private readonly string _config;
@@ -638,13 +635,13 @@ public interface IServiceA { }
 public interface IServiceB { }
 public interface IServiceC { }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class ServiceA : IServiceA { }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class ServiceB : IServiceB { }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class ServiceC : IServiceC { }";
 
         // Act
@@ -655,9 +652,12 @@ public partial class ServiceC : IServiceC { }";
         Assert.NotNull(registrationSource);
 
         // Verify all services are registered with correct lifetimes - using fully qualified names
-        Assert.Contains("AddSingleton<global::TestProject.IServiceA, global::TestProject.ServiceA>", registrationSource.Content);
-        Assert.Contains("AddScoped<global::TestProject.IServiceB, global::TestProject.ServiceB>", registrationSource.Content);
-        Assert.Contains("AddTransient<global::TestProject.IServiceC, global::TestProject.ServiceC>", registrationSource.Content);
+        Assert.Contains("AddSingleton<global::TestProject.IServiceA, global::TestProject.ServiceA>",
+            registrationSource.Content);
+        Assert.Contains("AddScoped<global::TestProject.IServiceB, global::TestProject.ServiceB>",
+            registrationSource.Content);
+        Assert.Contains("AddTransient<global::TestProject.IServiceC, global::TestProject.ServiceC>",
+            registrationSource.Content);
 
         // Verify extension method structure
         Assert.Contains("public static IServiceCollection", registrationSource.Content);
@@ -674,8 +674,7 @@ using IoCTools.Abstractions.Annotations;
 namespace MyProject.Services;
 
 public interface ITestService { }
-
-[Service]
+[Scoped]
 public partial class TestService : ITestService { }";
 
         // Act
@@ -700,23 +699,29 @@ public partial class TestService : ITestService { }";
         // Arrange - Abstract classes should not be registered
         var sourceCode = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace TestProject;
 
 public interface ITestService { }
 
-[Service] // Should be ignored because class is abstract
+[Scoped] // Should be ignored because class is abstract
 public abstract partial class AbstractService : ITestService
 {
-    [Inject] private readonly string _config;
+    [Inject] private readonly ITestDep _dep;
     public abstract void DoSomething();
 }
 
-[Service]
+[Scoped]
 public partial class ConcreteService : AbstractService
 {
     public override void DoSomething() { }
-}";
+}
+
+public interface ITestDep { }
+
+[Scoped]
+public partial class TestDep : ITestDep { }";
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
@@ -737,12 +742,11 @@ public partial class ConcreteService : AbstractService
         // Arrange
         var sourceCode = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace TestProject;
 
 public interface ITestService { }
-
-[Service]
 public sealed partial class SealedService : ITestService
 {
     [Inject] private readonly string _config;
@@ -764,18 +768,18 @@ public sealed partial class SealedService : ITestService
         // Arrange - Static classes should be completely ignored
         var sourceCode = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace TestProject;
 
-[Service] // Should be ignored because class is static
+[Scoped] // Should be ignored because class is static
 public static partial class StaticUtility
 {
     public static void DoSomething() { }
 }
 
 public interface ITestService { }
-
-[Service]
+[Scoped]
 public partial class TestService : ITestService { }";
 
         // Act
@@ -797,6 +801,7 @@ public partial class TestService : ITestService { }";
         // Arrange
         var sourceCode = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace TestProject;
 
@@ -804,7 +809,7 @@ public interface ITestService { }
 
 public partial class OuterClass
 {
-    [Service]
+    
     public partial class NestedService : ITestService
     {
         [Inject] private readonly string _config;
@@ -828,12 +833,11 @@ public partial class OuterClass
         // Arrange
         var sourceCode = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace TestProject;
 
 internal interface IInternalService { }
-
-[Service]
 internal partial class InternalService : IInternalService
 {
     [Inject] private readonly string _config;
@@ -856,12 +860,11 @@ internal partial class InternalService : IInternalService
         // Arrange - Class already has a constructor
         var sourceCode = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace TestProject;
 
 public interface ITestService { }
-
-[Service]
 public partial class ServiceWithConstructor : ITestService
 {
     [Inject] private readonly string _config;
@@ -900,12 +903,11 @@ public partial class ServiceWithConstructor : ITestService
         // Arrange
         var sourceCode = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace TestProject;
 
 public interface ITestService { }
-
-[Service]
 public partial record TestRecord : ITestService
 {
     [Inject] private readonly string _config;
@@ -927,12 +929,11 @@ public partial record TestRecord : ITestService
         // Arrange
         var sourceCode = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace TestProject;
 
 public interface ITestService { }
-
-[Service]
 public partial class ServiceWithInitProps : ITestService
 {
     [Inject] private readonly ITestService _service;
@@ -957,19 +958,18 @@ public partial class ServiceWithInitProps : ITestService
     // 
     // The generator correctly handles nullable types in real compilation contexts but fails in test-only scenarios
     // due to symbol resolution differences between test and real project compilations.
-    
+
     [Fact]
     public void Generator_StandardReferenceTypes_HandlesCorrectly()
     {
         // Test standard (non-nullable) case which is the actual real-world usage pattern
         var sourceCode = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace TestProject;
 
 public interface ITestService { }
-
-[Service]
 public partial class StandardService : ITestService
 {
     [Inject] private readonly ITestService _service;
@@ -979,15 +979,15 @@ public partial class StandardService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors, $"Compilation had errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
-        
+        Assert.False(result.HasErrors,
+            $"Compilation had errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+
         var constructorSource = result.GetConstructorSource("StandardService");
         Assert.NotNull(constructorSource);
 
         // Verify service type is handled correctly
         Assert.Contains("ITestService service", constructorSource.Content);
     }
-
 
     [Fact]
     public void Generator_GenericConstraints_PreservesCorrectly()
@@ -1000,8 +1000,6 @@ using System;
 namespace TestProject;
 
 public interface IRepository<T> where T : class { }
-
-[Service]
 public partial class GenericService<T> where T : class, new()
 {
     [Inject] private readonly IRepository<T> _repository;
@@ -1036,12 +1034,11 @@ public partial class GenericService<T> where T : class, new()
         var sourceCode = $@"
 using System.Collections.Generic;
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace TestProject;
 
 public interface ITestService {{ }}
-
-[Service]
 public partial class CollectionService
 {{
     [Inject] private readonly {collectionType} _services;
@@ -1068,12 +1065,11 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace TestProject;
 
 public interface ITestService { }
-
-[Service]
 public partial class ComplexGenericService
 {
     [Inject] private readonly Func<Task<IEnumerable<ITestService>>> _serviceFactory;
@@ -1105,12 +1101,11 @@ public partial class ComplexGenericService
         // Arrange
         var sourceCode = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace TestProject;
 
 public interface ITestService { }
-
-[Service]
 public partial class TestService : ITestService
 {
     [Inject] private readonly ITestService _service;
@@ -1150,12 +1145,11 @@ public partial class TestService : ITestService
         var sourceCode = @"
 using System.Collections.Generic;
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace TestProject;
 
 public interface ITestService { }
-
-[Service]
 public partial class TestService : ITestService
 {
     [Inject] private readonly IEnumerable<ITestService> _services;
@@ -1190,13 +1184,14 @@ public partial class TestService : ITestService
         // Arrange - Attempt injection through class names (should be escaped/handled)
         var sourceCode = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace TestProject;
 
 public interface ITestService { }
 
 // Attempt to use SQL injection characters in class name (will fail at C# level)
-[Service]
+
 public partial class TestService_With_Underscores : ITestService
 {
     [Inject] private readonly ITestService _service;
@@ -1226,8 +1221,6 @@ using IoCTools.Abstractions.Annotations;
 namespace My.Complex.Namespace.V2;
 
 public interface ITestService { }
-
-[Service]
 public partial class TestService : ITestService
 {
     [Inject] private readonly ITestService _service;

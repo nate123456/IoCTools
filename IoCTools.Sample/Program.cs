@@ -1,13 +1,60 @@
-using IoCTools.Sample.Interfaces;
-using IoCTools.Sample.Services;
-using IoCToolsSample;
-using Microsoft.Extensions.Configuration;
+using AppSettings = IoCTools.Sample.Configuration.AppSettings;
+using DataCleanupSettings = IoCTools.Sample.Configuration.DataCleanupSettings;
+using EmailProcessorSettings = IoCTools.Sample.Configuration.EmailProcessorSettings;
+using FileWatcherSettings = IoCTools.Sample.Configuration.FileWatcherSettings;
+using HealthMonitorSettings = IoCTools.Sample.Configuration.HealthMonitorSettings;
+using HotReloadSettings = IoCTools.Sample.Configuration.HotReloadSettings;
+using IAuditService = IoCTools.Sample.Services.IAuditService;
+using IDataTransformer = IoCTools.Sample.Services.IDataTransformer;
+using IEmailValidator = IoCTools.Sample.Services.IEmailValidator;
+using IInventoryService = IoCTools.Sample.Services.IInventoryService;
+using IPaymentService = IoCTools.Sample.Services.IPaymentService;
+using IReportGenerator = IoCTools.Sample.Services.IReportGenerator;
+using IRequestProcessor = IoCTools.Sample.Services.IRequestProcessor;
+using ISecurityService = IoCTools.Sample.Services.ISecurityService;
+using Order = IoCTools.Sample.Services.Order;
+using Payment = IoCTools.Sample.Services.Payment;
+using ProcessingRequest = IoCTools.Sample.Services.ProcessingRequest;
+using ValidationSettings = IoCTools.Sample.Configuration.ValidationSettings;
+
+// For configuration models
+
+namespace IoCTools.Sample;
+
+using System.Text;
+
+using Configuration;
+
+using Controllers;
+
+using Extensions.Generated;
+
+using Interfaces;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using System.Linq;
 
-namespace IoCTools.Sample;
+using Services;
+
+using AppSettings = Configuration.AppSettings;
+using DataCleanupSettings = Configuration.DataCleanupSettings;
+using EmailProcessorSettings = Configuration.EmailProcessorSettings;
+using FileWatcherSettings = Configuration.FileWatcherSettings;
+using HealthMonitorSettings = Configuration.HealthMonitorSettings;
+using HotReloadSettings = Configuration.HotReloadSettings;
+using IAuditService = Services.IAuditService;
+using IDataTransformer = Services.IDataTransformer;
+using IEmailValidator = Services.IEmailValidator;
+using IInventoryService = Services.IInventoryService;
+using IPaymentService = Services.IPaymentService;
+using IReportGenerator = Services.IReportGenerator;
+using IRequestProcessor = Services.IRequestProcessor;
+using ISecurityService = Services.ISecurityService;
+using Order = Services.Order;
+using Payment = Services.Payment;
+using ProcessingRequest = Services.ProcessingRequest;
+using ValidationSettings = Configuration.ValidationSettings;
 
 /// <summary>
 ///     Comprehensive demonstration program for IoCTools features
@@ -21,11 +68,12 @@ internal class Program
         Console.WriteLine("==============================================");
         Console.WriteLine("This demonstration showcases all IoCTools features:");
         Console.WriteLine("• Basic field injection with [Inject]");
-        Console.WriteLine("• Transient, Scoped, and Singleton lifetimes");
+        Console.WriteLine("• Modern lifetime attributes: [Scoped], [Singleton], [Transient]");
+        Console.WriteLine("• Intelligent service registration patterns");
         Console.WriteLine("• Multi-interface registration with [RegisterAsAll]");
         Console.WriteLine("• Configuration injection with [InjectConfiguration]");
         Console.WriteLine("• DependsOn dependency patterns");
-        Console.WriteLine("• Background services with [BackgroundService]");
+        Console.WriteLine("• Background services with IHostedService");
         Console.WriteLine("• Conditional services with [ConditionalService]");
         Console.WriteLine("• Complex inheritance hierarchies");
         Console.WriteLine("• External service integration patterns");
@@ -45,18 +93,20 @@ internal class Program
                 services.Configure<AppSettings>(context.Configuration.GetSection("App"));
                 services.Configure<ValidationSettings>(context.Configuration.GetSection("ValidationSettings"));
                 services.Configure<HotReloadSettings>(context.Configuration.GetSection("HotReload"));
-                services.Configure<EmailProcessorSettings>(context.Configuration.GetSection("BackgroundServices:EmailProcessor"));
+                services.Configure<EmailProcessorSettings>(
+                    context.Configuration.GetSection("BackgroundServices:EmailProcessor"));
                 services.Configure<DataCleanupSettings>(context.Configuration.GetSection("DataCleanupSettings"));
                 services.Configure<HealthMonitorSettings>(context.Configuration.GetSection("HealthMonitorSettings"));
                 services.Configure<FileWatcherSettings>(context.Configuration.GetSection("FileWatcherSettings"));
-                services.Configure<NotificationSchedulerSettings>(context.Configuration.GetSection("NotificationSchedulerSettings"));
+                services.Configure<NotificationSchedulerSettings>(
+                    context.Configuration.GetSection("NotificationSchedulerSettings"));
 
                 // Use the generated service registration method
                 try
                 {
                     services.AddIoCToolsSampleRegisteredServices(context.Configuration);
                     Console.WriteLine("✅ IoCTools generated services registered successfully");
-                    
+
                     // REMOVED: Manual background service registration - now handled by generator
                     // RegisterBackgroundServicesAsHostedServices(services);
                 }
@@ -68,7 +118,7 @@ internal class Program
                 }
 
                 // Manual registration of unregistered services for demonstration
-                RegisterUnregisteredServicesManually(services);
+                RegisterManualServicesManually(services);
             });
 
         var host = builder.Build();
@@ -88,24 +138,31 @@ internal class Program
 
             // Demonstrate all features in comprehensive order
             await DemonstrateBasicServices(scope.ServiceProvider);
+            await DemonstrateArchitecturalEnhancements(scope.ServiceProvider);
             await DemonstrateTransientServices(scope.ServiceProvider);
             await DemonstrateMultiInterfaceRegistration(scope.ServiceProvider);
+            await DemonstrateRegisterAsExamples(scope.ServiceProvider);
             await DemonstrateConfigurationInjection(scope.ServiceProvider);
             await DemonstrateConditionalServices(scope.ServiceProvider);
             await DemonstrateDependsOnExamples(scope.ServiceProvider);
             await DemonstrateInheritanceExamples(scope.ServiceProvider);
             await DemonstrateBackgroundServices(host.Services);
             await DemonstrateDiagnosticExamples(scope.ServiceProvider);
-            await DemonstrateUnregisteredServices(scope.ServiceProvider);
+            await DemonstrateManualServices(scope.ServiceProvider);
             await DemonstrateExternalServiceIntegration(scope.ServiceProvider);
             await DemonstrateCollectionInjection(scope.ServiceProvider);
             await DemonstrateAdvancedPatterns(scope.ServiceProvider);
 
+            // Show generator-style options (skip/exception) effect
+            DemonstrateGeneratorStyleOptions(scope.ServiceProvider);
+
             Console.WriteLine();
             Console.WriteLine("=== DEMONSTRATION SUMMARY ===");
             Console.WriteLine("✅ Basic services: Field injection, constructor generation");
+            Console.WriteLine("✅ Architectural enhancements: Modern attributes, intelligent registration");
             Console.WriteLine("✅ Transient services: Multiple instance resolution");
             Console.WriteLine("✅ Multi-interface registration: [RegisterAsAll] patterns");
+            Console.WriteLine("✅ Selective registration: [RegisterAs<T1, T2, T3>] patterns");
             Console.WriteLine("✅ Configuration injection: [InjectConfiguration] examples");
             Console.WriteLine("✅ Conditional services: Environment/config-based selection");
             Console.WriteLine("✅ DependsOn patterns: Declarative dependency injection");
@@ -121,7 +178,7 @@ internal class Program
             Console.WriteLine("   Check the console output above for detailed examples.");
             Console.WriteLine("   Review the generated source code in bin/Debug/net9.0/generated/");
             Console.WriteLine("⏱️  Background services will continue running for 10 seconds...");
-            
+
             // Let background services run for a bit to demonstrate they're working
             await Task.Delay(TimeSpan.FromSeconds(10));
         }
@@ -136,31 +193,47 @@ internal class Program
         }
     }
 
-    private static void RegisterUnregisteredServicesManually(IServiceCollection services)
+    private static void DemonstrateGeneratorStyleOptions(IServiceProvider sp)
     {
-        Console.WriteLine("--- Manual Registration of [UnregisteredService] Classes ---");
+        Console.WriteLine();
+        Console.WriteLine("--- Generator Style Options (Skip/Exceptions) ---");
 
-        // These services have [UnregisteredService] so they're excluded from automatic registration
+        var optIn = sp.GetService<IOptInController>();
+        Console.WriteLine(optIn != null
+            ? "✅ OptInController registered via exceptions list"
+            : "❌ OptInController not registered (expected if exceptions not configured)");
+
+        var derived = sp.GetService<IFrameworkDerivedService>();
+        Console.WriteLine(derived == null
+            ? "✅ FrameworkDerivedService skipped via assignable-type rule"
+            : "❌ FrameworkDerivedService unexpectedly registered");
+    }
+
+    private static void RegisterManualServicesManually(IServiceCollection services)
+    {
+        Console.WriteLine("--- Manual Registration of Selected Services ---");
+
+        // These services are manually registered for demonstration purposes
         // We manually register some for demonstration purposes
         services.AddScoped<IManualRegistrationService, ManualRegistrationService>();
 
         // Register legacy processor individually for demonstration
         services.AddScoped<LegacyPaymentProcessor>();
-        
-        // Register inheritance services that are marked as [UnregisteredService]
+
+        // Register inheritance services that are marked as [ExternalService]
         services.AddScoped<INewPaymentProcessor, UnregisteredNewPaymentProcessor>();
         services.AddScoped<IEnterprisePaymentProcessor, EnterprisePaymentProcessor>();
-        services.AddSingleton<IUnregisteredServiceFactory, UnregisteredServiceFactory>();
+        services.AddSingleton<IManualServiceFactory, ManualServiceFactory>();
 
         Console.WriteLine("--- Manual Registration of External Services ---");
-        
+
         // Register external services that require manual configuration
-        // These have [UnregisteredService] because they need complex setup
+        // These have [ExternalService] because they need complex setup
         services.AddScoped<IHttpClientService, HttpClientService>();
         services.AddScoped<IDatabaseContextService, DatabaseContextService>();
         services.AddScoped<IDistributedCacheService, ExternalRedisCacheService>();
         services.AddScoped<IThirdPartyApiService, ThirdPartyApiService>();
-        
+
         // Register external service registration helper
         services.AddSingleton<IExternalServiceRegistrationHelper, ExternalServiceRegistrationHelper>();
 
@@ -177,7 +250,7 @@ internal class Program
         // Basic field injection services from BasicUsageExamples.cs
         services.AddScoped<IGreetingService, GreetingService>();
         services.AddScoped<IOrderService, OrderService>();
-        services.AddScoped<IoCTools.Sample.Services.IPaymentService, PaymentService>();
+        services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IEmailService, EmailService>();
         services.AddSingleton<ICacheService, CacheService>(); // Singleton as specified in attribute
         services.AddScoped<BackgroundTaskService>(); // No interface, concrete type only
@@ -188,9 +261,9 @@ internal class Program
         services.AddScoped<IAdvancedInjectionService, AdvancedInjectionService>();
 
         // Transient service examples from TransientServiceExamples.cs
-        services.AddTransient<IoCTools.Sample.Services.IEmailValidator, IoCTools.Sample.Services.EmailValidator>();
-        services.AddTransient<IoCTools.Sample.Services.IDataTransformer, DataTransformer>();
-        services.AddTransient<IoCTools.Sample.Services.IRequestProcessor, RequestProcessor>();
+        services.AddTransient<IEmailValidator, EmailValidator>();
+        services.AddTransient<IDataTransformer, DataTransformer>();
+        services.AddTransient<IRequestProcessor, RequestProcessor>();
         services.AddTransient<IGuidGenerator, GuidGenerator>();
         services.AddTransient<ILifetimeComparisonService, LifetimeComparisonService>();
 
@@ -205,22 +278,22 @@ internal class Program
         services.AddScoped<EnhancedSecureService>();
         services.AddScoped<ConfigurableAuditService>();
         services.AddScoped<MixedDependencyPatternService>();
-        services.AddScoped<ExternalServiceDemoService>();
         services.AddScoped(typeof(GenericRepositoryService<>));
         services.AddScoped<MultiGenericRepositoryService>();
-        
+
         // Implementation services for DependsOn examples
-        services.AddScoped<IoCTools.Sample.Services.IInventoryService, InventoryService>();
+        services.AddScoped<IInventoryService, InventoryService>();
         services.AddScoped<IShippingService, ShippingService>();
         services.AddScoped<IUserManagementService, UserManagementService>();
-        services.AddScoped<IoCTools.Sample.Services.IReportGenerator, ReportGenerator>();
-        services.AddScoped<IoCTools.Sample.Services.IAuditService, AuditService>();
-        services.AddScoped<IoCTools.Sample.Services.ISecurityService, DemoSecurityService>();
-        services.AddScoped(typeof(IDependsOnGenericRepository<>), typeof(DependsOnUserRepository)); // Simplified for demo
+        services.AddScoped<IReportGenerator, ReportGenerator>();
+        services.AddScoped<IAuditService, AuditService>();
+        services.AddScoped<ISecurityService, DemoSecurityService>();
+        services.AddScoped(typeof(IDependsOnGenericRepository<>),
+            typeof(DependsOnUserRepository)); // Simplified for demo
         services.AddScoped<IDependsOnGenericRepository<DependsOnUser>, DependsOnUserRepository>();
-        services.AddScoped<IDependsOnGenericRepository<IoCTools.Sample.Services.Order>, DependsOnOrderRepository>();
+        services.AddScoped<IDependsOnGenericRepository<Order>, DependsOnOrderRepository>();
 
-        // Note: Inheritance services from UnregisteredServiceExamples.cs are manually registered separately
+        // Note: Inheritance services from ManualServiceExamples.cs are manually registered separately
 
         // Configuration injection services from ConfigurationInjectionExamples.cs
         services.AddScoped<DatabaseConnectionService>();
@@ -236,51 +309,51 @@ internal class Program
         services.AddScoped<NestedConfigurationService>();
         services.AddScoped<ConfigurationArrayService>();
         services.AddScoped<ConfigurationDemoRunner>();
-        
+
         // Diagnostic examples service
         services.AddScoped<DiagnosticDemonstrationService>();
 
         // Multi-interface registration services - these should be auto-registered by the generator
         // but we're adding them manually for demonstration purposes
-        
+
         // UserService with RegisterAsAll(All, Shared) - should register concrete type AND all interfaces
         services.AddScoped<UserService>();
         services.AddScoped<IMultiUserService, UserService>();
         services.AddScoped<IMultiUserRepository, UserService>();
         services.AddScoped<IMultiUserValidator, UserService>();
-        
+
         // DirectOnlyPaymentProcessor - should register only concrete type
         services.AddScoped<DirectOnlyPaymentProcessor>();
-        
+
         // InterfaceOnlyPaymentProcessor with RegisterAsAll(Exclusionary, Shared) - only interfaces
         services.AddScoped<IMultiPaymentService, InterfaceOnlyPaymentProcessor>();
         services.AddScoped<IMultiPaymentValidator, InterfaceOnlyPaymentProcessor>();
         services.AddScoped<IMultiPaymentLogger, InterfaceOnlyPaymentProcessor>();
-        
+
         // Cache managers with different instance sharing modes
         services.AddScoped<SeparateInstanceCacheManager>();
         services.AddScoped<IMultiCacheService, SeparateInstanceCacheManager>();
         services.AddScoped<IMultiCacheProvider, SeparateInstanceCacheManager>();
         services.AddScoped<IMultiCacheValidator, SeparateInstanceCacheManager>();
-        
+
         services.AddScoped<SharedInstanceCacheManager>();
         services.AddScoped<IMultiCacheService, SharedInstanceCacheManager>();
         services.AddScoped<IMultiCacheProvider, SharedInstanceCacheManager>();
         services.AddScoped<IMultiCacheValidator, SharedInstanceCacheManager>();
-        
+
         // Selective data service with skip registration for some interfaces
         services.AddScoped<SelectiveDataService>();
         services.AddScoped<IDataService, SelectiveDataService>();
         services.AddScoped<IDataValidator, SelectiveDataService>();
         // Note: IDataLogger and IDataCacheService intentionally skipped
-        
+
         // Generic services from GenericServiceExamples.cs
         services.AddScoped(typeof(GenericRepository<>));
-        services.AddScoped(typeof(IoCTools.Sample.Services.IRepository<>), typeof(GenericRepository<>));
+        services.AddScoped(typeof(Services.IRepository<>), typeof(GenericRepository<>));
         services.AddScoped(typeof(GenericValidator<>));
         services.AddScoped(typeof(IGenericValidator<>), typeof(GenericValidator<>));
         services.AddTransient(typeof(DataProcessor<,>));
-        services.AddTransient(typeof(IoCTools.Sample.Services.IProcessor<,>), typeof(DataProcessor<,>));
+        services.AddTransient(typeof(Services.IProcessor<,>), typeof(DataProcessor<,>));
         services.AddSingleton(typeof(Cache<>));
         services.AddSingleton(typeof(ICache<>), typeof(Cache<>));
         services.AddSingleton(typeof(Factory<>));
@@ -289,19 +362,19 @@ internal class Program
         services.AddScoped(typeof(AdvancedBusinessService<>));
         services.AddScoped(typeof(EnhancedGenericProcessor<>));
         services.AddScoped<GenericServiceDemonstrator>();
-        
+
         // Composite notification service with inheritance
         services.AddScoped<CompositeNotificationService>();
         services.AddScoped<IEmailNotificationService, CompositeNotificationService>();
         services.AddScoped<ISmsNotificationService, CompositeNotificationService>();
         services.AddScoped<INotificationLogger, CompositeNotificationService>();
-        
+
         // Performance test service
         services.AddScoped<PerformanceTestService>();
         services.AddScoped<IPerformanceTestService, PerformanceTestService>();
         services.AddScoped<IPerformanceMetrics, PerformanceTestService>();
         services.AddScoped<IPerformanceBenchmark, PerformanceTestService>();
-        
+
         // Multi-interface demonstration service
         services.AddScoped<IMultiInterfaceDemoService, MultiInterfaceDemonstrationService>();
 
@@ -313,16 +386,16 @@ internal class Program
         services.AddScoped<NotificationManager>();
 
         // Processing chain services for IList<T> examples
-        services.AddTransient<IoCTools.Sample.Services.IProcessor, ValidationProcessor>();
-        services.AddTransient<IoCTools.Sample.Services.IProcessor, TransformationProcessor>();
-        services.AddTransient<IoCTools.Sample.Services.IProcessor, EnrichmentProcessor>();
+        services.AddTransient<IProcessor, ValidationProcessor>();
+        services.AddTransient<IProcessor, TransformationProcessor>();
+        services.AddTransient<IProcessor, EnrichmentProcessor>();
         services.AddScoped<ProcessorChain>();
         services.AddSingleton<ProcessorAnalyzer>();
 
         // Generic validation services for IEnumerable<IValidator<T>> examples
-        services.AddTransient<IoCTools.Sample.Services.IValidator<User>, UserValidator>();
-        services.AddTransient<IoCTools.Sample.Services.IValidator<User>, UserBusinessValidator>();
-        services.AddTransient<IoCTools.Sample.Services.IValidator<IoCTools.Sample.Services.Order>, OrderValidator>();
+        services.AddTransient<Services.IValidator<User>, UserValidator>();
+        services.AddTransient<Services.IValidator<User>, UserBusinessValidator>();
+        services.AddTransient<Services.IValidator<Order>, OrderValidator>();
         services.AddScoped<ValidationService>();
 
         // Aggregator services for IReadOnlyList<T> examples
@@ -384,7 +457,7 @@ internal class Program
         await TestDifferentLifetimes(services);
         Console.WriteLine();
     }
-    
+
     private static async Task TestBasicFieldInjection(IServiceProvider services)
     {
         Console.WriteLine("--- Basic Field Injection with [Inject] ---");
@@ -426,16 +499,16 @@ internal class Program
         {
             var value1 = cache1.GetOrSet("singleton-test", () => "singleton-value");
             var value2 = cache2.GetOrSet<string>("singleton-test", () => "default-value");
-            Console.WriteLine($"  ✅ Singleton CacheService: Same instance = {ReferenceEquals(cache1, cache2)}, Cached value = {value2}");
+            Console.WriteLine(
+                $"  ✅ Singleton CacheService: Same instance = {ReferenceEquals(cache1, cache2)}, Cached value = {value2}");
         }
 
         // Scoped services (should be same within scope)
         var greeting1 = services.GetService<IGreetingService>();
         var greeting2 = services.GetService<IGreetingService>();
         if (greeting1 != null && greeting2 != null)
-        {
-            Console.WriteLine($"  ✅ Scoped GreetingService: Same instance in scope = {ReferenceEquals(greeting1, greeting2)}");
-        }
+            Console.WriteLine(
+                $"  ✅ Scoped GreetingService: Same instance in scope = {ReferenceEquals(greeting1, greeting2)}");
     }
 
     private static async Task TestBasicServices(IServiceProvider services)
@@ -481,15 +554,16 @@ internal class Program
 
         // 1. Demonstrate Email Validator (stateless validation)
         Console.WriteLine("1. Email Validation Service (Transient):");
-        var emailValidator1 = services.GetService<IoCTools.Sample.Services.IEmailValidator>();
-        var emailValidator2 = services.GetService<IoCTools.Sample.Services.IEmailValidator>();
-        
+        var emailValidator1 = services.GetService<IEmailValidator>();
+        var emailValidator2 = services.GetService<IEmailValidator>();
+
         if (emailValidator1 != null && emailValidator2 != null)
         {
             Console.WriteLine($"   Instance 1 Hash: {emailValidator1.GetHashCode()}");
             Console.WriteLine($"   Instance 2 Hash: {emailValidator2.GetHashCode()}");
-            Console.WriteLine($"   Different instances: {emailValidator1.GetHashCode() != emailValidator2.GetHashCode()}");
-            
+            Console.WriteLine(
+                $"   Different instances: {emailValidator1.GetHashCode() != emailValidator2.GetHashCode()}");
+
             var validEmail = emailValidator1.ValidateWithDetails("user@example.com");
             var invalidEmail = emailValidator2.ValidateWithDetails("invalid-email");
             Console.WriteLine($"   Valid email result: {validEmail.IsValid} - {validEmail.Message}");
@@ -500,15 +574,15 @@ internal class Program
 
         // 2. Demonstrate Data Transformer (stateless transformations)
         Console.WriteLine("2. Data Transformation Service (Transient):");
-        var transformer1 = services.GetService<IoCTools.Sample.Interfaces.IDataTransformer>();
-        var transformer2 = services.GetService<IoCTools.Sample.Interfaces.IDataTransformer>();
-        
+        var transformer1 = services.GetService<Interfaces.IDataTransformer>();
+        var transformer2 = services.GetService<Interfaces.IDataTransformer>();
+
         if (transformer1 != null && transformer2 != null)
         {
             Console.WriteLine($"   Instance 1 Hash: {transformer1.GetHashCode()}");
             Console.WriteLine($"   Instance 2 Hash: {transformer2.GetHashCode()}");
             Console.WriteLine($"   Different instances: {transformer1.GetHashCode() != transformer2.GetHashCode()}");
-            
+
             // Demonstrate Transform method with proper reference types
             var sourceData1 = new { Text = "  Hello\t\tWorld  \n\n" };
             var sourceData2 = new { Value = 75, Total = 100 };
@@ -522,20 +596,20 @@ internal class Program
 
         // 3. Demonstrate Request Processor with dependencies
         Console.WriteLine("3. Request Processor (Transient with Transient dependencies):");
-        var processor1 = services.GetService<IoCTools.Sample.Services.IRequestProcessor>();
-        var processor2 = services.GetService<IoCTools.Sample.Services.IRequestProcessor>();
-        
+        var processor1 = services.GetService<IRequestProcessor>();
+        var processor2 = services.GetService<IRequestProcessor>();
+
         if (processor1 != null && processor2 != null)
         {
             Console.WriteLine($"   Instance 1 Hash: {processor1.GetHashCode()}");
             Console.WriteLine($"   Instance 2 Hash: {processor2.GetHashCode()}");
-            
-            var emailRequest = new IoCTools.Sample.Services.ProcessingRequest("req-001", "email", "test@example.com");
-            var textRequest = new IoCTools.Sample.Services.ProcessingRequest("req-002", "text", "  Sample   Text  ");
-            
+
+            var emailRequest = new ProcessingRequest("req-001", "email", "test@example.com");
+            var textRequest = new ProcessingRequest("req-002", "text", "  Sample   Text  ");
+
             var result1 = await processor1.ProcessWithValidationAsync(emailRequest);
             var result2 = await processor2.ProcessAsync(textRequest);
-            
+
             Console.WriteLine($"   Email processing result: {result1.Success} - {result1.Message}");
             Console.WriteLine($"   Text processing result: {result2.Success} - {result2.Message}");
             Console.WriteLine($"   Processed data: '{result2.ProcessedData}'");
@@ -547,17 +621,17 @@ internal class Program
         Console.WriteLine("4. GUID Generator Service (Perfect Transient example):");
         var guidGen1 = services.GetService<IGuidGenerator>();
         var guidGen2 = services.GetService<IGuidGenerator>();
-        
+
         if (guidGen1 != null && guidGen2 != null)
         {
             Console.WriteLine($"   Instance 1 Hash: {guidGen1.GetHashCode()}");
             Console.WriteLine($"   Instance 2 Hash: {guidGen2.GetHashCode()}");
-            
+
             var guid1 = guidGen1.NewGuid();
             var guid2 = guidGen2.NewGuid();
             var shortId = guidGen1.NewShortId(12);
             var formattedGuid = guidGen2.NewGuidString(GuidFormat.UppercaseNoDashes);
-            
+
             Console.WriteLine($"   GUID from instance 1: {guid1}");
             Console.WriteLine($"   GUID from instance 2: {guid2}");
             Console.WriteLine($"   Short ID (12 chars): {shortId}");
@@ -570,18 +644,18 @@ internal class Program
         Console.WriteLine("5. Service Lifetime Comparison (Transient vs Others):");
         var lifetimeService1 = services.GetService<ILifetimeComparisonService>();
         var lifetimeService2 = services.GetService<ILifetimeComparisonService>();
-        
+
         if (lifetimeService1 != null && lifetimeService2 != null)
         {
             Console.WriteLine($"   Lifetime Service Instance 1 Hash: {lifetimeService1.GetHashCode()}");
             Console.WriteLine($"   Lifetime Service Instance 2 Hash: {lifetimeService2.GetHashCode()}");
-            
+
             await lifetimeService1.DemonstrateTransientBehaviorAsync();
             await lifetimeService2.CompareLifetimesAsync();
-            
+
             var info1 = lifetimeService1.GetServiceInfo();
             var info2 = lifetimeService2.GetServiceInfo();
-            
+
             Console.WriteLine($"   Service 1 Instance ID: {info1.InstanceId}");
             Console.WriteLine($"   Service 2 Instance ID: {info2.InstanceId}");
             Console.WriteLine($"   Different instance IDs: {info1.InstanceId != info2.InstanceId}");
@@ -605,15 +679,15 @@ internal class Program
         var newPaymentProcessor = services.GetService<INewPaymentProcessor>();
         if (newPaymentProcessor != null)
         {
-            var payment = new IoCTools.Sample.Services.Payment(99.99m);
+            var payment = new Payment(99.99m);
             var result = await newPaymentProcessor.ProcessNewPaymentAsync(payment);
-            Console.WriteLine($"✅ NewPaymentProcessor (inherits from [UnregisteredService]): {result.Message}");
+            Console.WriteLine($"✅ NewPaymentProcessor (inherits from [ExternalService]): {result.Message}");
         }
 
         var enterpriseProcessor = services.GetService<IEnterprisePaymentProcessor>();
         if (enterpriseProcessor != null)
         {
-            var payment = new IoCTools.Sample.Services.Payment(299.99m);
+            var payment = new Payment(299.99m);
             var result = await enterpriseProcessor.ProcessEnterprisePaymentAsync(payment, 12345);
             Console.WriteLine($"✅ EnterprisePaymentProcessor (complex inheritance): {result.Message}");
         }
@@ -640,6 +714,99 @@ internal class Program
         Console.WriteLine();
     }
 
+    private static async Task DemonstrateRegisterAsExamples(IServiceProvider services)
+    {
+        Console.WriteLine("=== REGISTERAS<T1, T2, T3> SELECTIVE REGISTRATION DEMONSTRATION ===");
+        Console.WriteLine("RegisterAs provides precise control over which interfaces are registered for DI");
+        Console.WriteLine(
+            "Unlike RegisterAsAll (registers ALL interfaces), RegisterAs registers only specified interfaces");
+        Console.WriteLine();
+
+        // Test basic RegisterAs functionality
+        Console.WriteLine("--- 1. Basic RegisterAs Examples ---");
+
+        // Test single interface registration
+        var basicUserService = services.GetService<BasicUserService>();
+        var iUserService = services.GetService<IRegisterAsUserService>();
+        var iEmailService = services.GetService<IRegisterAsEmailService>();
+        var iValidationService = services.GetService<IRegisterAsValidationService>();
+
+        if (basicUserService != null && iUserService != null)
+        {
+            Console.WriteLine(
+                $"✅ BasicUserService and IRegisterAsUserService registered: {basicUserService.GetType().Name}");
+            Console.WriteLine("✅ Shared instance pattern: IRegisterAsUserService resolves to same instance");
+        }
+        else
+        {
+            Console.WriteLine("❌ BasicUserService or IRegisterAsUserService not available");
+        }
+
+        if (iEmailService == null && iValidationService == null)
+            Console.WriteLine(
+                "✅ IRegisterAsEmailService and IRegisterAsValidationService NOT registered (as expected with RegisterAs<IRegisterAsUserService>)");
+        else
+            Console.WriteLine(
+                "❌ Unexpected: IRegisterAsEmailService or IRegisterAsValidationService found in DI container");
+        Console.WriteLine();
+
+        // Test multiple interface registration
+        Console.WriteLine("--- 2. Multiple Interface Registration ---");
+        var userEmailService = services.GetService<UserEmailService>();
+
+        if (userEmailService != null)
+            Console.WriteLine(
+                $"✅ UserEmailService with RegisterAs<IRegisterAsUserService, IRegisterAsEmailService>: {userEmailService.GetType().Name}");
+        else
+            Console.WriteLine("❌ UserEmailService not available");
+        Console.WriteLine();
+
+        // Test RegisterAs with different lifetimes
+        Console.WriteLine("--- 3. RegisterAs with Different Lifetimes ---");
+        var singletonService = services.GetService<SingletonUserService>();
+        var transientEmailValidation1 = services.GetService<TransientEmailValidationService>();
+        var transientEmailValidation2 = services.GetService<TransientEmailValidationService>();
+
+        if (singletonService != null)
+            Console.WriteLine($"✅ Singleton RegisterAs service: {singletonService.GetType().Name}");
+
+        if (transientEmailValidation1 != null && transientEmailValidation2 != null)
+        {
+            var sameInstance = ReferenceEquals(transientEmailValidation1, transientEmailValidation2);
+            Console.WriteLine(
+                $"✅ Transient RegisterAs service: instances are {(sameInstance ? "SAME" : "DIFFERENT")} (expected: DIFFERENT)");
+        }
+
+        Console.WriteLine();
+
+        // Test RegisterAs with ManualService
+        Console.WriteLine("--- 4. RegisterAs with ManualService Pattern ---");
+        var transactionService = services.GetService<ITransactionService>();
+        var repository = services.GetService<IRepository>();
+        var concreteDbContext = services.GetService<DatabaseContext>();
+
+        if (transactionService != null && repository != null)
+            Console.WriteLine("✅ ManualService + RegisterAs: Interfaces registered successfully");
+        else
+            Console.WriteLine("❌ ManualService + RegisterAs interfaces not available");
+
+        if (concreteDbContext == null)
+            Console.WriteLine("✅ ManualService: Concrete DatabaseContext NOT auto-registered (as expected)");
+        else
+            Console.WriteLine("❌ Unexpected: DatabaseContext found in DI container");
+        Console.WriteLine();
+
+        Console.WriteLine("📝 RegisterAs<T1, T2, T3> Summary:");
+        Console.WriteLine("   • Provides selective interface registration (vs RegisterAsAll's all interfaces)");
+        Console.WriteLine("   • Supports 1-8 generic type parameters for maximum flexibility");
+        Console.WriteLine("   • Works with all service lifetimes (Singleton, Scoped, Transient)");
+        Console.WriteLine("   • Integrates with ManualService for DbContext-like scenarios");
+        Console.WriteLine("   • Compatible with configuration injection and inheritance");
+        Console.WriteLine("   • Provides comprehensive compile-time validation via diagnostics");
+        Console.WriteLine();
+        await Task.CompletedTask;
+    }
+
     private static async Task DemonstrateConfigurationInjection(IServiceProvider services)
     {
         Console.WriteLine("=== CONFIGURATION INJECTION DEMONSTRATION ===");
@@ -654,8 +821,9 @@ internal class Program
         else
         {
             Console.WriteLine("❌ ConfigurationDemoRunner service not available");
-            Console.WriteLine("   This indicates the source generator may not be processing configuration injection properly");
-            
+            Console.WriteLine(
+                "   This indicates the source generator may not be processing configuration injection properly");
+
             // Fallback to individual service testing
             await TestIndividualConfigurationServices(services);
         }
@@ -719,9 +887,10 @@ internal class Program
         var orderProcessor = services.GetService<OrderProcessingService>();
         if (orderProcessor != null)
         {
-            var order = new IoCTools.Sample.Services.Order(123, "customer@example.com", new IoCTools.Sample.Services.Payment(99.99m));
+            var order = new Order(123, "customer@example.com", new Payment(99.99m));
             var success = await orderProcessor.ProcessOrderAsync(order);
-            Console.WriteLine($"✅ OrderProcessingService (DependsOn<IPaymentService, IEmailService, IInventoryService>): Success = {success}");
+            Console.WriteLine(
+                $"✅ OrderProcessingService (DependsOn<IPaymentService, IEmailService, IInventoryService>): Success = {success}");
         }
 
         Console.WriteLine();
@@ -762,7 +931,7 @@ internal class Program
         var customPrefixService = services.GetService<CustomPrefixService>();
         if (customPrefixService != null)
         {
-            var payment = new IoCTools.Sample.Services.Payment(49.99m);
+            var payment = new Payment(49.99m);
             await customPrefixService.ProcessPaymentWithEmailAsync(payment, "test@example.com");
             Console.WriteLine("✅ CustomPrefixService: Uses custom 'svc_' prefix (svc_paymentService)");
         }
@@ -770,7 +939,7 @@ internal class Program
         var noStripIService = services.GetService<NoStripIService>();
         if (noStripIService != null)
         {
-            var payment = new IoCTools.Sample.Services.Payment(29.99m);
+            var payment = new Payment(29.99m);
             await noStripIService.ProcessPaymentPreservingInterfaceNameAsync(payment, "test@example.com");
             Console.WriteLine("✅ NoStripIService: Preserves interface names with stripI=false (IPaymentService)");
         }
@@ -778,7 +947,7 @@ internal class Program
         var mixedConfigService = services.GetService<MixedConfigurationService>();
         if (mixedConfigService != null)
         {
-            var payment = new IoCTools.Sample.Services.Payment(19.99m);
+            var payment = new Payment(19.99m);
             await mixedConfigService.ProcessWithMixedConfigurationsAsync(payment, "test@example.com");
             Console.WriteLine("✅ MixedConfigurationService: Multiple DependsOn with different configurations");
         }
@@ -794,7 +963,8 @@ internal class Program
         if (enhancedSecureService != null)
         {
             var success = await enhancedSecureService.ProcessSecureUserActionAsync(1, "admin_action");
-            Console.WriteLine($"✅ EnhancedSecureService: Inherits from BaseSecureService with additional DependsOn, Success = {success}");
+            Console.WriteLine(
+                $"✅ EnhancedSecureService: Inherits from BaseSecureService with additional DependsOn, Success = {success}");
         }
 
         var configurableAuditService = services.GetService<ConfigurableAuditService>();
@@ -814,9 +984,10 @@ internal class Program
         var mixedPatternService = services.GetService<MixedDependencyPatternService>();
         if (mixedPatternService != null)
         {
-            var order = new IoCTools.Sample.Services.Order(456, "mixed@example.com", new IoCTools.Sample.Services.Payment(79.99m));
+            var order = new Order(456, "mixed@example.com", new Payment(79.99m));
             var success = await mixedPatternService.ProcessOrderWithMixedPatternsAsync(order);
-            Console.WriteLine($"✅ MixedDependencyPatternService: Combines [Inject] and [DependsOn], Success = {success}");
+            Console.WriteLine(
+                $"✅ MixedDependencyPatternService: Combines [Inject] and [DependsOn], Success = {success}");
         }
 
         var externalServiceDemo = services.GetService<ExternalServiceDemoService>();
@@ -838,11 +1009,10 @@ internal class Program
         {
             var user = await userRepositoryService.GetEntityAsync(1);
             if (user != null)
-            {
-                Console.WriteLine($"✅ GenericRepositoryService<User>: Retrieved user '{user.Name}' with DependsOn generic logging");
-            }
-            
-            var newUser = new IoCTools.Sample.Services.DependsOnUser(999, "New User", "new@example.com");
+                Console.WriteLine(
+                    $"✅ GenericRepositoryService<User>: Retrieved user '{user.Name}' with DependsOn generic logging");
+
+            var newUser = new DependsOnUser(999, "New User", "new@example.com");
             await userRepositoryService.SaveEntityAsync(newUser);
             Console.WriteLine("✅ GenericRepositoryService<User>: Saved new user with generic DependsOn pattern");
         }
@@ -872,7 +1042,7 @@ internal class Program
         {
             Console.WriteLine("❌ GenericServiceDemonstrator not available");
             Console.WriteLine("   This indicates the generic services may not be properly registered");
-            
+
             // Fallback to individual generic service testing
             await TestIndividualGenericServices(services);
         }
@@ -885,10 +1055,13 @@ internal class Program
         Console.WriteLine("--- Fallback: Testing Individual Generic Services ---");
 
         // Test Repository<T>
-        var userRepository = services.GetService<IoCTools.Sample.Interfaces.IRepository<User>>();
+        var userRepository = services.GetService<Interfaces.IRepository<User>>();
         if (userRepository != null)
         {
-            var user = new User { Username = "testuser", Email = "test@example.com", FirstName = "Test", LastName = "User" };
+            var user = new User
+            {
+                Username = "testuser", Email = "test@example.com", FirstName = "Test", LastName = "User"
+            };
             await userRepository.AddAsync(user);
             var userId = user.Id;
             var retrievedUser = await userRepository.GetByIdAsync(userId);
@@ -899,26 +1072,35 @@ internal class Program
         var userValidator = services.GetService<IGenericValidator<User>>();
         if (userValidator != null && userRepository != null)
         {
-            var testUser = new User { Username = "validuser", Email = "valid@example.com", FirstName = "Valid", LastName = "User" };
+            var testUser = new User
+            {
+                Username = "validuser", Email = "valid@example.com", FirstName = "Valid", LastName = "User"
+            };
             var validationResult = await userValidator.ValidateAsync(testUser);
             var validationStatus = string.IsNullOrEmpty(validationResult.ErrorMessage) ? "Valid" : "Invalid";
             Console.WriteLine($"✅ GenericValidator<User>: Validation result = {validationStatus}");
         }
 
         // Test DataProcessor<TInput, TOutput>
-        var userProcessor = services.GetService<IoCTools.Sample.Interfaces.IProcessor<User, User>>();
+        var userProcessor = services.GetService<Interfaces.IProcessor<User, User>>();
         if (userProcessor != null)
         {
-            var user = new User { Username = "source", Email = "source@example.com", FirstName = "Source", LastName = "User" };
+            var user = new User
+            {
+                Username = "source", Email = "source@example.com", FirstName = "Source", LastName = "User"
+            };
             var processedUser = await userProcessor.ProcessAsync(user);
-            Console.WriteLine($"✅ DataProcessor<User, User>: Processed user successfully");
+            Console.WriteLine("✅ DataProcessor<User, User>: Processed user successfully");
         }
 
         // Test Cache<T>
         var userCache = services.GetService<ICache<User>>();
         if (userCache != null)
         {
-            var cacheUser = new User { Username = "cacheuser", Email = "cache@example.com", FirstName = "Cache", LastName = "User" };
+            var cacheUser = new User
+            {
+                Username = "cacheuser", Email = "cache@example.com", FirstName = "Cache", LastName = "User"
+            };
             await userCache.SetAsync("test-user", cacheUser);
             var cachedUser = await userCache.GetAsync("test-user");
             Console.WriteLine($"✅ Cache<User>: Cached and retrieved user '{cachedUser?.FirstName ?? "null"}'");
@@ -929,33 +1111,33 @@ internal class Program
         if (userFactory != null)
         {
             var factoryUser = userFactory.Create();
-            Console.WriteLine($"✅ Factory<User>: Created User successfully");
+            Console.WriteLine("✅ Factory<User>: Created User successfully");
         }
 
         Console.WriteLine("   Note: Individual generic services working indicates partial generic support");
     }
 
-    private static async Task DemonstrateUnregisteredServices(IServiceProvider services)
+    private static async Task DemonstrateManualServices(IServiceProvider services)
     {
         Console.WriteLine("=== UNREGISTERED SERVICES DEMONSTRATION ===");
         Console.WriteLine(
-            "These services have [UnregisteredService] - constructors generated but no auto-registration");
+            "These services have [ExternalService] - constructors generated but no auto-registration");
         Console.WriteLine();
 
-        await TestManuallyRegisteredUnregisteredServices(services);
-        await TestFactoryPatternWithUnregisteredServices(services);
-        await TestUnregisteredServiceDemonstrations(services);
+        await TestManuallyRegisteredManualServices(services);
+        await TestFactoryPatternWithManualServices(services);
+        await TestManualServiceDemonstrations(services);
     }
 
-    private static async Task TestManuallyRegisteredUnregisteredServices(IServiceProvider services)
+    private static async Task TestManuallyRegisteredManualServices(IServiceProvider services)
     {
-        Console.WriteLine("--- Manually Registered [UnregisteredService] Classes ---");
+        Console.WriteLine("--- Manually Registered [ExternalService] Classes ---");
 
         var manualService = services.GetService<IManualRegistrationService>();
         if (manualService != null)
         {
             await manualService.ProcessAsync("manual registration test");
-            Console.WriteLine("✅ ManualRegistrationService: [UnregisteredService] but manually registered");
+            Console.WriteLine("✅ ManualRegistrationService: [ExternalService] but manually registered");
         }
         else
         {
@@ -965,19 +1147,20 @@ internal class Program
         var legacyProcessor = services.GetService<LegacyPaymentProcessor>();
         if (legacyProcessor != null)
         {
-            var payment = new IoCTools.Sample.Services.Payment(49.99m);
+            var payment = new Payment(49.99m);
             var result = await legacyProcessor.ProcessPaymentAsync(payment.Amount, "Legacy");
-            Console.WriteLine($"✅ LegacyPaymentProcessor: [UnregisteredService] manually registered: {(result.Success ? "Success" : "Failed")} - Transaction: {result.TransactionId}");
+            Console.WriteLine(
+                $"✅ LegacyPaymentProcessor: [ExternalService] manually registered: {(result.Success ? "Success" : "Failed")} - Transaction: {result.TransactionId}");
         }
 
         Console.WriteLine();
     }
 
-    private static async Task TestFactoryPatternWithUnregisteredServices(IServiceProvider services)
+    private static async Task TestFactoryPatternWithManualServices(IServiceProvider services)
     {
-        Console.WriteLine("--- Factory Pattern for [UnregisteredService] Classes ---");
+        Console.WriteLine("--- Factory Pattern for [ExternalService] Classes ---");
 
-        var factory = services.GetService<IUnregisteredServiceFactory>();
+        var factory = services.GetService<IManualServiceFactory>();
         if (factory != null)
         {
             // Create unregistered services through factory
@@ -990,20 +1173,20 @@ internal class Program
             Console.WriteLine($"✅ Factory created TestHelperService: User creation success = {success}");
 
             var legacyProcessor = factory.CreateLegacyProcessor();
-            var result = await legacyProcessor.ProcessLegacyPaymentAsync(new IoCTools.Sample.Services.Payment(25.00m));
+            var result = await legacyProcessor.ProcessLegacyPaymentAsync(new Payment(25.00m));
             Console.WriteLine($"✅ Factory created LegacyPaymentProcessor: {result.Message}");
         }
         else
         {
-            Console.WriteLine("❌ UnregisteredServiceFactory not available");
+            Console.WriteLine("❌ ManualServiceFactory not available");
         }
 
         Console.WriteLine();
     }
 
-    private static async Task TestUnregisteredServiceDemonstrations(IServiceProvider services)
+    private static async Task TestManualServiceDemonstrations(IServiceProvider services)
     {
-        Console.WriteLine("--- [UnregisteredService] Behavior Analysis ---");
+        Console.WriteLine("--- [ExternalService] Behavior Analysis ---");
 
         // These should NOT be available through DI container
         var unregisteredTypes = new[]
@@ -1023,16 +1206,16 @@ internal class Program
             Console.WriteLine($"   {status} {name}");
         }
 
-        // These SHOULD be available (they have [Service] even though they inherit from [UnregisteredService])
+        // These SHOULD be available (they have [Scoped] even though they inherit from [ExternalService])
         var registeredTypes = new[]
         {
             (typeof(INewPaymentProcessor), "INewPaymentProcessor -> NewPaymentProcessor"),
             (typeof(IEnterprisePaymentProcessor), "IEnterprisePaymentProcessor -> EnterprisePaymentProcessor"),
-            (typeof(IUnregisteredServiceFactory), "IUnregisteredServiceFactory -> UnregisteredServiceFactory")
+            (typeof(IManualServiceFactory), "IManualServiceFactory -> ManualServiceFactory")
         };
 
         Console.WriteLine();
-        Console.WriteLine("Services that inherit from [UnregisteredService] but are [Service] themselves:");
+        Console.WriteLine("Services that inherit from [ExternalService] but are [Scoped] themselves:");
         foreach (var (serviceType, description) in registeredTypes)
         {
             var service = services.GetService(serviceType);
@@ -1041,10 +1224,10 @@ internal class Program
         }
 
         Console.WriteLine();
-        Console.WriteLine("--- [UnregisteredService] Key Behaviors ---");
+        Console.WriteLine("--- [ExternalService] Key Behaviors ---");
         Console.WriteLine("✅ Constructor generation: Generated for dependency injection");
         Console.WriteLine(
-            "✅ Inheritance support: Derived [Service] classes can inherit from [UnregisteredService] bases");
+            "✅ Inheritance support: Services with lifetime attributes can inherit from [ExternalService] bases");
         Console.WriteLine("✅ Manual registration: Can be manually registered if needed");
         Console.WriteLine("✅ Factory pattern: Can be instantiated through factories");
         Console.WriteLine("❌ Automatic registration: Excluded from AddIoCTools*RegisteredServices() methods");
@@ -1056,7 +1239,7 @@ internal class Program
     {
         Console.WriteLine("=== EXTERNAL SERVICE INTEGRATION DEMONSTRATION ===");
         Console.WriteLine("Shows manual vs automatic registration patterns with external services");
-        Console.WriteLine("• External services with [UnregisteredService] need manual configuration");
+        Console.WriteLine("• External services with [ExternalService] need manual configuration");
         Console.WriteLine("• IoCTools services can depend on external services seamlessly");
         Console.WriteLine("• Framework services (IMemoryCache, ILogger) work out of the box");
         Console.WriteLine("• Mixed scenarios combine automatic and manual registration");
@@ -1091,8 +1274,8 @@ internal class Program
         if (databaseService != null)
         {
             var savedUser = await databaseService.SaveAsync(new { Id = 1, Name = "Test User" });
-            Console.WriteLine($"✅ DatabaseContextService: Entity save completed");
-            
+            Console.WriteLine("✅ DatabaseContextService: Entity save completed");
+
             var foundUser = await databaseService.FindByIdAsync<object>(1);
             Console.WriteLine($"✅ DatabaseContextService: Entity retrieval = {foundUser != null}");
         }
@@ -1108,7 +1291,8 @@ internal class Program
             var testObject = new { Data = "cached value", Expiry = DateTime.UtcNow.AddMinutes(10) };
             await cacheService.SetAsync("test-key", testObject, TimeSpan.FromMinutes(5));
             var cachedObject = await cacheService.GetAsync<object>("test-key");
-            Console.WriteLine($"✅ RedisCacheService ({cacheService.CacheType}): Cache operation = {cachedObject != null}");
+            Console.WriteLine(
+                $"✅ RedisCacheService ({cacheService.CacheType}): Cache operation = {cachedObject != null}");
         }
         else
         {
@@ -1121,9 +1305,11 @@ internal class Program
         {
             var paymentRequest = new ExternalPaymentRequest(99.99m, "USD", "CreditCard");
             var paymentResult = await thirdPartyService.ProcessPaymentAsync(paymentRequest);
-            Console.WriteLine($"✅ ThirdPartyApiService: Payment processing = {paymentResult.Success} ({paymentResult.Message})");
-            
-            var notificationRequest = new ExternalNotificationRequest("user@example.com", "Test", "External service test");
+            Console.WriteLine(
+                $"✅ ThirdPartyApiService: Payment processing = {paymentResult.Success} ({paymentResult.Message})");
+
+            var notificationRequest =
+                new ExternalNotificationRequest("user@example.com", "Test", "External service test");
             var notificationResult = await thirdPartyService.SendNotificationAsync(notificationRequest);
             Console.WriteLine($"✅ ThirdPartyApiService: Notification sending = {notificationResult.Success}");
         }
@@ -1144,14 +1330,15 @@ internal class Program
         {
             var externalOrder = new ExternalOrder(12345, "customer@example.com", 149.99m);
             var processingResult = await businessService.ProcessOrderAsync(externalOrder);
-            
+
             Console.WriteLine($"✅ OrderProcessingBusinessService: Order processing = {processingResult.Success}");
             Console.WriteLine($"   Result: {processingResult.Message}");
-            
+
             if (processingResult.Success)
             {
                 var retrievalResult = await businessService.GetOrderAsync(12345);
-                Console.WriteLine($"✅ OrderProcessingBusinessService: Order retrieval = {retrievalResult.Success} ({retrievalResult.Message})");
+                Console.WriteLine(
+                    $"✅ OrderProcessingBusinessService: Order retrieval = {retrievalResult.Success} ({retrievalResult.Message})");
             }
         }
         else
@@ -1171,7 +1358,9 @@ internal class Program
         {
             // Test IMemoryCache integration
             var testData = new { Name = "Framework Test", Value = 42 };
-            var cacheResult = await frameworkService.CacheDataWithMemoryCacheAsync("framework-test", testData, TimeSpan.FromMinutes(2));
+            var cacheResult =
+                await frameworkService.CacheDataWithMemoryCacheAsync("framework-test", testData,
+                    TimeSpan.FromMinutes(2));
             Console.WriteLine($"✅ FrameworkIntegrationService: IMemoryCache operation = {cacheResult.Success}");
 
             // Test IConfiguration integration
@@ -1180,7 +1369,8 @@ internal class Program
             Console.WriteLine($"   Found {configResult.Values.Count} configuration values");
 
             // Test IServiceProvider integration
-            var serviceResult = await frameworkService.ResolveServiceDynamicallyAsync<ILogger<FrameworkIntegrationService>>();
+            var serviceResult =
+                await frameworkService.ResolveServiceDynamicallyAsync<ILogger<FrameworkIntegrationService>>();
             Console.WriteLine($"✅ FrameworkIntegrationService: Dynamic service resolution = {serviceResult.Success}");
             Console.WriteLine($"   Service: {serviceResult.ServiceType}, Hash: {serviceResult.InstanceHashCode}");
         }
@@ -1202,21 +1392,19 @@ internal class Program
             // Test business workflow that uses all types of services
             var workflowRequest = new BusinessWorkflowRequest("WF-001", "hybrid@example.com", 199.99m);
             var workflowResult = await hybridService.ProcessBusinessWorkflowAsync(workflowRequest);
-            
+
             Console.WriteLine($"✅ HybridIntegrationService: Business workflow = {workflowResult.Success}");
             Console.WriteLine($"   Workflow ID: {workflowResult.WorkflowId}");
             Console.WriteLine($"   Result: {workflowResult.Message}");
-            
+
             if (!string.IsNullOrEmpty(workflowResult.PaymentTransactionId))
-            {
                 Console.WriteLine($"   Payment Transaction: {workflowResult.PaymentTransactionId}");
-            }
 
             // Test dependency health check
             var healthResult = await hybridService.CheckDependencyHealthAsync();
             Console.WriteLine($"✅ HybridIntegrationService: Dependency health check = {healthResult.IsHealthy}");
             Console.WriteLine($"   Health summary: {healthResult.Message}");
-            
+
             foreach (var (service, healthy) in healthResult.ServiceHealth)
             {
                 var status = healthy ? "✅" : "❌";
@@ -1249,7 +1437,7 @@ internal class Program
 
         Console.WriteLine();
         Console.WriteLine("--- External Service Integration Key Patterns ---");
-        Console.WriteLine("✅ [UnregisteredService] for services needing complex manual configuration");
+        Console.WriteLine("✅ [ExternalService] for services with external/manual configuration");
         Console.WriteLine("✅ Manual registration in Program.cs with specific setup (HTTP clients, DB contexts)");
         Console.WriteLine("✅ IoCTools services can seamlessly depend on external services");
         Console.WriteLine("✅ Framework services (IMemoryCache, ILogger, IConfiguration) work automatically");
@@ -1262,7 +1450,7 @@ internal class Program
         Console.WriteLine("   • Cache providers (Redis, SQL Server, etc.) with connection setup");
         Console.WriteLine("   • Third-party APIs with authentication and endpoint configuration");
         Console.WriteLine("   • Message queues, file systems, and other infrastructure services");
-        
+
         await Task.CompletedTask;
     }
 
@@ -1284,7 +1472,7 @@ internal class Program
         Console.WriteLine();
 
         Console.WriteLine("--- Background Service Features Demonstrated ---");
-        Console.WriteLine("🔧 [Service(Lifetime.Singleton)]: Background services registered as singletons");
+        Console.WriteLine("🔧 [Singleton]: Background services registered as singletons");
         Console.WriteLine("🔧 [Inject]: Standard dependency injection with ILogger, IServiceScopeFactory, etc.");
         Console.WriteLine("🔧 [InjectConfiguration]: Configuration binding with direct values and sections");
         Console.WriteLine("🔧 [ConditionalService]: Conditional registration based on configuration");
@@ -1342,42 +1530,47 @@ internal class Program
         Console.WriteLine("--- Build-Time Diagnostics Overview ---");
         Console.WriteLine("The following diagnostic scenarios are included in DiagnosticExamples.cs:");
         Console.WriteLine();
-        
+
         Console.WriteLine("Missing Implementation Diagnostics (IOC001):");
         Console.WriteLine("  - MissingImplementationService depends on IMissingDataService (no impl)");
         Console.WriteLine("  - MissingImplementationService depends on INonExistentRepository (no impl)");
         Console.WriteLine();
-        
+
         Console.WriteLine("Unregistered Implementation Diagnostics (IOC002):");
         Console.WriteLine("  - UnregisteredDependencyService depends on IUnregisteredCalculator");
-        Console.WriteLine("  - UnregisteredCalculator exists but lacks [Service] attribute");
+        Console.WriteLine("  - UnregisteredCalculator exists but lacks lifetime attributes");
         Console.WriteLine();
-        
+
         Console.WriteLine("Lifetime Violation Diagnostics (IOC012, IOC013, IOC015):");
         Console.WriteLine("  - IOC012: ProblematicSingletonService (Singleton) → IScopedDatabaseService (Scoped)");
-        Console.WriteLine("  - IOC013: SingletonWithTransientDependencies (Singleton) → ITransientNotificationService (Transient)");
-        Console.WriteLine("  - IOC015: SingletonServiceWithInheritance inherits from BaseServiceWithScopedDependencies");
+        Console.WriteLine(
+            "  - IOC013: SingletonWithTransientDependencies (Singleton) → ITransientNotificationService (Transient)");
+        Console.WriteLine(
+            "  - IOC015: SingletonServiceWithInheritance inherits from BaseServiceWithScopedDependencies");
         Console.WriteLine();
-        
+
         Console.WriteLine("Registration Conflict Diagnostics (IOC006-IOC009):");
         Console.WriteLine("  - IOC006: ConflictingDependenciesService has duplicate DependsOn declarations");
         Console.WriteLine("  - IOC007: ConflictingDependenciesService has DependsOn + [Inject] field for same type");
         Console.WriteLine("  - IOC008: ConflictingDependenciesService has duplicate types in single DependsOn");
-        Console.WriteLine("  - IOC009: RedundantSkipRegistrationService skips interface not registered by RegisterAsAll");
+        Console.WriteLine(
+            "  - IOC009: RedundantSkipRegistrationService skips interface not registered by RegisterAsAll");
         Console.WriteLine();
-        
+
         Console.WriteLine("Background Service Diagnostics (IOC011, IOC014):");
         Console.WriteLine("  - IOC011: NonPartialBackgroundService not marked as partial");
         Console.WriteLine("  - IOC014: IncorrectLifetimeBackgroundService has Scoped lifetime (should be Singleton)");
         Console.WriteLine();
-        
+
         Console.WriteLine("Conditional Service Diagnostics (IOC020-IOC026):");
         Console.WriteLine("  - IOC020: ConflictingConditionalService has conflicting Environment conditions");
-        Console.WriteLine("  - IOC021: ConditionalWithoutServiceAttribute lacks [Service] attribute");
-        Console.WriteLine("    Example: Services/DiagnosticExamples.cs(297,1): error IOC021: Class 'ConditionalWithoutServiceAttribute' has [ConditionalService] attribute but [Service] attribute is required");
+        Console.WriteLine("  - IOC021: ConditionalWithoutServiceAttribute lacks lifetime attributes");
+        Console.WriteLine(
+            "    Example: Services/DiagnosticExamples.cs(297,1): error IOC021: Class 'ConditionalWithoutServiceAttribute' has [ConditionalService] attribute but lifetime attribute ([Scoped], [Singleton], [Transient]) is required");
         Console.WriteLine("  - IOC022: EmptyConditionalService has no conditions");
         Console.WriteLine("  - IOC023-025: Various ConfigValue configuration issues");
-        Console.WriteLine("  - IOC026: MultipleConditionalAttributesService has multiple [ConditionalService] attributes");
+        Console.WriteLine(
+            "  - IOC026: MultipleConditionalAttributesService has multiple [ConditionalService] attributes");
 
         await Task.CompletedTask;
     }
@@ -1413,7 +1606,8 @@ internal class Program
     private static async Task DemonstrateMultiInterfaceRegistration(IServiceProvider services)
     {
         Console.WriteLine("=== MULTI-INTERFACE REGISTRATION DEMONSTRATION ===");
-        Console.WriteLine("These services demonstrate the RegisterAsAll attribute with different modes and instance sharing");
+        Console.WriteLine(
+            "These services demonstrate the RegisterAsAll attribute with different modes and instance sharing");
         Console.WriteLine();
 
         var multiInterfaceDemo = services.GetService<IMultiInterfaceDemoService>();
@@ -1472,7 +1666,7 @@ internal class Program
             var user = await userService.CreateUserAsync("John Doe", "john@example.com");
             var isValid = userValidator.ValidateUser(user).IsValid;
             var foundUser = await userRepository.FindByIdAsync(user.Id);
-            
+
             Console.WriteLine($"✅ Created user: {user.Name}, Valid: {isValid}, Found: {foundUser != null}");
             Console.WriteLine("✅ All interfaces resolve to the same shared instance");
         }
@@ -1487,22 +1681,22 @@ internal class Program
         // DirectOnly mode test
         var directOnlyConcrete = services.GetService<DirectOnlyPaymentProcessor>();
         var directOnlyInterface = services.GetService<IMultiPaymentService>();
-        
-        Console.WriteLine($"DirectOnlyPaymentProcessor (DirectOnly mode):");
+
+        Console.WriteLine("DirectOnlyPaymentProcessor (DirectOnly mode):");
         Console.WriteLine($"  Concrete type available: {directOnlyConcrete != null}");
         Console.WriteLine($"  Interface available: {directOnlyInterface != null}");
         Console.WriteLine("  Expected: Concrete=true, Interface=false");
 
         // Exclusionary mode test  
         var exclusionaryInterface = services.GetService<IMultiPaymentValidator>();
-        
-        Console.WriteLine($"InterfaceOnlyPaymentProcessor (Exclusionary mode):");
+
+        Console.WriteLine("InterfaceOnlyPaymentProcessor (Exclusionary mode):");
         Console.WriteLine($"  Interface available: {exclusionaryInterface != null}");
         Console.WriteLine("  Expected: Interface=true, Concrete=false");
 
         if (exclusionaryInterface != null)
         {
-            var payment = new IoCTools.Sample.Services.Payment(150.00m);
+            var payment = new Payment(150.00m);
             var isValid = exclusionaryInterface.ValidatePayment(payment);
             Console.WriteLine($"✅ Payment validation via interface: {isValid}");
         }
@@ -1514,7 +1708,7 @@ internal class Program
     {
         Console.WriteLine("--- Testing Instance Sharing Modes ---");
 
-        // Test separate instances
+        // Test RegisterAsAll instances (existing functionality)
         var separateCacheService = services.GetService<IMultiCacheService>();
         var separateCacheProvider = services.GetService<IMultiCacheProvider>();
 
@@ -1522,19 +1716,115 @@ internal class Program
         {
             separateCacheService.Set("test-key", "test-value");
             var exists = separateCacheProvider.Exists("test-key");
-            
-            Console.WriteLine($"Separate Instance Sharing:");
+
+            Console.WriteLine("RegisterAsAll Separate Instance Sharing:");
             Console.WriteLine($"  Set via IMultiCacheService, exists via IMultiCacheProvider: {exists}");
-            Console.WriteLine($"  Expected with separate instances: Data sharing may vary");
+            Console.WriteLine("  Expected with separate instances: Data sharing may vary");
         }
 
-        // Test shared instances
+        // Test RegisterAsAll shared instances
         var sharedCacheService = services.GetService<SharedInstanceCacheManager>();
-        
-        Console.WriteLine($"SharedInstanceCacheManager:");
+
+        Console.WriteLine("SharedInstanceCacheManager:");
         Console.WriteLine($"  Service available: {sharedCacheService != null}");
         Console.WriteLine("  Expected: Single shared instance across all interfaces");
 
+        // === NEW: Test RegisterAs<T> InstanceSharing.Separate ===
+        Console.WriteLine("\n--- Testing RegisterAs<T> InstanceSharing.Separate ---");
+
+        var regService1 = services.GetService<IRegistrationService>();
+        var valService1 = services.GetService<IValidationServiceSeparate>();
+
+        if (regService1 != null && valService1 != null)
+        {
+            // These should be different instances (separate)
+            regService1.Register("test-item-separate");
+            var isValid = valService1.Validate("test-item-separate");
+
+            Console.WriteLine("✅ RegisterAs<T> InstanceSharing.Separate:");
+            Console.WriteLine($"  IRegistrationService available: {regService1 != null}");
+            Console.WriteLine($"  IValidationServiceSeparate available: {valService1 != null}");
+            Console.WriteLine($"  Validation result: {isValid}");
+            Console.WriteLine("  Expected: Different instances for each interface (separate state)");
+        }
+
+        // === NEW: Test RegisterAs<T> InstanceSharing.Shared ===
+        Console.WriteLine("\n--- Testing RegisterAs<T> InstanceSharing.Shared ---");
+
+        var sharedCache = services.GetService<ISharedCacheService>();
+        var sharedStats = services.GetService<ISharedStatsService>();
+        var sharedHealth = services.GetService<ISharedHealthService>();
+
+        if (sharedCache != null && sharedStats != null && sharedHealth != null)
+        {
+            // These should be the SAME instance (shared state)
+            sharedCache.CacheItem("test-key", "test-value");
+            sharedStats.IncrementCounter("test-counter");
+            sharedHealth.ReportHealth(true);
+
+            var cachedValue = sharedCache.GetItem<string>("test-key");
+            var counterValue = sharedStats.GetCount("test-counter");
+            var healthStatus = sharedHealth.IsHealthy();
+
+            Console.WriteLine("✅ RegisterAs<T> InstanceSharing.Shared:");
+            Console.WriteLine($"  ISharedCacheService available: {sharedCache != null}");
+            Console.WriteLine($"  ISharedStatsService available: {sharedStats != null}");
+            Console.WriteLine($"  ISharedHealthService available: {sharedHealth != null}");
+            Console.WriteLine($"  Cached value: {cachedValue}");
+            Console.WriteLine($"  Counter value: {counterValue}");
+            Console.WriteLine($"  Health status: {healthStatus}");
+            Console.WriteLine("  Expected: Same instance across all interfaces (shared state)");
+        }
+
+        // === NEW: Test EF Core DbContext Integration Pattern ===
+        Console.WriteLine("\n--- Testing EF Core DbContext Integration Pattern ---");
+
+        var transactionService = services.GetService<IDbTransactionService>();
+        var databaseService = services.GetService<IDbDataService>();
+
+        if (transactionService != null && databaseService != null)
+        {
+            // Test the EF Core integration pattern
+            transactionService.BeginTransaction();
+            var result = await databaseService.ExecuteCommandAsync("SELECT COUNT(*) FROM Users");
+            transactionService.CommitTransaction();
+
+            Console.WriteLine("✅ EF Core DbContext Integration:");
+            Console.WriteLine($"  IDbTransactionService available: {transactionService != null}");
+            Console.WriteLine($"  IDbDataService available: {databaseService != null}");
+            Console.WriteLine($"  Execute command result: {result}");
+            Console.WriteLine("  Expected: Factory pattern - interfaces resolve to externally registered DbContext");
+        }
+
+        // === NEW: Test Advanced Multi-Interface Shared Pattern ===
+        Console.WriteLine("\n--- Testing Advanced Multi-Interface Shared Pattern ---");
+
+        var metrics = services.GetService<IMetricsCollector>();
+        var events = services.GetService<IEventPublisher>();
+        var health = services.GetService<IHealthReporter>();
+        var config = services.GetService<IConfigurationWatcher>();
+
+        if (metrics != null && events != null && health != null && config != null)
+        {
+            // All should share the same underlying instance
+            metrics.RecordMetric("cpu_usage", 75.5);
+            await events.PublishAsync("system_startup", new { timestamp = DateTime.UtcNow });
+            health.ReportHealth("database", true);
+            config.WatchConfiguration("max_connections", value => Console.WriteLine($"Config changed: {value}"));
+
+            Console.WriteLine("✅ Advanced Multi-Interface Shared:");
+            Console.WriteLine($"  IMetricsCollector available: {metrics != null}");
+            Console.WriteLine($"  IEventPublisher available: {events != null}");
+            Console.WriteLine($"  IHealthReporter available: {health != null}");
+            Console.WriteLine($"  IConfigurationWatcher available: {config != null}");
+            Console.WriteLine("  Expected: Single shared service instance handling all interface contracts");
+        }
+
+        Console.WriteLine("\n🎯 INSTANCE SHARING SUMMARY:");
+        Console.WriteLine("  ✅ InstanceSharing.Separate: Different instances per interface");
+        Console.WriteLine("  ✅ InstanceSharing.Shared: Same instance across all interfaces");
+        Console.WriteLine("  ✅ EF Core Pattern: Factory registration for external services");
+        Console.WriteLine("  ✅ Advanced Shared: Complex multi-interface service scenarios");
         Console.WriteLine();
     }
 
@@ -1547,7 +1837,7 @@ internal class Program
         var dataLogger = services.GetService<IDataLogger>();
         var dataCacheService = services.GetService<IDataCacheService>();
 
-        Console.WriteLine($"SelectiveDataService with SkipRegistration:");
+        Console.WriteLine("SelectiveDataService with SkipRegistration:");
         Console.WriteLine($"  IDataService (should be registered): {dataService != null}");
         Console.WriteLine($"  IDataValidator (should be registered): {dataValidator != null}");
         Console.WriteLine($"  IDataLogger (should be skipped): {dataLogger != null}");
@@ -1570,18 +1860,19 @@ internal class Program
         // var userRepo = services.GetService<IMultiRepository<User>>();
         // var userQueryable = services.GetService<IMultiQueryable<User>>();
 
-        Console.WriteLine($"Generic Repository<User>:");
-        Console.WriteLine($"  IMultiRepository<User>: Temporarily disabled (open generic registration issue)");
-        Console.WriteLine($"  IMultiQueryable<User>: Temporarily disabled (open generic registration issue)");
+        Console.WriteLine("Generic Repository<User>:");
+        Console.WriteLine("  IMultiRepository<User>: Temporarily disabled (open generic registration issue)");
+        Console.WriteLine("  IMultiQueryable<User>: Temporarily disabled (open generic registration issue)");
 
         if (false) // userRepo != null && userQueryable != null)
         {
             var user = new User(1, "Repository User", "repo@example.com");
             // await userRepo.SaveAsync(user);
-            
+
             // var foundUser = await userQueryable.FirstOrDefaultAsync(u => u.Name.Contains("Repository"));
             // Console.WriteLine($"✅ Generic repository test: User found = {foundUser?.Name}");
-            Console.WriteLine($"✅ Generic repository pattern: Temporarily disabled - would demonstrate generic service resolution");
+            Console.WriteLine(
+                "✅ Generic repository pattern: Temporarily disabled - would demonstrate generic service resolution");
         }
 
         Console.WriteLine();
@@ -1595,7 +1886,7 @@ internal class Program
         var perfMetrics = services.GetService<IPerformanceMetrics>();
         var perfBenchmark = services.GetService<IPerformanceBenchmark>();
 
-        Console.WriteLine($"PerformanceTestService:");
+        Console.WriteLine("PerformanceTestService:");
         Console.WriteLine($"  IPerformanceTestService available: {perfService != null}");
         Console.WriteLine($"  IPerformanceMetrics available: {perfMetrics != null}");
         Console.WriteLine($"  IPerformanceBenchmark available: {perfBenchmark != null}");
@@ -1603,20 +1894,21 @@ internal class Program
         if (perfBenchmark != null)
         {
             var result = await perfBenchmark.RunBenchmarkAsync(5);
-            Console.WriteLine($"✅ Benchmark completed: {result.Iterations} iterations in {result.TotalTime.TotalMilliseconds:F2}ms");
+            Console.WriteLine(
+                $"✅ Benchmark completed: {result.Iterations} iterations in {result.TotalTime.TotalMilliseconds:F2}ms");
         }
 
         Console.WriteLine();
         Console.WriteLine("--- Multi-Interface Registration Benefits ---");
         Console.WriteLine("✅ Single implementation serves multiple interfaces");
         Console.WriteLine("✅ Flexible registration modes (DirectOnly, All, Exclusionary)");
-        Console.WriteLine("✅ Configurable instance sharing (Separate, Shared)"); 
+        Console.WriteLine("✅ Configurable instance sharing (Separate, Shared)");
         Console.WriteLine("✅ Selective interface skipping with generic SkipRegistration");
         Console.WriteLine("✅ Works with generic types and inheritance");
         Console.WriteLine("✅ Reduces boilerplate registration code");
         Console.WriteLine();
     }
-    
+
     private static async Task DemonstrateTransientServices(IServiceProvider services)
     {
         Console.WriteLine("=== 2. TRANSIENT SERVICES DEMONSTRATION ===");
@@ -1626,31 +1918,29 @@ internal class Program
         await TestTransientLifetime(services);
         Console.WriteLine();
     }
-    
+
     private static async Task TestTransientLifetime(IServiceProvider services)
     {
         Console.WriteLine("--- Transient Service Examples ---");
-        
+
         // Test transient services if available
-        var emailValidator1 = services.GetService<IoCTools.Sample.Services.IEmailValidator>();
-        var emailValidator2 = services.GetService<IoCTools.Sample.Services.IEmailValidator>();
+        var emailValidator1 = services.GetService<IEmailValidator>();
+        var emailValidator2 = services.GetService<IEmailValidator>();
         if (emailValidator1 != null && emailValidator2 != null)
-        {
-            Console.WriteLine($"  ✅ Email Validators: Different instances = {!ReferenceEquals(emailValidator1, emailValidator2)}");
-        }
+            Console.WriteLine(
+                $"  ✅ Email Validators: Different instances = {!ReferenceEquals(emailValidator1, emailValidator2)}");
         else
-        {
             Console.WriteLine("  ⚠️ Transient email validator services not available");
-        }
-        
+
         // Test multiple resolutions of same service type
         var services1 = services.GetServices<INotificationService>().ToList();
         var services2 = services.GetServices<INotificationService>().ToList();
-        
-        Console.WriteLine($"  ✅ Multiple service resolution: First batch = {services1.Count}, Second batch = {services2.Count}");
+
+        Console.WriteLine(
+            $"  ✅ Multiple service resolution: First batch = {services1.Count}, Second batch = {services2.Count}");
         Console.WriteLine("  Note: Each GetServices() call may return new instances for Transient services");
     }
-    
+
     private static async Task DemonstrateConditionalServices(IServiceProvider services)
     {
         Console.WriteLine("=== 5. CONDITIONAL SERVICES DEMONSTRATION ===");
@@ -1674,15 +1964,14 @@ internal class Program
     private static async Task TestConditionalServicePatterns(IServiceProvider services)
     {
         Console.WriteLine("--- Testing Conditional Service Patterns ---");
-        
+
         // Test environment-based email services
         var envEmailServices = services.GetServices<IEnvironmentEmailService>().ToList();
         Console.WriteLine($"  ✅ Environment-based email services registered: {envEmailServices.Count}");
         foreach (var emailService in envEmailServices.Take(1))
-        {
-            await emailService.SendEmailAsync("user@example.com", "Conditional Test", "Environment-based service selection");
-        }
-        
+            await emailService.SendEmailAsync("user@example.com", "Conditional Test",
+                "Environment-based service selection");
+
         // Test configuration-driven cache services  
         var cacheServices = services.GetServices<IConfigurableCacheService>().ToList();
         Console.WriteLine($"  ✅ Configuration-driven cache services registered: {cacheServices.Count}");
@@ -1692,7 +1981,7 @@ internal class Program
             var value = await cacheService.GetAsync<string>("conditional-test");
             Console.WriteLine($"    Cache test result: {value}");
         }
-        
+
         // Test payment processor selection
         var paymentProcessors = services.GetServices<IPaymentProcessor>().ToList();
         Console.WriteLine($"  ✅ Payment processors registered: {paymentProcessors.Count}");
@@ -1701,18 +1990,18 @@ internal class Program
             var result = await processor.ProcessPaymentAsync(99.99m, "CreditCard");
             Console.WriteLine($"    Payment result: {result.Success}, Version: {result.ProcessorVersion}");
         }
-        
+
         // Test storage service selection
         var storageServices = services.GetServices<IStorageService>().ToList();
         Console.WriteLine($"  ✅ Storage services registered: {storageServices.Count}");
         foreach (var storage in storageServices.Take(1))
         {
-            var testData = System.Text.Encoding.UTF8.GetBytes("Conditional storage test");
+            var testData = Encoding.UTF8.GetBytes("Conditional storage test");
             await storage.StoreFileAsync("conditional-test.txt", testData);
             Console.WriteLine("    Storage service test completed");
         }
     }
-    
+
     private static async Task DemonstrateInheritanceExamples(IServiceProvider services)
     {
         Console.WriteLine("=== 7. INHERITANCE HIERARCHY DEMONSTRATION ===");
@@ -1726,7 +2015,7 @@ internal class Program
     private static async Task TestInheritancePatterns(IServiceProvider services)
     {
         Console.WriteLine("--- Inheritance Chain Examples ---");
-        
+
         // Test 3-level inheritance: BaseRepository -> UserRepository
         var userRepository = services.GetService<IUserRepository>();
         if (userRepository != null)
@@ -1741,14 +2030,14 @@ internal class Program
         {
             Console.WriteLine("  ⚠️ UserRepository inheritance example not available");
         }
-        
+
         // Test credit card processor inheritance chain
         var creditCardProcessor = services.GetService<ICreditCardProcessor>();
         if (creditCardProcessor != null)
         {
             var result = await creditCardProcessor.ProcessCreditCardPaymentAsync(299.99m, "4111111111111111");
             Console.WriteLine($"  ✅ CreditCardProcessor (inheritance chain): Payment = {result.Success}");
-            
+
             var refund = await creditCardProcessor.RefundPaymentAsync(50.00m, "TXN123");
             Console.WriteLine($"    Refund processing via inherited methods = {refund.Success}");
         }
@@ -1756,7 +2045,7 @@ internal class Program
         {
             Console.WriteLine("  ⚠️ CreditCardProcessor inheritance example not available");
         }
-        
+
         // Test user validator inheritance
         var userValidator = services.GetService<IUserValidator>();
         if (userValidator != null)
@@ -1769,24 +2058,25 @@ internal class Program
         {
             Console.WriteLine("  ⚠️ UserValidator inheritance example not available");
         }
-        
+
         // Test application settings service with configuration inheritance
         var appSettingsService = services.GetService<IApplicationSettingsService>();
         if (appSettingsService != null)
         {
             var settings = await appSettingsService.GetApplicationSettingsAsync();
             var configValid = await appSettingsService.ValidateConfigurationAsync();
-            Console.WriteLine($"  ✅ ApplicationSettingsService (config inheritance): App = {settings.ApplicationName}, Valid = {configValid}");
+            Console.WriteLine(
+                $"  ✅ ApplicationSettingsService (config inheritance): App = {settings.ApplicationName}, Valid = {configValid}");
         }
         else
         {
             Console.WriteLine("  ⚠️ ApplicationSettingsService inheritance example not available");
         }
-        
+
         // Show registered inheritance services
         await TestRegisteredInheritanceServices(services);
     }
-    
+
     private static async Task DemonstrateAdvancedPatterns(IServiceProvider services)
     {
         Console.WriteLine("=== 11. ADVANCED PATTERNS DEMONSTRATION ===");
@@ -1808,15 +2098,16 @@ internal class Program
 
         Console.WriteLine();
     }
-    
+
     private static async Task TestAdvancedPatternsFallback(IServiceProvider services)
     {
         Console.WriteLine("--- Advanced Pattern Examples ---");
-        
-        // Test generic services
-        var genericServices = services.GetServices(typeof(Repository<>));
-        Console.WriteLine($"  ✅ Generic repository services available: {genericServices.Any()}");
-        
+
+        // Test generic services - using available generic services
+        var genericRepo = services.GetService<GenericRepository<User>>();
+        var cacheService = services.GetService<Cache<User>>();
+        Console.WriteLine($"  ✅ Generic services available: {genericRepo != null || cacheService != null}");
+
         // Test composite notification service with multiple providers
         var compositeNotification = services.GetService<CompositeNotificationService>();
         if (compositeNotification != null)
@@ -1824,17 +2115,18 @@ internal class Program
             await compositeNotification.SendEmailAsync("user@example.com", "Test", "Advanced pattern test");
             Console.WriteLine("  ✅ CompositeNotificationService: Multi-provider notification pattern");
         }
-        
+
         // Test performance benchmarking
         var perfBenchmark = services.GetService<IPerformanceBenchmark>();
         if (perfBenchmark != null)
         {
             var result = await perfBenchmark.RunBenchmarkAsync(5);
-            Console.WriteLine($"  ✅ Performance benchmarking: {result.Iterations} iterations in {result.TotalTime.TotalMilliseconds:F2}ms");
+            Console.WriteLine(
+                $"  ✅ Performance benchmarking: {result.Iterations} iterations in {result.TotalTime.TotalMilliseconds:F2}ms");
         }
-        
+
         // Test factory patterns with unregistered services
-        var factory = services.GetService<IUnregisteredServiceFactory>();
+        var factory = services.GetService<IManualServiceFactory>();
         if (factory != null)
         {
             var testService = factory.CreateTestHelperService();
@@ -1886,31 +2178,33 @@ internal class Program
 
         // Get statistics about available services
         var stats = await notificationManager.GetServiceStatisticsAsync();
-        Console.WriteLine($"📊 Service Statistics:");
+        Console.WriteLine("📊 Service Statistics:");
         Console.WriteLine($"   Total services: {stats.TotalServices}");
         Console.WriteLine($"   Available services: {stats.AvailableServices}");
-        
+
         foreach (var service in stats.Services)
-        {
-            Console.WriteLine($"   • {service.ServiceType} (Priority: {service.Priority}) - Available: {service.IsAvailable}");
-        }
+            Console.WriteLine(
+                $"   • {service.ServiceType} (Priority: {service.Priority}) - Available: {service.IsAvailable}");
         Console.WriteLine();
 
         // Test sending to all services
-        var allResult = await notificationManager.SendToAllAsync("user@example.com", "Welcome to IoCTools collection injection!");
-        Console.WriteLine($"📧 Send to All Services:");
+        var allResult =
+            await notificationManager.SendToAllAsync("user@example.com", "Welcome to IoCTools collection injection!");
+        Console.WriteLine("📧 Send to All Services:");
         Console.WriteLine($"   Overall success: {allResult.AnySuccess}");
         foreach (var result in allResult.Results)
         {
             var status = result.Success ? "✅" : "❌";
             Console.WriteLine($"   {status} {result.ServiceType}: {result.Message}");
         }
+
         Console.WriteLine();
 
         // Test fail-fast pattern (first available)
-        var firstResult = await notificationManager.SendToFirstAvailableAsync("priority@example.com", "High priority notification");
+        var firstResult =
+            await notificationManager.SendToFirstAvailableAsync("priority@example.com", "High priority notification");
         var priorityStatus = firstResult.Success ? "✅" : "❌";
-        Console.WriteLine($"🚀 First Available Service (Fail-Fast):");
+        Console.WriteLine("🚀 First Available Service (Fail-Fast):");
         Console.WriteLine($"   {priorityStatus} {firstResult.ServiceType}: {firstResult.Message}");
         Console.WriteLine();
     }
@@ -1930,12 +2224,10 @@ internal class Program
 
         // Get chain information
         var chainInfo = processorChain.GetChainInfo();
-        Console.WriteLine($"🔗 Processing Chain Information:");
+        Console.WriteLine("🔗 Processing Chain Information:");
         Console.WriteLine($"   Total processors: {chainInfo.ProcessorCount}");
         foreach (var processor in chainInfo.Processors)
-        {
             Console.WriteLine($"   • {processor.Name} (Order: {processor.Order})");
-        }
         Console.WriteLine();
 
         // Test processing data through the chain
@@ -1946,24 +2238,22 @@ internal class Program
         );
 
         var chainResult = await processorChain.ProcessChainAsync(testData);
-        Console.WriteLine($"⚙️  Chain Processing Result:");
+        Console.WriteLine("⚙️  Chain Processing Result:");
         Console.WriteLine($"   Data ID: {chainResult.DataId}");
         Console.WriteLine($"   Overall success: {chainResult.Success}");
         Console.WriteLine($"   Final content: '{chainResult.FinalData.Content}'");
         Console.WriteLine();
 
-        Console.WriteLine($"   📋 Step-by-step Results:");
+        Console.WriteLine("   📋 Step-by-step Results:");
         var stepNumber = 1;
         foreach (var result in chainResult.ProcessingResults)
         {
             var stepStatus = result.Success ? "✅" : "❌";
             Console.WriteLine($"   Step {stepNumber}: {stepStatus} {result.Message}");
-            if (result.ProcessedContent != null)
-            {
-                Console.WriteLine($"            → '{result.ProcessedContent}'");
-            }
+            if (result.ProcessedContent != null) Console.WriteLine($"            → '{result.ProcessedContent}'");
             stepNumber++;
         }
+
         Console.WriteLine();
     }
 
@@ -1982,20 +2272,22 @@ internal class Program
 
         // Analyze all processors without modifying them
         var analysisReport = await processorAnalyzer.AnalyzeProcessorsAsync();
-        Console.WriteLine($"📊 Processor Analysis Report:");
+        Console.WriteLine("📊 Processor Analysis Report:");
         Console.WriteLine($"   Total processors analyzed: {analysisReport.TotalProcessors}");
         Console.WriteLine($"   Active processors (can process sample): {analysisReport.ActiveProcessors}");
         Console.WriteLine($"   Average processing time: {analysisReport.AverageProcessingTimeMs:F2}ms");
         Console.WriteLine();
 
-        Console.WriteLine($"   📈 Individual Processor Analysis:");
+        Console.WriteLine("   📈 Individual Processor Analysis:");
         foreach (var analysis in analysisReport.ProcessorAnalyses)
         {
             var canProcessStatus = analysis.CanProcessSample ? "✅" : "❌";
-            var timeDisplay = analysis.ProcessingTimeMs > 0 ? $"{analysis.ProcessingTimeMs:F2}ms" : 
-                             analysis.ProcessingTimeMs < 0 ? "ERROR" : "SKIPPED";
-            Console.WriteLine($"   {canProcessStatus} {analysis.ProcessorName} (Order: {analysis.Order}) - Time: {timeDisplay}");
+            var timeDisplay = analysis.ProcessingTimeMs > 0 ? $"{analysis.ProcessingTimeMs:F2}ms" :
+                analysis.ProcessingTimeMs < 0 ? "ERROR" : "SKIPPED";
+            Console.WriteLine(
+                $"   {canProcessStatus} {analysis.ProcessorName} (Order: {analysis.Order}) - Time: {timeDisplay}");
         }
+
         Console.WriteLine();
 
         // Test aggregation services
@@ -2005,18 +2297,17 @@ internal class Program
             var testNumbers = new[] { 10.5m, 25.0m, 7.3m, 45.2m, 12.8m };
             var aggregationReport = await aggregatorService.PerformAllAggregationsAsync(testNumbers);
 
-            Console.WriteLine($"🧮 Aggregation Service Results:");
+            Console.WriteLine("🧮 Aggregation Service Results:");
             Console.WriteLine($"   Data points: {aggregationReport.DataCount}");
             Console.WriteLine($"   Aggregators used: {aggregationReport.AggregatorCount}");
-            
+
             foreach (var result in aggregationReport.Results)
-            {
                 Console.WriteLine($"   • {result.AggregatorName} (Priority: {result.Priority}): {result.Value:F2}");
-            }
 
             var primaryResult = await aggregatorService.GetPrimaryAggregationAsync(testNumbers);
             Console.WriteLine($"   🎯 Primary aggregation (highest priority): {primaryResult:F2}");
         }
+
         Console.WriteLine();
     }
 
@@ -2035,7 +2326,7 @@ internal class Program
 
         // Get validation statistics
         var stats = validationService.GetValidationStatistics();
-        Console.WriteLine($"🛡️  Validation Service Statistics:");
+        Console.WriteLine("🛡️  Validation Service Statistics:");
         Console.WriteLine($"   User validators: {stats.UserValidatorCount}");
         Console.WriteLine($"   Order validators: {stats.OrderValidatorCount}");
         Console.WriteLine($"   Total validators: {stats.TotalValidators}");
@@ -2044,43 +2335,42 @@ internal class Program
         // Test user validation with all user validators
         var testUser = new User(123, "Test User", "test@example.com") { IsActive = true };
         var userValidation = await validationService.ValidateUserAsync(testUser);
-        
-        Console.WriteLine($"👤 User Validation Results:");
+
+        Console.WriteLine("👤 User Validation Results:");
         Console.WriteLine($"   Entity: {userValidation.EntityType} (ID: {userValidation.EntityId})");
         Console.WriteLine($"   Overall valid: {userValidation.IsValid}");
         Console.WriteLine($"   Has warnings: {userValidation.HasWarnings}");
-        
+
         foreach (var validator in userValidation.ValidatorResults)
         {
             var severityIcon = validator.Severity == 1 ? "🚫" : validator.Severity == 2 ? "⚠️" : "ℹ️";
             var validStatus = validator.IsValid ? "✅" : "❌";
-            Console.WriteLine($"   {severityIcon} {validStatus} {validator.ValidatorName} (Severity: {validator.Severity})");
-            
+            Console.WriteLine(
+                $"   {severityIcon} {validStatus} {validator.ValidatorName} (Severity: {validator.Severity})");
+
             if (!validator.IsValid && validator.Errors.Any())
-            {
                 foreach (var error in validator.Errors)
-                {
                     Console.WriteLine($"      → {error}");
-                }
-            }
         }
+
         Console.WriteLine();
 
         // Test order validation
-        var testOrder = new IoCTools.Sample.Services.Order(456, "customer@example.com", new IoCTools.Sample.Services.Payment(99.99m));
+        var testOrder = new Order(456, "customer@example.com", new Payment(99.99m));
         var orderValidation = await validationService.ValidateOrderAsync(testOrder);
-        
-        Console.WriteLine($"📋 Order Validation Results:");
+
+        Console.WriteLine("📋 Order Validation Results:");
         Console.WriteLine($"   Entity: {orderValidation.EntityType} (ID: {orderValidation.EntityId})");
         Console.WriteLine($"   Overall valid: {orderValidation.IsValid}");
         Console.WriteLine($"   Has warnings: {orderValidation.HasWarnings}");
-        
+
         foreach (var validator in orderValidation.ValidatorResults)
         {
             var severityIcon = validator.Severity == 1 ? "🚫" : validator.Severity == 2 ? "⚠️" : "ℹ️";
             var validStatus = validator.IsValid ? "✅" : "❌";
             Console.WriteLine($"   {severityIcon} {validStatus} {validator.ValidatorName}");
         }
+
         Console.WriteLine();
     }
 
@@ -2100,16 +2390,14 @@ internal class Program
         // First call to get data from all providers
         Console.WriteLine("🔄 First Call - Getting data from all providers:");
         var firstCallResult = await multiProviderService.GetFromAllProvidersAsync("test-key");
-        
+
         foreach (var result in firstCallResult.Results)
-        {
             Console.WriteLine($"   • {result.ProviderName} (Instance: {result.InstanceId}): {result.Data}");
-        }
         Console.WriteLine();
 
         // Demonstrate lifetime behavior with multiple calls
         var lifetimeDemo = await multiProviderService.DemonstrateLifetimeBehaviorAsync();
-        
+
         Console.WriteLine("🕒 Lifetime Behavior Analysis:");
         var analysis = lifetimeDemo.GetLifetimeAnalysis();
         foreach (var behaviorAnalysis in analysis)
@@ -2117,6 +2405,7 @@ internal class Program
             var icon = behaviorAnalysis.Contains("Same instance") ? "🔄" : "🆕";
             Console.WriteLine($"   {icon} {behaviorAnalysis}");
         }
+
         Console.WriteLine();
 
         Console.WriteLine("📝 Expected Lifetime Behaviors:");
@@ -2128,11 +2417,140 @@ internal class Program
         // Second call to show lifetime consistency
         Console.WriteLine("🔄 Second Call - Verifying instance consistency:");
         var secondCallResult = await multiProviderService.GetFromAllProvidersAsync("test-key-2");
-        
+
         foreach (var result in secondCallResult.Results)
-        {
             Console.WriteLine($"   • {result.ProviderName} (Instance: {result.InstanceId}): {result.Data}");
+        Console.WriteLine();
+    }
+
+    /// <summary>
+    ///     Demonstrates the major architectural enhancements delivered during 100% test success campaign
+    /// </summary>
+    private static async Task DemonstrateArchitecturalEnhancements(IServiceProvider services)
+    {
+        Console.WriteLine();
+        Console.WriteLine("🎯 === ARCHITECTURAL ENHANCEMENTS SHOWCASE ===");
+        Console.WriteLine("Demonstrating major improvements from 100% test success rate campaign:");
+        Console.WriteLine();
+
+        // 1. Modern Lifetime Attributes
+        Console.WriteLine("--- 1. Individual Lifetime Attributes ---");
+        Console.WriteLine("Clean syntax using [Scoped], [Singleton], [Transient]:");
+        Console.WriteLine();
+
+        var scopedService = services.GetService<ModernScopedService>();
+        if (scopedService != null)
+        {
+            scopedService.ProcessRequest("REQ-001");
+            Console.WriteLine("  ✅ [Scoped] ModernScopedService: Clean lifetime specification");
         }
+
+        var singletonService = services.GetService<ModernSingletonService>();
+        if (singletonService != null)
+        {
+            var count1 = singletonService.GetAndIncrement("demo");
+            var count2 = singletonService.GetAndIncrement("demo");
+            Console.WriteLine(
+                $"  ✅ [Singleton] ModernSingletonService: Counter {count1} -> {count2} (state maintained)");
+        }
+
+        var transientService1 = services.GetService<ModernTransientService>();
+        var transientService2 = services.GetService<ModernTransientService>();
+        if (transientService1 != null && transientService2 != null)
+        {
+            var id1 = transientService1.GetInstanceId();
+            var id2 = transientService2.GetInstanceId();
+            Console.WriteLine($"  ✅ [Transient] ModernTransientService: Different instances ({id1} != {id2})");
+        }
+
+        // 2. Intelligent Service Registration
+        Console.WriteLine();
+        Console.WriteLine("--- 2. Intelligent Service Registration ---");
+        Console.WriteLine("Automatic detection and registration for IEnumerable<T> scenarios:");
+        Console.WriteLine();
+
+        var collectionService = services.GetService<CollectionAwareService>();
+        if (collectionService != null)
+        {
+            var result = await collectionService.ProcessWithAllServicesAsync("architectural-demo");
+            Console.WriteLine($"  ✅ Auto-detected {result.ProcessedBy.Count()} IAutomaticService implementations:");
+            foreach (var serviceName in result.ProcessedBy)
+                Console.WriteLine($"     • {serviceName}Service - automatically registered");
+            Console.WriteLine($"  📊 Processed at: {result.ProcessedAt:HH:mm:ss}");
+        }
+
+        // 3. Mixed Dependency Scenarios
+        Console.WriteLine();
+        Console.WriteLine("--- 3. Mixed Dependency Scenarios ---");
+        Console.WriteLine("Services with BOTH [Inject] and [InjectConfiguration] requiring explicit lifetime:");
+        Console.WriteLine();
+
+        var mixedService = services.GetService<MixedDependencyService>();
+        if (mixedService != null)
+        {
+            var testData = new[] { "item1", "item2", "item3", "item4", "item5", "item6" };
+            var processingResult = await mixedService.ProcessDataAsync(testData);
+
+            Console.WriteLine($"  ✅ MixedDependencyService: {processingResult.Configuration}");
+            Console.WriteLine(
+                $"     📈 Processed {processingResult.ProcessedItems}/{processingResult.TotalItems} items in {processingResult.BatchCount} batches");
+            Console.WriteLine("     🔧 Field injection + Configuration injection working together");
+        }
+
+        // 4. Enhanced Configuration Integration
+        Console.WriteLine();
+        Console.WriteLine("--- 4. Enhanced Configuration Integration ---");
+        Console.WriteLine("Advanced configuration validation and metrics:");
+        Console.WriteLine();
+
+        var configService = services.GetService<EnhancedConfigurationService>();
+        if (configService != null)
+        {
+            var validation = configService.ValidateConfiguration();
+            var metrics = await configService.GetProcessingMetricsAsync();
+
+            Console.WriteLine($"  ✅ Configuration Validation: {(validation.IsValid ? "✓ Valid" : "✗ Invalid")}");
+            if (!validation.IsValid)
+                foreach (var issue in validation.Issues)
+                    Console.WriteLine($"     ⚠️ {issue}");
+
+            Console.WriteLine(
+                $"  📊 Metrics: {metrics.ConfiguredWorkers} workers, {metrics.AllowedOperations} operations, DB: {metrics.DatabaseConfigured}");
+        }
+
+        // 5. Automatic Interface Registration
+        Console.WriteLine();
+        Console.WriteLine("--- 5. Automatic Interface Registration ---");
+        Console.WriteLine("Event handling with automatic IEnumerable<IEventHandler> registration:");
+        Console.WriteLine();
+
+        var eventService = services.GetService<EventProcessingService>();
+        if (eventService != null)
+        {
+            var eventResult =
+                await eventService.ProcessEventAsync("email.sent", new { UserId = "123", Email = "user@example.com" });
+
+            Console.WriteLine($"  ✅ Event Processing: {eventResult.EventType}");
+            Console.WriteLine(
+                $"     📊 {eventResult.TotalHandlers} total handlers, {eventResult.EligibleHandlers} eligible, {eventResult.SuccessfulHandlers} successful");
+
+            foreach (var handlerResult in eventResult.HandlerResults.Take(3))
+            {
+                var status = handlerResult.Success ? "✓" : "✗";
+                Console.WriteLine(
+                    $"     {status} {handlerResult.HandlerName}Handler: {handlerResult.Message} ({handlerResult.ProcessingTimeMs:F1}ms)");
+            }
+        }
+
+        Console.WriteLine();
+        Console.WriteLine("🎉 Architectural Enhancements Summary:");
+        Console.WriteLine("✅ Individual lifetime attributes for clean syntax");
+        Console.WriteLine("✅ Intelligent service registration with interface detection");
+        Console.WriteLine("✅ Enhanced IEnumerable<T> dependency injection");
+        Console.WriteLine("✅ Mixed dependency patterns (Inject + Configuration)");
+        Console.WriteLine("✅ Pragmatic service registration logic");
+        Console.WriteLine("✅ Enhanced configuration integration with validation");
+        Console.WriteLine("✅ Automatic interface registration for collections");
         Console.WriteLine();
     }
 }

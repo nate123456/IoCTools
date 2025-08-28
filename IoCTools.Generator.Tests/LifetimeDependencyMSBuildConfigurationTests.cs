@@ -1,8 +1,9 @@
+namespace IoCTools.Generator.Tests;
+
 using System.Diagnostics;
 using System.Text;
-using Microsoft.CodeAnalysis;
 
-namespace IoCTools.Generator.Tests;
+using Microsoft.CodeAnalysis;
 
 /// <summary>
 ///     Comprehensive tests for MSBuild configuration of lifetime validation diagnostics.
@@ -23,17 +24,17 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DatabaseContext
 {
 }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class HelperService
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class CacheService
 {
     [Inject] private readonly DatabaseContext _context;
@@ -54,12 +55,12 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DatabaseContext
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class CacheService
 {
     [Inject] private readonly DatabaseContext _context;
@@ -87,12 +88,12 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class HelperService
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class CacheService
 {
     [Inject] private readonly HelperService _helper;
@@ -120,11 +121,9 @@ public partial class CacheService
         // This test documents the expected MSBuild property naming convention
         var expectedProperties = new[]
         {
-            "build_property.IoCToolsLifetimeValidationSeverity",
-            "build_property.IoCToolsDisableLifetimeValidation",
-            "build_property.IoCToolsDisableDiagnostics",
-            "build_property.IoCToolsNoImplementationSeverity",
-            "build_property.IoCToolsUnregisteredSeverity"
+            "build_property.IoCToolsLifetimeValidationSeverity", "build_property.IoCToolsDisableLifetimeValidation",
+            "build_property.IoCToolsDisableDiagnostics", "build_property.IoCToolsNoImplementationSeverity",
+            "build_property.IoCToolsManualSeverity"
         };
 
         // All properties should follow the build_property.IoCTools[Feature]Severity pattern
@@ -145,13 +144,7 @@ public partial class CacheService
     public void MSBuildConfig_SeverityValues_FollowDiagnosticSeverityEnum()
     {
         // Document the expected severity values that should be supported
-        var expectedSeverityValues = new[]
-        {
-            "Error",
-            "Warning",
-            "Info",
-            "Hidden"
-        };
+        var expectedSeverityValues = new[] { "Error", "Warning", "Info", "Hidden" };
 
         // These should map to DiagnosticSeverity enum values
         Assert.Equal(4, expectedSeverityValues.Length);
@@ -165,18 +158,10 @@ public partial class CacheService
     public void MSBuildConfig_BooleanValues_FollowDotNetConvention()
     {
         // Document the expected boolean values for disable properties
-        var expectedBooleanValues = new[]
-        {
-            "true",
-            "false"
-        };
+        var expectedBooleanValues = new[] { "true", "false" };
 
         // Should be case-insensitive
-        var caseVariants = new[]
-        {
-            "TRUE", "True", "true",
-            "FALSE", "False", "false"
-        };
+        var caseVariants = new[] { "TRUE", "True", "true", "FALSE", "False", "false" };
 
         Assert.Equal(2, expectedBooleanValues.Length);
         Assert.Equal(6, caseVariants.Length);
@@ -196,12 +181,12 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DatabaseContext
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class CacheService
 {
     [Inject] private readonly DatabaseContext _context;
@@ -233,12 +218,12 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class HelperService
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class CacheService
 {
     [Inject] private readonly HelperService _helper;
@@ -261,9 +246,9 @@ public partial class CacheService
     }
 
     [Fact]
-    public void MSBuildConfig_IOC014_BackgroundServiceLifetime_Configured()
+    public void MSBuildConfig_IOC014_BackgroundServiceLifetime_NoWarnings()
     {
-        // Test that IOC014 diagnostics are properly configured for background services
+        // Test that IOC014 diagnostics are NOT generated for background services (hosted services)
         var sourceCode = @"
 using IoCTools.Abstractions.Annotations;
 using IoCTools.Abstractions.Enumerations;
@@ -273,8 +258,7 @@ using System.Threading.Tasks;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Scoped)]
-[BackgroundService]
+[Scoped]
 public partial class EmailBackgroundService : BackgroundService
 {
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
@@ -286,16 +270,8 @@ public partial class EmailBackgroundService : BackgroundService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC014");
 
-        Assert.Single(diagnostics);
-        Assert.Equal("IOC014", diagnostics[0].Id);
-        Assert.Equal(DiagnosticSeverity.Error, diagnostics[0].Severity);
-
-        // Verify message content
-        var message = diagnostics[0].GetMessage();
-        Assert.Contains("Background service", message);
-        Assert.Contains("EmailBackgroundService", message);
-        Assert.Contains("Scoped", message);
-        Assert.Contains("Background services should typically be Singleton", message);
+        // No IOC014 errors for hosted services - their lifetime is managed by AddHostedService()
+        Assert.Empty(diagnostics);
     }
 
     [Fact]
@@ -308,18 +284,18 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DatabaseContext
 {
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class BaseService
 {
     [Inject] private readonly DatabaseContext _context;
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class DerivedService : BaseService
 {
 }";
@@ -373,18 +349,18 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class ConfigService
 {
 }
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DatabaseService
 {
     [Inject] private readonly ConfigService _config;
 }
 
-[Service(Lifetime.Transient)]
+[Transient]
 public partial class ProcessorService
 {
     [Inject] private readonly DatabaseService _db;
@@ -418,7 +394,7 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DatabaseContext
 {
 }");
@@ -430,7 +406,7 @@ public partial class DatabaseContext
             var baseClass = i == 0 ? "" : $" : Level{i - 1}Service";
 
             sourceCodeBuilder.AppendLine($@"
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class {className}{baseClass}
 {{
     [Inject] private readonly DatabaseContext _context{i};
@@ -439,7 +415,7 @@ public partial class {className}{baseClass}
 
         // Final singleton service that should cause validation
         sourceCodeBuilder.AppendLine(@"
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class FinalService : Level9Service
 {
 }");
@@ -473,12 +449,12 @@ namespace TestNamespace;");
         // Create many services with lifetime violations
         for (var i = 0; i < 50; i++)
             sourceCodeBuilder.AppendLine($@"
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class ScopedService{i}
 {{
 }}
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 public partial class SingletonService{i}
 {{
     [Inject] private readonly ScopedService{i} _scoped;
@@ -527,7 +503,7 @@ public partial class SingletonService{i}
         // <PropertyGroup>
         //   <IoCToolsLifetimeValidationSeverity>Info</IoCToolsLifetimeValidationSeverity>
         //   <IoCToolsNoImplementationSeverity>Error</IoCToolsNoImplementationSeverity>
-        //   <IoCToolsUnregisteredSeverity>Hidden</IoCToolsUnregisteredSeverity>
+        //   <IoCToolsManualSeverity>Hidden</IoCToolsManualSeverity>
         // </PropertyGroup>
 
         // Example 5: Development vs Release configuration
@@ -550,7 +526,7 @@ public partial class SingletonService{i}
         // Default severities:
         // - IOC012 (Singleton → Scoped): Error
         // - IOC013 (Singleton → Transient): Warning  
-        // - IOC014 (Background Service): Error
+        // - IOC014 (Background Service): Disabled for hosted services
         // - IOC015 (Inheritance Chain): Error
         // - No Implementation: Warning
         // - Unregistered Service: Warning
@@ -585,12 +561,12 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DatabaseContext
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 [ConditionalService(""Development"")]
 public partial class CacheService
 {
@@ -615,12 +591,12 @@ using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace;
 
-[Service(Lifetime.Scoped)]
+[Scoped]
 public partial class DatabaseContext
 {
 }
 
-[Service(Lifetime.Singleton)]
+[Singleton]
 [ExternalService]
 public partial class CacheService
 {

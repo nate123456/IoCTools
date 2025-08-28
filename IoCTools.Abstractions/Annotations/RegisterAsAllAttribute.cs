@@ -1,7 +1,8 @@
-using System;
-using IoCTools.Abstractions.Enumerations;
-
 namespace IoCTools.Abstractions.Annotations;
+
+using System;
+
+using Enumerations;
 
 [AttributeUsage(AttributeTargets.Class)]
 public sealed class RegisterAsAllAttribute(

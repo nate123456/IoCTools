@@ -18,8 +18,6 @@ using IoCTools.Abstractions.Annotations;
 namespace TestProject;
 
 public interface ITestService { }
-
-[Service]
 public partial class TestClass
 {
     [Inject] private readonly IEnumerable<ITestService> _collection;
@@ -47,8 +45,6 @@ using IoCTools.Abstractions.Annotations;
 namespace TestProject;
 
 public interface ITestService { }
-
-[Service]
 public partial class TestClass
 {
     [Inject] private readonly IEnumerable<IEnumerable<ITestService>> _nestedCollection;
@@ -80,8 +76,6 @@ namespace TestProject;
 public interface IService1 { }
 public interface IService2 { }
 public interface IService3 { }
-
-[Service]
 public partial class TestClass
 {
     [Inject] private readonly IEnumerable<IService1> _enumerable;
@@ -113,8 +107,6 @@ using IoCTools.Abstractions.Annotations;
 namespace TestProject;
 
 public interface ITestService { }
-
-[Service]
 public partial class TestClass
 {
     [Inject] private readonly ITestService[] _arrayField;
@@ -155,7 +147,7 @@ namespace TestProject
     using ProjectA;
     using ProjectB;
 
-    [Service]
+    
     public partial class TestClass
     {
         [Inject] private readonly IEnumerable<IServiceA> _collectionA;
@@ -190,8 +182,6 @@ namespace TestProject;
 public interface IEmpty { }
 public interface ITestType1 { }
 public interface ITestType2 { }
-
-[Service]
 public partial class TestComplexCollectionGeneration
 {
     [Inject] private readonly IEnumerable<ITestType1> _collection1;
@@ -233,8 +223,6 @@ using IoCTools.Abstractions.Annotations;
 namespace TestProject;
 
 public interface ITestService { }
-
-[Service]
 public partial class TestClass
 {
     // This should cause compilation error but generator should handle gracefully
@@ -261,8 +249,6 @@ using IoCTools.Abstractions.Annotations;
 using NonExistent.Namespace;
 
 namespace TestProject;
-
-[Service]
 public partial class TestClass
 {
     [Inject] private readonly SomeNonExistentType _field;
@@ -287,8 +273,6 @@ namespace TestProject;
 
 public interface INode<T> where T : INode<T> { }
 public class ConcreteNode : INode<ConcreteNode> { }
-
-[Service]
 public partial class TestClass
 {
     [Inject] private readonly IEnumerable<INode<ConcreteNode>> _circularRef;
@@ -317,8 +301,6 @@ using IoCTools.Abstractions.Annotations;
 namespace TestProject;
 
 public interface ITestService { }
-
-[Service]
 public partial class TestClass
 {
     [Inject] private readonly IEnumerable<ITestService> _field
@@ -347,8 +329,6 @@ using IoCTools.Abstractions.Annotations;
 
 // No namespace declaration - these are in global namespace
 public interface IGlobalService { }
-
-[Service]
 public partial class GlobalTestClass
 {
     [Inject] private readonly IEnumerable<IGlobalService> _globalCollection;
@@ -382,7 +362,7 @@ namespace TestProject
 {
     public interface INamespacedService { }
 
-    [Service]
+    
     public partial class MixedTestClass
     {
         [Inject] private readonly IEnumerable<IGlobalService> _global;
@@ -392,8 +372,6 @@ namespace TestProject
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
-
-
         // Assert
         Assert.False(result.HasErrors);
         var constructorSource = result.GetConstructorSource("MixedTestClass");
@@ -416,8 +394,6 @@ using IoCTools.Abstractions.Annotations;
 
 public interface IGlobal1 { }
 public interface IGlobal2 { }
-
-[Service]
 public partial class GlobalOnlyTestClass
 {
     [Inject] private readonly IEnumerable<IGlobal1> _field1;
@@ -459,8 +435,6 @@ namespace TestProject;
 
 public interface IConstrainedService<T> where T : class, new() { }
 public class ConcreteService { }
-
-[Service]
 public partial class ConstrainedTestClass
 {
     [Inject] private readonly IEnumerable<IConstrainedService<ConcreteService>> _constrained;
@@ -490,8 +464,6 @@ using IoCTools.Abstractions.Annotations;
 namespace TestProject;
 
 public interface INullableService { }
-
-[Service]
 public partial class NullableTestClass
 {
     [Inject] private readonly IEnumerable<INullableService?> _nullableCollection;
@@ -524,8 +496,6 @@ using IoCTools.Abstractions.Annotations;
 namespace TestProject;
 
 public interface ITestService { }
-
-[Service]
 public partial class SystemVariationsTestClass
 {
     [Inject] private readonly ConcurrentBag<ITestService> _concurrent;
@@ -561,8 +531,6 @@ public unsafe interface IUnsafeService
 {
     void ProcessPointer(int* ptr);
 }
-
-[Service]
 public unsafe partial class UnsafeTestClass
 {
     [Inject] private readonly IEnumerable<IUnsafeService> _unsafeCollection;
@@ -596,8 +564,6 @@ using IoCTools.Abstractions.Annotations;
 namespace TestProject.Services;
 
 public interface IFileScopedService { }
-
-[Service]
 public partial class FileScopedTestClass
 {
     [Inject] private readonly IEnumerable<IFileScopedService> _collection;
@@ -627,8 +593,6 @@ using IoCTools.Abstractions.Annotations;
 namespace TestProject;
 
 public interface ITestService { }
-
-[Service]
 public partial class AliasTestClass
 {
     [Inject] private readonly CollectionAlias.IEnumerable<ITestService> _aliasedCollection;
@@ -658,8 +622,6 @@ using IoCTools.Abstractions.Annotations;
 namespace MyCompany.MyProduct.Services.Implementations.Data.Repositories;
 
 public interface IVeryDeeplyNestedService { }
-
-[Service]
 public partial class DeeplyNestedTestClass
 {
     [Inject] private readonly IEnumerable<IVeryDeeplyNestedService> _deeplyNested;
@@ -692,7 +654,7 @@ namespace TestProject
     public interface IService2 { }
 
     // Simulating first file
-    [Service]
+    
     public partial class MultiFileTestClass
     {
         [Inject] private readonly IEnumerable<IService1> _field1;
@@ -744,7 +706,7 @@ namespace ProjectB
 
 namespace TestProject
 {
-    [Service]
+    
     public partial class ExactCountTestClass
     {
         [Inject] private readonly IEnumerable<ProjectA.IServiceA> _fieldA;
@@ -769,9 +731,7 @@ namespace TestProject
         // Expected using statements (self-namespace TestProject should be excluded)
         var expectedUsings = new HashSet<string>
         {
-            "using System.Collections.Generic;",
-            "using ProjectA;",
-            "using ProjectB;"
+            "using System.Collections.Generic;", "using ProjectA;", "using ProjectB;"
         };
 
         Assert.Equal(expectedUsings.Count, usingStatements.Count);
@@ -791,8 +751,6 @@ namespace TestProject;
 public interface IService1 { }
 public interface IService2 { }
 public interface IService3 { }
-
-[Service]
 public partial class DeduplicationTestClass
 {
     [Inject] private readonly IEnumerable<IService1> _field1;
@@ -833,8 +791,6 @@ using IoCTools.Abstractions.Annotations;
 namespace TestProject;
 
 public interface ITestService { }
-
-[Service]
 public partial class NegativeTestClass
 {
     [Inject] private readonly IEnumerable<ITestService> _field;
@@ -872,8 +828,6 @@ namespace TestProject;
 
 public interface IService1 { }
 public interface IService2 { }
-
-[Service]
 public partial class StrongValidationTestClass
 {
     [Inject] private readonly IEnumerable<IService1> _enumerable;
@@ -892,8 +846,7 @@ public partial class StrongValidationTestClass
         // Strong parameter validation - exact parameter names and types
         var expectedParameters = new[]
         {
-            "IEnumerable<IService1> enumerable",
-            "ConcurrentBag<IService2> concurrentBag",
+            "IEnumerable<IService1> enumerable", "ConcurrentBag<IService2> concurrentBag",
             "IList<IEnumerable<IService1>> nestedGeneric"
         };
 
@@ -917,8 +870,6 @@ using System.Collections.Generic;
 using IoCTools.Abstractions.Annotations;
 
 namespace TestProject;
-
-[Service]
 public partial class EmptyGenericsTestClass
 {
     // These should cause compilation errors
@@ -944,8 +895,6 @@ using IoCTools.Abstractions.Annotations;
 namespace TestProject;
 
 public interface ITestService { }
-
-[Service]
 public partial class DeepNestingTestClass
 {
     [Inject] private readonly IEnumerable<IEnumerable<IEnumerable<IEnumerable<IEnumerable<ITestService>>>>> _deeplyNested;
@@ -976,8 +925,6 @@ using IoCTools.Abstractions.Annotations;
 namespace VeryLongNamespaceNameThatExceedsNormalLengthExpectationsForTestingPurposes;
 
 public interface IVeryLongInterfaceNameThatIsDesignedToTestTheHandlingOfExtremelyLongTypeNamesInTheSourceGenerator { }
-
-[Service]
 public partial class VeryLongClassNameForTestingExtremelyLongIdentifierHandlingInSourceGeneratorNamespaceCollection
 {
     [Inject] private readonly IEnumerable<IVeryLongInterfaceNameThatIsDesignedToTestTheHandlingOfExtremelyLongTypeNamesInTheSourceGenerator> _veryLongFieldName;
@@ -1010,8 +957,6 @@ using IoCTools.Abstractions.Annotations;
 namespace TestProject.Services_V2;
 
 public interface ITestService_V2 { }
-
-[Service]
 public partial class SpecialCharsTestClass
 {
     [Inject] private readonly IEnumerable<ITestService_V2> _serviceV2;
@@ -1058,7 +1003,7 @@ namespace MyApp.Repositories
 // File 3: Controllers
 namespace MyApp.Controllers
 {
-    [Service]
+    
     public partial class UserController
     {
         [Inject] private readonly IEnumerable<MyApp.Services.IEmailService> _emailServices;
@@ -1094,8 +1039,6 @@ public interface IDebugService { }
 #else
 public interface IReleaseService { }
 #endif
-
-[Service]
 public partial class ConditionalTestClass
 {
 #if DEBUG
@@ -1131,8 +1074,6 @@ using IoCTools.Abstractions.Annotations;
 namespace TestProject;
 
 public interface IMyService { }
-
-[Service]
 public partial class FrameworkIntegrationTestClass
 {
     [Inject] private readonly IEnumerable<IMyService> _services;

@@ -1,49 +1,88 @@
-using Microsoft.CodeAnalysis;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
+namespace IoCTools.Generator.Tests;
+
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
-namespace IoCTools.Generator.Tests;
+using Microsoft.CodeAnalysis;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 /// <summary>
-/// ENHANCED TEST UTILITIES
-/// 
-/// Additional test utilities that make testing the implementation gaps easier:
-/// - Helper methods to parse generated source code
-/// - Utilities to verify specific patterns in generated code
-/// - Mock configuration objects for testing config injection
-/// - Fluent test builders for complex scenarios
-/// - Pattern matching utilities for generated code verification
-/// - Configuration test data builders
-/// - Service resolution validators
+///     ENHANCED TEST UTILITIES
+///     Additional test utilities that make testing the implementation gaps easier:
+///     - Helper methods to parse generated source code
+///     - Utilities to verify specific patterns in generated code
+///     - Mock configuration objects for testing config injection
+///     - Fluent test builders for complex scenarios
+///     - Pattern matching utilities for generated code verification
+///     - Configuration test data builders
+///     - Service resolution validators
 /// </summary>
 public static class EnhancedTestUtilities
 {
+    #region Mock Objects
+
+    /// <summary>
+    ///     Creates mock configuration objects for specific scenarios
+    /// </summary>
+    public static class MockConfigurations
+    {
+        public static IConfiguration DatabaseConfig() => CreateConfiguration()
+            .AddValue("Database:ConnectionString", "Server=localhost;Database=TestDb")
+            .AddValue("Database:Timeout", 30)
+            .AddValue("Database:EnableRetry", true)
+            .Build();
+
+        public static IConfiguration CacheConfig() => CreateConfiguration()
+            .AddValue("Cache:Provider", "Redis")
+            .AddValue("Cache:TTL", "00:05:00")
+            .AddValue("Cache:Servers:0", "localhost:6379")
+            .AddValue("Cache:Servers:1", "localhost:6380")
+            .Build();
+
+        public static IConfiguration MultiEnvironmentConfig(string environment)
+        {
+            var builder = CreateConfiguration()
+                .AddEnvironment(environment)
+                .AddValue("Features:Email", "enabled")
+                .AddValue("Features:SMS", environment == "Production" ? "enabled" : "disabled")
+                .AddValue("Features:Push", "enabled");
+
+            if (environment == "Development")
+                builder.AddValue("Logging:Level", "Debug");
+            else if (environment == "Production") builder.AddValue("Logging:Level", "Information");
+
+            return builder.Build();
+        }
+    }
+
+    #endregion
+
     #region Generated Code Parsing Utilities
 
     /// <summary>
-    /// Extracts constructor parameters from generated constructor source
+    ///     Extracts constructor parameters from generated constructor source
     /// </summary>
     public static List<ConstructorParameter> ExtractConstructorParameters(string constructorSource)
     {
         var parameters = new List<ConstructorParameter>();
-        
+
         // Find constructor declaration
-        var constructorMatch = Regex.Match(constructorSource, 
-            @"public\s+\w+\s*\(\s*([^)]+)\s*\)", 
+        var constructorMatch = Regex.Match(constructorSource,
+            @"public\s+\w+\s*\(\s*([^)]+)\s*\)",
             RegexOptions.Multiline);
-            
+
         if (!constructorMatch.Success)
             return parameters;
-            
+
         var parameterString = constructorMatch.Groups[1].Value.Trim();
         if (string.IsNullOrEmpty(parameterString))
             return parameters;
-            
+
         // Split parameters by comma, handling generic types
         var paramParts = SplitParameters(parameterString);
-        
+
         foreach (var part in paramParts)
         {
             var trimmed = part.Trim();
@@ -55,66 +94,63 @@ public static class EnhancedTestUtilities
                 parameters.Add(new ConstructorParameter(type, name));
             }
         }
-        
+
         return parameters;
     }
 
     /// <summary>
-    /// Extracts field declarations from generated source
+    ///     Extracts field declarations from generated source
     /// </summary>
     public static List<FieldDeclaration> ExtractFieldDeclarations(string source)
     {
         var fields = new List<FieldDeclaration>();
-        
+
         var fieldMatches = Regex.Matches(source,
             @"(private|protected|public|internal)?\s*(readonly)?\s*([^;]+?)\s+(\w+)\s*;",
             RegexOptions.Multiline);
-            
+
         foreach (Match match in fieldMatches)
         {
             var visibility = match.Groups[1].Value.Trim();
             var isReadonly = !string.IsNullOrEmpty(match.Groups[2].Value);
             var type = match.Groups[3].Value.Trim();
             var name = match.Groups[4].Value.Trim();
-            
-            if (visibility == "" || visibility == "private" || visibility == "protected" || visibility == "public" || visibility == "internal")
-            {
+
+            if (visibility == "" || visibility == "private" || visibility == "protected" || visibility == "public" ||
+                visibility == "internal")
                 fields.Add(new FieldDeclaration(
                     visibility.IsNullOrEmpty() ? "private" : visibility,
                     type,
                     name,
                     isReadonly
                 ));
-            }
         }
-        
+
         return fields;
     }
 
     /// <summary>
-    /// Extracts service registration calls from generated registration source
+    ///     Extracts service registration calls from generated registration source
     /// </summary>
     public static List<ServiceRegistration> ExtractServiceRegistrations(string registrationSource)
     {
         var registrations = new List<ServiceRegistration>();
-        
+
         // Match service registration patterns
         var patterns = new[]
         {
             @"services\.Add(Transient|Scoped|Singleton)<([^,>]+),?\s*([^>]*)>\s*\(\)",
-            @"services\.AddHostedService<([^>]+)>\s*\(\)",
-            @"services\.Configure<([^>]+)>\s*\("
+            @"services\.AddHostedService<([^>]+)>\s*\(\)", @"services\.Configure<([^>]+)>\s*\("
         };
-        
+
         foreach (var pattern in patterns)
         {
             var matches = Regex.Matches(registrationSource, pattern);
             foreach (Match match in matches)
-            {
                 if (pattern.Contains("AddHostedService"))
                 {
                     registrations.Add(new ServiceRegistration(
-                        "IHostedService", 
+                        "IHostedService",
                         match.Groups[1].Value,
                         "HostedService"));
                 }
@@ -130,69 +166,73 @@ public static class EnhancedTestUtilities
                     var lifetime = match.Groups[1].Value;
                     var serviceType = match.Groups[2].Value.Trim();
                     var implementationType = match.Groups[3].Value.Trim();
-                    
+
                     if (string.IsNullOrEmpty(implementationType))
                         implementationType = serviceType;
-                        
+
                     registrations.Add(new ServiceRegistration(
                         serviceType,
                         implementationType,
                         lifetime));
                 }
-            }
         }
-        
+
         return registrations;
     }
 
     /// <summary>
-    /// Checks if generated code contains specific configuration injection patterns
+    ///     Checks if generated code contains specific configuration injection patterns
     /// </summary>
-    public static bool ContainsConfigurationPattern(string source, string key, string type, string? defaultValue = null)
+    public static bool ContainsConfigurationPattern(string source,
+        string key,
+        string type,
+        string? defaultValue = null)
     {
         if (IsPrimitiveType(type))
         {
             if (defaultValue != null)
-            {
-                return source.Contains($"configuration.GetValue<{type}>(\"{key}\", {FormatDefaultValue(type, defaultValue)})");
-            }
-            else
-            {
-                return source.Contains($"configuration.GetValue<{type}>(\"{key}\")");
-            }
+                return source.Contains(
+                    $"configuration.GetValue<{type}>(\"{key}\", {FormatDefaultValue(type, defaultValue)})");
+
+            return source.Contains($"configuration.GetValue<{type}>(\"{key}\")");
         }
-        else
-        {
-            return source.Contains($"configuration.GetSection(\"{key}\").Get<{type}>()");
-        }
+
+        return source.Contains($"configuration.GetSection(\"{key}\").Get<{type}>()");
     }
 
     /// <summary>
-    /// Checks if generated code contains conditional service patterns
+    ///     Checks if generated code contains conditional service patterns
     /// </summary>
-    public static bool ContainsConditionalPattern(string source, string? environment = null, string? configKey = null, string? configValue = null)
+    public static bool ContainsConditionalPattern(string source,
+        string? environment = null,
+        string? configKey = null,
+        string? configValue = null)
     {
         if (environment != null && configKey != null)
         {
-            var combinedPattern = $"if (string.Equals(environment, \"{environment}\", StringComparison.OrdinalIgnoreCase) && string.Equals(configuration[\"{configKey}\"], \"{configValue}\", StringComparison.OrdinalIgnoreCase))";
+            var combinedPattern =
+                $"if (string.Equals(environment, \"{environment}\", StringComparison.OrdinalIgnoreCase) && string.Equals(configuration[\"{configKey}\"], \"{configValue}\", StringComparison.OrdinalIgnoreCase))";
             return source.Contains(combinedPattern);
         }
-        else if (environment != null)
+
+        if (environment != null)
         {
             var envPattern = $"if (string.Equals(environment, \"{environment}\", StringComparison.OrdinalIgnoreCase))";
             return source.Contains(envPattern);
         }
-        else if (configKey != null)
+
+        if (configKey != null)
         {
-            var configPattern = $"if (string.Equals(configuration[\"{configKey}\"], \"{configValue}\", StringComparison.OrdinalIgnoreCase))";
+            var configPattern =
+                $"if (string.Equals(configuration[\"{configKey}\"], \"{configValue}\", StringComparison.OrdinalIgnoreCase))";
             return source.Contains(configPattern);
         }
-        
+
         return false;
     }
 
     /// <summary>
-    /// Verifies no duplicate service registrations exist
+    ///     Verifies no duplicate service registrations exist
     /// </summary>
     public static bool HasDuplicateRegistrations(string registrationSource)
     {
@@ -200,7 +240,7 @@ public static class EnhancedTestUtilities
         var registrationKeys = registrations
             .Select(r => $"{r.ServiceType}-{r.ImplementationType}")
             .ToList();
-            
+
         return registrationKeys.Count != registrationKeys.Distinct().Count();
     }
 
@@ -209,52 +249,49 @@ public static class EnhancedTestUtilities
     #region Configuration Test Data Builders
 
     /// <summary>
-    /// Fluent builder for creating test configurations
+    ///     Fluent builder for creating test configurations
     /// </summary>
     public class ConfigurationBuilder
     {
         private readonly Dictionary<string, string> _data = new();
 
-        public ConfigurationBuilder AddValue(string key, string value)
+        public ConfigurationBuilder AddValue(string key,
+            string value)
         {
             _data[key] = value;
             return this;
         }
 
-        public ConfigurationBuilder AddValue(string key, int value)
+        public ConfigurationBuilder AddValue(string key,
+            int value)
         {
             _data[key] = value.ToString();
             return this;
         }
 
-        public ConfigurationBuilder AddValue(string key, bool value)
+        public ConfigurationBuilder AddValue(string key,
+            bool value)
         {
             _data[key] = value.ToString().ToLowerInvariant();
             return this;
         }
 
-        public ConfigurationBuilder AddSection(string section, object sectionData)
+        public ConfigurationBuilder AddSection(string section,
+            object sectionData)
         {
-            var json = JsonSerializer.Serialize(sectionData, new JsonSerializerOptions 
-            { 
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase 
-            });
+            var json = JsonSerializer.Serialize(sectionData,
+                new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
             var dict = JsonSerializer.Deserialize<Dictionary<string, object>>(json);
-            
-            if (dict != null)
-            {
-                FlattenObject(dict, section, _data);
-            }
-            
+
+            if (dict != null) FlattenObject(dict, section, _data);
+
             return this;
         }
 
-        public ConfigurationBuilder AddArray(string key, string[] values)
+        public ConfigurationBuilder AddArray(string key,
+            string[] values)
         {
-            for (int i = 0; i < values.Length; i++)
-            {
-                _data[$"{key}:{i}"] = values[i];
-            }
+            for (var i = 0; i < values.Length; i++) _data[$"{key}:{i}"] = values[i];
             return this;
         }
 
@@ -264,36 +301,30 @@ public static class EnhancedTestUtilities
             return this;
         }
 
-        public IConfiguration Build()
-        {
-            return SourceGeneratorTestHelper.CreateConfiguration(_data);
-        }
+        public IConfiguration Build() => SourceGeneratorTestHelper.CreateConfiguration(_data);
     }
 
     /// <summary>
-    /// Creates a new configuration builder
+    ///     Creates a new configuration builder
     /// </summary>
-    public static ConfigurationBuilder CreateConfiguration()
-    {
-        return new ConfigurationBuilder();
-    }
+    public static ConfigurationBuilder CreateConfiguration() => new();
 
     #endregion
 
     #region Service Test Builders
 
     /// <summary>
-    /// Fluent builder for creating test service source code
+    ///     Fluent builder for creating test service source code
     /// </summary>
     public class ServiceBuilder
     {
-        private string _className = "TestService";
-        private string _namespace = "Test";
-        private readonly List<string> _interfaces = new();
         private readonly List<string> _attributes = new();
         private readonly List<string> _fields = new();
+        private readonly List<string> _interfaces = new();
         private readonly List<string> _methods = new();
         private string? _baseClass;
+        private string _className = "TestService";
+        private string _namespace = "Test";
 
         public ServiceBuilder WithName(string className)
         {
@@ -328,13 +359,15 @@ public static class EnhancedTestUtilities
         public ServiceBuilder WithService(string? lifetime = null)
         {
             if (lifetime != null)
-                _attributes.Add($"[Service(Lifetime.{lifetime})]");
+                _attributes.Add($"[{lifetime}]");
             else
-                _attributes.Add("[Service]");
+                _attributes.Add("[Scoped]");
             return this;
         }
 
-        public ServiceBuilder WithConditionalService(string? environment = null, string? configKey = null, string? configValue = null)
+        public ServiceBuilder WithConditionalService(string? environment = null,
+            string? configKey = null,
+            string? configValue = null)
         {
             var parts = new List<string>();
             if (environment != null) parts.Add($"Environment = \"{environment}\"");
@@ -344,33 +377,39 @@ public static class EnhancedTestUtilities
             return this;
         }
 
-        public ServiceBuilder WithDependsOn<T>(string? prefix = null, bool? stripI = null, string? namingConvention = null)
+        public ServiceBuilder WithDependsOn<T>(string? prefix = null,
+            bool? stripI = null,
+            string? namingConvention = null)
         {
             var parts = new List<string>();
             if (prefix != null) parts.Add($"Prefix = \"{prefix}\"");
             if (stripI.HasValue) parts.Add($"StripI = {stripI.Value.ToString().ToLowerInvariant()}");
             if (namingConvention != null) parts.Add($"NamingConvention = NamingConvention.{namingConvention}");
 
-            var attribute = parts.Any() 
+            var attribute = parts.Any()
                 ? $"[DependsOn<{typeof(T).Name}>({string.Join(", ", parts)})]"
                 : $"[DependsOn<{typeof(T).Name}>]";
-            
+
             _attributes.Add(attribute);
             return this;
         }
 
-        public ServiceBuilder WithInjectField(string type, string name)
+        public ServiceBuilder WithInjectField(string type,
+            string name)
         {
             _fields.Add($"[Inject] private readonly {type} {name};");
             return this;
         }
 
-        public ServiceBuilder WithConfigurationField(string type, string name, string key, string? defaultValue = null)
+        public ServiceBuilder WithConfigurationField(string type,
+            string name,
+            string key,
+            string? defaultValue = null)
         {
-            var attribute = defaultValue != null 
+            var attribute = defaultValue != null
                 ? $"[InjectConfiguration(\"{key}\", DefaultValue = {FormatDefaultValue(type, defaultValue)})]"
                 : $"[InjectConfiguration(\"{key}\")]";
-            
+
             _fields.Add($"{attribute} private readonly {type} {name};");
             return this;
         }
@@ -383,7 +422,7 @@ public static class EnhancedTestUtilities
 
         public string Build()
         {
-            var source = new System.Text.StringBuilder();
+            var source = new StringBuilder();
             source.AppendLine("using IoCTools.Abstractions.Annotations;");
             source.AppendLine("using IoCTools.Abstractions.Enumerations;");
             source.AppendLine("using Microsoft.Extensions.Configuration;");
@@ -393,10 +432,7 @@ public static class EnhancedTestUtilities
             source.AppendLine($"namespace {_namespace};");
             source.AppendLine();
 
-            foreach (var attr in _attributes)
-            {
-                source.AppendLine(attr);
-            }
+            foreach (var attr in _attributes) source.AppendLine(attr);
 
             var inheritance = new List<string>();
             if (_baseClass != null) inheritance.Add(_baseClass);
@@ -407,18 +443,12 @@ public static class EnhancedTestUtilities
             source.AppendLine($"public partial class {_className}{inheritanceClause}");
             source.AppendLine("{");
 
-            foreach (var field in _fields)
-            {
-                source.AppendLine($"    {field}");
-            }
+            foreach (var field in _fields) source.AppendLine($"    {field}");
 
             if (_fields.Any() && _methods.Any())
                 source.AppendLine();
 
-            foreach (var method in _methods)
-            {
-                source.AppendLine($"    {method}");
-            }
+            foreach (var method in _methods) source.AppendLine($"    {method}");
 
             source.AppendLine("}");
             return source.ToString();
@@ -426,19 +456,16 @@ public static class EnhancedTestUtilities
     }
 
     /// <summary>
-    /// Creates a new service builder
+    ///     Creates a new service builder
     /// </summary>
-    public static ServiceBuilder CreateService()
-    {
-        return new ServiceBuilder();
-    }
+    public static ServiceBuilder CreateService() => new();
 
     #endregion
 
     #region Test Result Validators
 
     /// <summary>
-    /// Validates that a test result has the expected characteristics
+    ///     Validates that a test result has the expected characteristics
     /// </summary>
     public class TestResultValidator
     {
@@ -451,7 +478,8 @@ public static class EnhancedTestUtilities
 
         public TestResultValidator ShouldCompile()
         {
-            Assert.False(_result.HasErrors, $"Compilation errors: {string.Join(", ", _result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+            Assert.False(_result.HasErrors,
+                $"Compilation errors: {string.Join(", ", _result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
             return this;
         }
 
@@ -483,7 +511,8 @@ public static class EnhancedTestUtilities
             return this;
         }
 
-        public TestResultValidator ShouldContainInConstructor(string className, string pattern)
+        public TestResultValidator ShouldContainInConstructor(string className,
+            string pattern)
         {
             var constructor = _result.GetConstructorSource(className);
             Assert.NotNull(constructor);
@@ -509,61 +538,9 @@ public static class EnhancedTestUtilities
     }
 
     /// <summary>
-    /// Creates a validator for a test result
+    ///     Creates a validator for a test result
     /// </summary>
-    public static TestResultValidator Validate(GeneratorTestResult result)
-    {
-        return new TestResultValidator(result);
-    }
-
-    #endregion
-
-    #region Mock Objects
-
-    /// <summary>
-    /// Creates mock configuration objects for specific scenarios
-    /// </summary>
-    public static class MockConfigurations
-    {
-        public static IConfiguration DatabaseConfig()
-        {
-            return CreateConfiguration()
-                .AddValue("Database:ConnectionString", "Server=localhost;Database=TestDb")
-                .AddValue("Database:Timeout", 30)
-                .AddValue("Database:EnableRetry", true)
-                .Build();
-        }
-
-        public static IConfiguration CacheConfig()
-        {
-            return CreateConfiguration()
-                .AddValue("Cache:Provider", "Redis")
-                .AddValue("Cache:TTL", "00:05:00")
-                .AddValue("Cache:Servers:0", "localhost:6379")
-                .AddValue("Cache:Servers:1", "localhost:6380")
-                .Build();
-        }
-
-        public static IConfiguration MultiEnvironmentConfig(string environment)
-        {
-            var builder = CreateConfiguration()
-                .AddEnvironment(environment)
-                .AddValue("Features:Email", "enabled")
-                .AddValue("Features:SMS", environment == "Production" ? "enabled" : "disabled")
-                .AddValue("Features:Push", "enabled");
-
-            if (environment == "Development")
-            {
-                builder.AddValue("Logging:Level", "Debug");
-            }
-            else if (environment == "Production")
-            {
-                builder.AddValue("Logging:Level", "Information");
-            }
-
-            return builder.Build();
-        }
-    }
+    public static TestResultValidator Validate(GeneratorTestResult result) => new(result);
 
     #endregion
 
@@ -572,35 +549,43 @@ public static class EnhancedTestUtilities
     private static List<string> SplitParameters(string parameters)
     {
         var result = new List<string>();
-        var current = new System.Text.StringBuilder();
+        var current = new StringBuilder();
         var depth = 0;
-        
+
         foreach (var c in parameters)
         {
-            if (c == '<' || c == '(') depth++;
-            else if (c == '>' || c == ')') depth--;
+            if (c == '<' || c == '(')
+            {
+                depth++;
+            }
+            else if (c == '>' || c == ')')
+            {
+                depth--;
+            }
             else if (c == ',' && depth == 0)
             {
                 result.Add(current.ToString());
                 current.Clear();
                 continue;
             }
-            
+
             current.Append(c);
         }
-        
+
         if (current.Length > 0)
             result.Add(current.ToString());
-            
+
         return result;
     }
 
-    private static void FlattenObject(Dictionary<string, object> source, string prefix, Dictionary<string, string> target)
+    private static void FlattenObject(Dictionary<string, object> source,
+        string prefix,
+        Dictionary<string, string> target)
     {
         foreach (var kvp in source)
         {
             var key = string.IsNullOrEmpty(prefix) ? kvp.Key : $"{prefix}:{kvp.Key}";
-            
+
             if (kvp.Value is JsonElement element)
             {
                 if (element.ValueKind == JsonValueKind.Object)
@@ -623,22 +608,25 @@ public static class EnhancedTestUtilities
 
     private static bool IsPrimitiveType(string type)
     {
-        var primitiveTypes = new[] { "string", "int", "bool", "double", "decimal", "long", "DateTime", "TimeSpan", "Guid" };
+        var primitiveTypes = new[]
+        {
+            "string", "int", "bool", "double", "decimal", "long", "DateTime", "TimeSpan", "Guid"
+        };
         return primitiveTypes.Any(p => type.Contains(p));
     }
 
-    private static string FormatDefaultValue(string type, string defaultValue)
+    private static string FormatDefaultValue(string type,
+        string defaultValue)
     {
         if (type.Contains("string"))
             return $"\"{defaultValue}\"";
-        else if (type.Contains("bool"))
+        if (type.Contains("bool"))
             return defaultValue.ToLowerInvariant();
-        else if (type.Contains("TimeSpan"))
+        if (type.Contains("TimeSpan"))
             return $"global::System.TimeSpan.Parse(\"{defaultValue}\")";
-        else if (type.Contains("DateTime"))
+        if (type.Contains("DateTime"))
             return $"global::System.DateTime.Parse(\"{defaultValue}\")";
-        else
-            return defaultValue;
+        return defaultValue;
     }
 
     #endregion
@@ -646,17 +634,17 @@ public static class EnhancedTestUtilities
     #region Data Classes
 
     /// <summary>
-    /// Represents a constructor parameter
+    ///     Represents a constructor parameter
     /// </summary>
     public record ConstructorParameter(string Type, string Name);
 
     /// <summary>
-    /// Represents a field declaration
+    ///     Represents a field declaration
     /// </summary>
     public record FieldDeclaration(string Visibility, string Type, string Name, bool IsReadonly);
 
     /// <summary>
-    /// Represents a service registration
+    ///     Represents a service registration
     /// </summary>
     public record ServiceRegistration(string ServiceType, string ImplementationType, string Lifetime);
 
@@ -664,20 +652,17 @@ public static class EnhancedTestUtilities
 }
 
 /// <summary>
-/// Extension methods for enhanced testing
+///     Extension methods for enhanced testing
 /// </summary>
 public static class TestExtensions
 {
     /// <summary>
-    /// Extension method to check if string is null or empty
+    ///     Extension method to check if string is null or empty
     /// </summary>
-    public static bool IsNullOrEmpty(this string? value)
-    {
-        return string.IsNullOrEmpty(value);
-    }
+    public static bool IsNullOrEmpty(this string? value) => string.IsNullOrEmpty(value);
 
     /// <summary>
-    /// Extension method to get services of a specific type safely
+    ///     Extension method to get services of a specific type safely
     /// </summary>
     public static IEnumerable<T> GetServicesOfType<T>(this IServiceProvider serviceProvider) where T : class
     {
@@ -692,7 +677,7 @@ public static class TestExtensions
     }
 
     /// <summary>
-    /// Extension method to check if service is registered
+    ///     Extension method to check if service is registered
     /// </summary>
     public static bool IsRegistered<T>(this IServiceProvider serviceProvider) where T : notnull
     {
@@ -708,9 +693,10 @@ public static class TestExtensions
     }
 
     /// <summary>
-    /// Extension method to check if service is registered by type
+    ///     Extension method to check if service is registered by type
     /// </summary>
-    public static bool IsRegistered(this IServiceProvider serviceProvider, Type serviceType)
+    public static bool IsRegistered(this IServiceProvider serviceProvider,
+        Type serviceType)
     {
         try
         {

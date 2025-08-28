@@ -1,0 +1,6 @@
+is_global = true
+
+# Demonstrate generator-style settings in the sample app
+build_property.IoCToolsSkipAssignableExceptions = IoCTools.Sample.Controllers.OptInController
+               build_property.IoCToolsSkipAssignableTypesAdd = IoCTools.Sample.Framework.FrameworkBase
+

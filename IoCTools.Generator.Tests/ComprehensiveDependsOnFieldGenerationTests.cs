@@ -1,26 +1,89 @@
-using Microsoft.CodeAnalysis;
-using Microsoft.Extensions.DependencyInjection;
-using IoCTools.Abstractions.Enumerations;
-using System.Linq;
-
 namespace IoCTools.Generator.Tests;
 
+using System.Text.RegularExpressions;
+
+using Microsoft.CodeAnalysis;
+using Microsoft.Extensions.DependencyInjection;
+
 /// <summary>
-/// COMPREHENSIVE DEPENDS ON CONSTRUCTOR GENERATION TEST COVERAGE
-/// 
-/// Tests corrected expectations for [DependsOn] attribute behavior based on audit findings:
-/// - DependsOn generates CONSTRUCTOR PARAMETERS, not fields
-/// - Constructor parameters follow naming conventions (camelCase, PascalCase, snake_case)
-/// - stripI and prefix parameters affect constructor parameter naming
-/// - Multiple [DependsOn] attributes generate multiple constructor parameters
-/// - Generic type constructor parameter generation
-/// - Integration with [Inject] fields in same class
-/// - Proper constructor generation and field assignments
-/// 
-/// These tests verify actual DependsOn behavior as implemented in the generator.
+///     COMPREHENSIVE DEPENDS ON CONSTRUCTOR GENERATION TEST COVERAGE
+///     Tests corrected expectations for [DependsOn] attribute behavior based on audit findings:
+///     - DependsOn generates CONSTRUCTOR PARAMETERS, not fields
+///     - Constructor parameters follow naming conventions (camelCase, PascalCase, snake_case)
+///     - stripI and prefix parameters affect constructor parameter naming
+///     - Multiple [DependsOn] attributes generate multiple constructor parameters
+///     - Generic type constructor parameter generation
+///     - Integration with [Inject] fields in same class
+///     - Proper constructor generation and field assignments
+///     These tests verify actual DependsOn behavior as implemented in the generator.
 /// </summary>
 public class ComprehensiveDependsOnConstructorGenerationTests
 {
+    #region Runtime Integration Tests
+
+    [Fact]
+    public void DependsOn_LegitimateGap_FieldAccessCompilationFails()
+    {
+        // This test reveals a LEGITIMATE gap in DependsOn functionality
+        // DependsOn should generate accessible fields for direct usage, but currently only generates constructor parameters
+
+        // Arrange
+        var source = @"
+using IoCTools.Abstractions.Annotations;
+
+namespace Test;
+
+public interface IEmailService 
+{
+    string SendEmail(string message);
+}
+
+[Scoped]
+public partial class EmailService : IEmailService
+{
+    public string SendEmail(string message) => $""Email: {message}"";
+}
+
+[Scoped]  
+[DependsOn<IEmailService>]
+public partial class NotificationService
+{
+    public string SendNotification(string message) => _emailService.SendEmail(message);
+}";
+
+        // Act
+        var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+
+        // Assert - This SHOULD compile but currently fails due to missing field generation
+        // This represents a legitimate implementation gap that needs to be addressed
+        if (result.HasErrors)
+        {
+            var errors = result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
+            Assert.True(errors.Any(e => e.GetMessage().Contains("_emailService")),
+                "Expected compilation error about missing _emailService field, indicating DependsOn gap");
+        }
+        else
+        {
+            // If this passes, the gap has been fixed - verify runtime behavior
+            var runtimeContext = SourceGeneratorTestHelper.CreateRuntimeContext(result);
+            var serviceProvider = SourceGeneratorTestHelper.BuildServiceProvider(runtimeContext);
+
+            var notificationServiceType = runtimeContext.Assembly.GetType("Test.NotificationService");
+            Assert.NotNull(notificationServiceType);
+
+            var notificationService = serviceProvider.GetRequiredService(notificationServiceType);
+            Assert.NotNull(notificationService);
+
+            var sendNotificationMethod = notificationServiceType.GetMethod("SendNotification");
+            Assert.NotNull(sendNotificationMethod);
+
+            var message = (string)sendNotificationMethod.Invoke(notificationService, new[] { "Hello World" })!;
+            Assert.Equal("Email: Hello World", message);
+        }
+    }
+
+    #endregion
+
     #region Basic Constructor Parameter Tests
 
     [Fact]
@@ -33,8 +96,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 public interface IEmailService { }
-
-[Service]
 [DependsOn<IEmailService>]
 public partial class NotificationService
 {
@@ -51,7 +112,7 @@ public partial class NotificationService
 
         // Should add constructor parameter without namespace qualification
         Assert.Contains("IEmailService emailService", constructorSource.Content);
-        
+
         // Constructor should be generated
         Assert.Contains("NotificationService(", constructorSource.Content);
     }
@@ -68,8 +129,6 @@ namespace Test;
 public interface IEmailService { }
 public interface ISmsService { }
 public interface ILoggerService { }
-
-[Service]
 [DependsOn<IEmailService>]
 [DependsOn<ISmsService>]
 [DependsOn<ILoggerService>]
@@ -110,8 +169,6 @@ using IoCTools.Abstractions.Enumerations;
 namespace Test;
 
 public interface IPaymentProcessor { }
-
-[Service]
 [DependsOn<IPaymentProcessor>(NamingConvention = NamingConvention.CamelCase)]
 public partial class OrderService
 {
@@ -128,7 +185,7 @@ public partial class OrderService
 
         // Should use camelCase naming for constructor parameter
         Assert.Contains("IPaymentProcessor paymentProcessor", constructorSource.Content);
-        
+
         // Constructor should be generated
         Assert.Contains("OrderService(", constructorSource.Content);
     }
@@ -144,8 +201,6 @@ using IoCTools.Abstractions.Enumerations;
 namespace Test;
 
 public interface IPaymentProcessor { }
-
-[Service]
 [DependsOn<IPaymentProcessor>(NamingConvention = NamingConvention.PascalCase)]
 public partial class OrderService
 {
@@ -162,7 +217,7 @@ public partial class OrderService
 
         // Should use camelCase naming for constructor parameter (C# convention)
         Assert.Contains("IPaymentProcessor paymentProcessor", constructorSource.Content);
-        
+
         // Constructor should be generated
         Assert.Contains("OrderService(", constructorSource.Content);
     }
@@ -178,8 +233,6 @@ using IoCTools.Abstractions.Enumerations;
 namespace Test;
 
 public interface IPaymentProcessor { }
-
-[Service]
 [DependsOn<IPaymentProcessor>(NamingConvention = NamingConvention.SnakeCase)]
 public partial class OrderService
 {
@@ -196,7 +249,7 @@ public partial class OrderService
 
         // Should use camelCase naming for constructor parameter (C# convention)
         Assert.Contains("IPaymentProcessor paymentProcessor", constructorSource.Content);
-        
+
         // Constructor should be generated
         Assert.Contains("OrderService(", constructorSource.Content);
     }
@@ -214,8 +267,6 @@ namespace Test;
 public interface IEmailService { }
 public interface ISmsService { }
 public interface ILoggerService { }
-
-[Service]
 [DependsOn<IEmailService>(NamingConvention = NamingConvention.CamelCase)]
 [DependsOn<ISmsService>(NamingConvention = NamingConvention.PascalCase)]
 [DependsOn<ILoggerService>(NamingConvention = NamingConvention.SnakeCase)]
@@ -236,7 +287,7 @@ public partial class MixedNamingService
         Assert.Contains("IEmailService emailService", constructorSource.Content);
         Assert.Contains("ISmsService smsService", constructorSource.Content);
         Assert.Contains("ILoggerService loggerService", constructorSource.Content);
-        
+
         // Constructor should be generated
         Assert.Contains("MixedNamingService(", constructorSource.Content);
     }
@@ -256,8 +307,6 @@ namespace Test;
 
 public interface IEmailService { }
 public interface IPaymentProcessor { }
-
-[Service]
 [DependsOn<IEmailService>(StripI = true)]
 [DependsOn<IPaymentProcessor>(StripI = true)]
 public partial class ServiceWithStrippedI
@@ -276,7 +325,7 @@ public partial class ServiceWithStrippedI
         // Should strip 'I' prefix from interface names for constructor parameters
         Assert.Contains("IEmailService emailService", constructorSource.Content);
         Assert.Contains("IPaymentProcessor paymentProcessor", constructorSource.Content);
-        
+
         // Constructor should be generated
         Assert.Contains("ServiceWithStrippedI(", constructorSource.Content);
     }
@@ -291,8 +340,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 public interface IEmailService { }
-
-[Service]
 [DependsOn<IEmailService>(StripI = false)]
 public partial class ServiceWithoutStrippedI
 {
@@ -310,7 +357,7 @@ public partial class ServiceWithoutStrippedI
         // Should use semantic naming regardless of stripI setting for consistent constructor parameter naming
         // stripI parameter affects naming convention application, not semantic parameter naming
         Assert.Contains("IEmailService emailService", constructorSource.Content);
-        
+
         // Constructor should be generated
         Assert.Contains("ServiceWithoutStrippedI(", constructorSource.Content);
     }
@@ -325,8 +372,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 public class EmailService { }
-
-[Service]
 [DependsOn<EmailService>(StripI = true)]
 public partial class NonInterfaceService
 {
@@ -343,7 +388,7 @@ public partial class NonInterfaceService
 
         // Non-interface types should not be affected by StripI for constructor parameters
         Assert.Contains("EmailService emailService", constructorSource.Content);
-        
+
         // Constructor should be generated
         Assert.Contains("NonInterfaceService(", constructorSource.Content);
     }
@@ -363,8 +408,6 @@ namespace Test;
 
 public interface IEmailService { }
 public interface IPaymentProcessor { }
-
-[Service]
 [DependsOn<IEmailService>(Prefix = ""injected"")]
 [DependsOn<IPaymentProcessor>(Prefix = ""external"")]
 public partial class PrefixedService
@@ -383,7 +426,7 @@ public partial class PrefixedService
         // Should add custom prefixes to constructor parameter names
         Assert.Contains("IEmailService injectedEmailService", constructorSource.Content);
         Assert.Contains("IPaymentProcessor externalPaymentProcessor", constructorSource.Content);
-        
+
         // Constructor should be generated
         Assert.Contains("PrefixedService(", constructorSource.Content);
     }
@@ -398,8 +441,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 public interface IEmailService { }
-
-[Service]
 [DependsOn<IEmailService>(Prefix = ""injected"", StripI = true)]
 public partial class PrefixedStrippedService
 {
@@ -416,7 +457,7 @@ public partial class PrefixedStrippedService
 
         // Should combine prefix with stripped interface name for constructor parameter
         Assert.Contains("IEmailService injectedEmailService", constructorSource.Content);
-        
+
         // Constructor should be generated
         Assert.Contains("PrefixedStrippedService(", constructorSource.Content);
     }
@@ -432,8 +473,6 @@ using IoCTools.Abstractions.Enumerations;
 namespace Test;
 
 public interface IPaymentProcessor { }
-
-[Service]
 [DependsOn<IPaymentProcessor>(Prefix = ""external"", NamingConvention = NamingConvention.PascalCase, StripI = true)]
 public partial class CombinedOptionsService
 {
@@ -450,7 +489,7 @@ public partial class CombinedOptionsService
 
         // Should combine prefix, stripped interface name, and camelCase for constructor parameter
         Assert.Contains("IPaymentProcessor externalPaymentProcessor", constructorSource.Content);
-        
+
         // Constructor should be generated
         Assert.Contains("CombinedOptionsService(", constructorSource.Content);
     }
@@ -471,8 +510,6 @@ namespace Test;
 
 public interface IRepository<T> { }
 public class User { }
-
-[Service]
 [DependsOn<IRepository<User>>]
 public partial class UserService
 {
@@ -489,7 +526,7 @@ public partial class UserService
 
         // Should handle generic types correctly for constructor parameters
         Assert.Contains("IRepository<User> repository", constructorSource.Content);
-        
+
         // Constructor should be generated
         Assert.Contains("UserService(", constructorSource.Content);
     }
@@ -506,8 +543,6 @@ namespace Test;
 
 public interface IKeyValueStore<TKey, TValue> { }
 public interface IFactory<T> { }
-
-[Service]
 [DependsOn<IKeyValueStore<string, int>>]
 [DependsOn<IFactory<List<string>>>]
 public partial class ComplexGenericService
@@ -526,7 +561,7 @@ public partial class ComplexGenericService
         // Should handle complex generic types for constructor parameters
         Assert.Contains("IKeyValueStore<string, int> keyValueStore", constructorSource.Content);
         Assert.Contains("IFactory<List<string>> factory", constructorSource.Content);
-        
+
         // Constructor should be generated
         Assert.Contains("ComplexGenericService(", constructorSource.Content);
     }
@@ -547,8 +582,6 @@ namespace Test;
 public interface IEmailService { }
 public interface ILoggerService { }
 public interface ISmsService { }
-
-[Service]
 [DependsOn<IEmailService>]
 public partial class MixedDependencyService
 {
@@ -587,8 +620,6 @@ public interface IEmailService { }
 public interface IPaymentService { }
 public interface ILoggerService { }
 public interface IAuditService { }
-
-[Service]
 [DependsOn<IEmailService>]
 [DependsOn<IPaymentService>]
 public partial class OrderedDependencyService
@@ -617,7 +648,7 @@ public partial class OrderedDependencyService
         Assert.True(paymentParamIndex > emailParamIndex);
         Assert.True(loggerParamIndex > paymentParamIndex);
         Assert.True(auditParamIndex > loggerParamIndex);
-        
+
         // Constructor should be generated
         Assert.Contains("OrderedDependencyService(", constructorSource.Content);
     }
@@ -636,8 +667,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 public interface IService { }
-
-[Service]
 [DependsOn<IService>]
 public partial class FieldModifierService
 {
@@ -654,7 +683,7 @@ public partial class FieldModifierService
 
         // Constructor parameter should be generated
         Assert.Contains("IService service", constructorSource.Content);
-        
+
         // Constructor should be generated
         Assert.Contains("FieldModifierService(", constructorSource.Content);
     }
@@ -669,8 +698,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 public interface IService { }
-
-[Service]
 [DependsOn<IService>]
 public partial class OnlyDependsOnService
 {
@@ -686,7 +713,7 @@ public partial class OnlyDependsOnService
         Assert.NotNull(constructorSource);
         Assert.Contains("OnlyDependsOnService(", constructorSource.Content);
     }
-    
+
     [Fact]
     public void DependsOn_OnlyInject_GeneratesConstructor()
     {
@@ -697,8 +724,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 public interface IService { }
-
-[Service]
 public partial class OnlyInjectService
 {
     [Inject] private readonly IService _service;
@@ -725,8 +750,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 public interface IService { }
-
-[Service]
 [DependsOn<IService>]
 public partial class CollisionService
 {
@@ -741,12 +764,12 @@ public partial class CollisionService
 
         var constructorSource = result.GetConstructorSource("CollisionService");
         Assert.NotNull(constructorSource);
-        
+
         // The constructor should be generated with IService parameter
         // The existing [Inject] field should take precedence over [DependsOn]
         Assert.Contains("CollisionService(", constructorSource.Content);
         Assert.Contains("IService", constructorSource.Content);
-        
+
         // Should use the existing field name, not generate a new field
         Assert.Contains("_existingService = ", constructorSource.Content);
     }
@@ -758,7 +781,6 @@ public partial class CollisionService
     [Fact]
     public void DependsOn_ConflictWithInjectField_GeneratesDiagnostic()
     {
-        
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
@@ -766,8 +788,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 public interface IService { }
-
-[Service]
 [DependsOn<IService>]
 public partial class ConflictingService
 {
@@ -783,7 +803,7 @@ public partial class ConflictingService
         Assert.Contains("DependsOn", ioc007Diagnostics[0].GetMessage());
     }
 
-    [Fact] 
+    [Fact]
     public void DependsOn_DuplicateTypes_OnlyGeneratesOneField()
     {
         // Arrange
@@ -793,8 +813,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 public interface IService { }
-
-[Service]
 [DependsOn<IService>]
 [DependsOn<IService>] // Duplicate - should only generate one field
 public partial class DuplicateService
@@ -811,77 +829,12 @@ public partial class DuplicateService
         Assert.NotNull(constructorSource);
 
         // Should only have one parameter declaration despite duplicate attributes  
-        var paramCount = System.Text.RegularExpressions.Regex.Matches(
+        var paramCount = Regex.Matches(
             constructorSource.Content, @"IService service").Count;
         Assert.Equal(1, paramCount);
-        
+
         // Constructor should be generated
         Assert.Contains("DuplicateService(", constructorSource.Content);
-    }
-
-    #endregion
-
-    #region Runtime Integration Tests
-
-    [Fact]
-    public void DependsOn_LegitimateGap_FieldAccessCompilationFails()
-    {
-        // This test reveals a LEGITIMATE gap in DependsOn functionality
-        // DependsOn should generate accessible fields for direct usage, but currently only generates constructor parameters
-        
-        // Arrange
-        var source = @"
-using IoCTools.Abstractions.Annotations;
-
-namespace Test;
-
-public interface IEmailService 
-{
-    string SendEmail(string message);
-}
-
-[Service]
-public partial class EmailService : IEmailService
-{
-    public string SendEmail(string message) => $""Email: {message}"";
-}
-
-[Service]  
-[DependsOn<IEmailService>]
-public partial class NotificationService
-{
-    public string SendNotification(string message) => _emailService.SendEmail(message);
-}";
-
-        // Act
-        var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-        
-        // Assert - This SHOULD compile but currently fails due to missing field generation
-        // This represents a legitimate implementation gap that needs to be addressed
-        if (result.HasErrors)
-        {
-            var errors = result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
-            Assert.True(errors.Any(e => e.GetMessage().Contains("_emailService")), 
-                "Expected compilation error about missing _emailService field, indicating DependsOn gap");
-        }
-        else
-        {
-            // If this passes, the gap has been fixed - verify runtime behavior
-            var runtimeContext = SourceGeneratorTestHelper.CreateRuntimeContext(result);
-            var serviceProvider = SourceGeneratorTestHelper.BuildServiceProvider(runtimeContext);
-            
-            var notificationServiceType = runtimeContext.Assembly.GetType("Test.NotificationService");
-            Assert.NotNull(notificationServiceType);
-            
-            var notificationService = serviceProvider.GetRequiredService(notificationServiceType);
-            Assert.NotNull(notificationService);
-            
-            var sendNotificationMethod = notificationServiceType.GetMethod("SendNotification");
-            Assert.NotNull(sendNotificationMethod);
-            
-            var message = (string)sendNotificationMethod.Invoke(notificationService, new[] { "Hello World" })!;
-            Assert.Equal("Email: Hello World", message);
-        }
     }
 
     #endregion

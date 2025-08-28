@@ -1,9 +1,6 @@
-using Microsoft.CodeAnalysis;
-using IoCTools.Generator.Tests;
-using System.Linq;
-using Xunit;
-
 namespace IoCTools.Generator.Tests;
+
+using Microsoft.CodeAnalysis;
 
 /// <summary>
 ///     Comprehensive tests verifying [ConditionalService] attribute functionality.
@@ -19,18 +16,26 @@ public class ConditionalServiceBasicImplementationTests
         // AUDIT FINDING: ConditionalService code generation IS WORKING
         // This test demonstrates that ConditionalService attributes are recognized
         // and the conditional registration logic IS generated correctly
-        
+
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace Test;
 
 public interface IPaymentService { }
+public interface IDependency { }
 
 [ConditionalService(Environment = ""Production"")]
-[Service]
 public partial class ProductionPaymentService : IPaymentService
+{
+    [Inject] private readonly IDependency _dependency;
+}
+
+// Add a concrete dependency service to ensure registration source is generated
+[Scoped]
+public partial class ConcreteDependency : IDependency
 {
 }
 ";
@@ -50,7 +55,7 @@ public partial class ProductionPaymentService : IPaymentService
         Assert.Contains("Environment.GetEnvironmentVariable", registrationSource.Content);
         Assert.Contains("Production", registrationSource.Content);
         Assert.Contains("if (", registrationSource.Content);
-        
+
         // ConditionalService generates proper conditional logic:
         // 1. Environment variable checking
         // 2. Conditional service registration
@@ -61,7 +66,7 @@ public partial class ProductionPaymentService : IPaymentService
     public void ConditionalService_ConfigurationEquals_GeneratesConfigurationLogic()
     {
         // AUDIT FINDING: Configuration-based ConditionalService logic IS implemented
-        
+
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
@@ -71,7 +76,7 @@ namespace Test;
 public interface ICacheService { }
 
 [ConditionalService(ConfigValue = ""Cache:Provider"", Equals = ""Redis"")]
-[Service]
+
 public partial class RedisCacheService : ICacheService
 {
 }
@@ -97,7 +102,7 @@ public partial class RedisCacheService : ICacheService
     public void ConditionalService_MultipleEnvironments_GeneratesOrLogic()
     {
         // AUDIT FINDING: Multiple environment ConditionalService logic IS working
-        
+
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
@@ -107,7 +112,7 @@ namespace Test;
 public interface ITestService { }
 
 [ConditionalService(Environment = ""Development,Testing"")]
-[Service]
+
 public partial class TestingService : ITestService
 {
 }
@@ -134,7 +139,7 @@ public partial class TestingService : ITestService
     public void ConditionalService_NotEnvironment_GeneratesNotEqualsLogic()
     {
         // AUDIT FINDING: NotEnvironment ConditionalService logic IS generated
-        
+
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
@@ -144,7 +149,7 @@ namespace Test;
 public interface IDebugService { }
 
 [ConditionalService(NotEnvironment = ""Production"")]
-[Service]
+
 public partial class DebugService : IDebugService
 {
 }
@@ -172,7 +177,7 @@ public partial class DebugService : IDebugService
     {
         // AUDIT FINDING: Combined environment + configuration ConditionalService logic IS working
         // This complex feature properly evaluates both environment and config conditions
-        
+
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
@@ -182,7 +187,7 @@ namespace Test;
 public interface IAdvancedService { }
 
 [ConditionalService(Environment = ""Production"", ConfigValue = ""Features:EnableAdvanced"", Equals = ""true"")]
-[Service]
+
 public partial class AdvancedService : IAdvancedService
 {
 }
@@ -209,7 +214,7 @@ public partial class AdvancedService : IAdvancedService
     public void ConditionalService_ConfigurationNotEquals_GeneratesNotEqualsLogic()
     {
         // AUDIT FINDING: Configuration NotEquals ConditionalService logic IS working
-        
+
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
@@ -219,7 +224,7 @@ namespace Test;
 public interface IService { }
 
 [ConditionalService(ConfigValue = ""Features:DisableService"", NotEquals = ""true"")]
-[Service]
+
 public partial class EnabledService : IService
 {
 }
@@ -251,7 +256,7 @@ public partial class EnabledService : IService
     {
         // AUDIT FINDING: Advanced ConditionalService scenarios (multiple conditional services for same interface)
         // ARE implemented - this demonstrates working core functionality
-        
+
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
@@ -261,13 +266,12 @@ namespace Test;
 public interface IEmailService { }
 
 [ConditionalService(Environment = ""Development"")]
-[Service]
+
 public partial class MockEmailService : IEmailService
 {
 }
 
 [ConditionalService(Environment = ""Production"")]
-[Service] 
 public partial class SmtpEmailService : IEmailService
 {
 }
@@ -294,7 +298,7 @@ public partial class SmtpEmailService : IEmailService
     public void ConditionalService_WithRegisterAsAll_GeneratesConditionalLogic()
     {
         // AUDIT FINDING: ConditionalService + RegisterAsAll combination IS implemented and working
-        
+
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
@@ -306,7 +310,7 @@ public interface IProcessingService { }
 public interface ILoggingService { }
 
 [ConditionalService(Environment = ""Development"")]
-[Service]
+
 [RegisterAsAll]
 public partial class DevelopmentProcessor : IProcessingService, ILoggingService
 {
@@ -326,7 +330,7 @@ public partial class DevelopmentProcessor : IProcessingService, ILoggingService
         // WORKING FEATURE: ConditionalService logic IS generated with RegisterAsAll
         Assert.Contains("if (", registrationSource.Content);
         Assert.Contains("Development", registrationSource.Content);
-        
+
         // RegisterAsAll works together with conditional logic
         // Both the conditional evaluation and multiple interface registration work correctly
     }
@@ -340,7 +344,7 @@ public partial class DevelopmentProcessor : IProcessingService, ILoggingService
     {
         // AUDIT FINDING: ConditionalService attributes are recognized and generate complete conditional logic
         // This test verifies the full infrastructure works (attribute recognition, code generation, conditional logic)
-        
+
         // Arrange
         var source = @"
 using IoCTools.Abstractions.Annotations;
@@ -350,7 +354,7 @@ namespace Test;
 public interface IService { }
 
 [ConditionalService(Environment = ""Production"")]
-[Service]
+
 public partial class ProductionService : IService { }
 ";
 
@@ -373,7 +377,7 @@ public partial class ProductionService : IService { }
     {
         // AUDIT FINDING: ConditionalService validation infrastructure works correctly
         // This tests that the diagnostic/validation side of ConditionalService properly detects issues
-        
+
         // Arrange - invalid ConditionalService (no conditions specified)
         var source = @"
 using IoCTools.Abstractions.Annotations;
@@ -383,7 +387,7 @@ namespace Test;
 public interface IService { }
 
 [ConditionalService] // No conditions - should trigger validation
-[Service]
+
 public partial class InvalidConditionalService : IService { }
 ";
 
@@ -392,7 +396,7 @@ public partial class InvalidConditionalService : IService { }
 
         // Assert compilation works but may generate diagnostics
         Assert.False(result.HasErrors);
-        
+
         // WORKING: ConditionalService validation infrastructure detects issues correctly
         // WORKING: The conditional registration code generation works for valid scenarios
         // This test validates that empty ConditionalService attributes are handled gracefully

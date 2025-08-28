@@ -1,7 +1,8 @@
-using System.Diagnostics;
-using Microsoft.CodeAnalysis;
-
 namespace IoCTools.Generator.Tests;
+
+using System.Diagnostics;
+
+using Microsoft.CodeAnalysis;
 
 /// <summary>
 ///     Test to inspect the actual IOC003 diagnostic messages and verify their content.
@@ -19,14 +20,10 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 public interface IA { }
 public interface IB { }
-
-[Service]
 public partial class ServiceA : IA
 {
     [Inject] private readonly IB _serviceB;
 }
-
-[Service]
 public partial class ServiceB : IB
 {
     [Inject] private readonly IA _serviceA;
@@ -74,8 +71,6 @@ using IoCTools.Abstractions.Annotations;
 
 namespace Test;
 public interface ISelfService { }
-
-[Service]
 public partial class SelfService : ISelfService
 {
     [Inject] private readonly ISelfService _self;
@@ -109,14 +104,8 @@ using IoCTools.Abstractions.Annotations;
 
 namespace Test;
 public interface IA { } public interface IB { } public interface IC { }
-
-[Service]
 public partial class ServiceA : IA { [Inject] private readonly IB _b; }
-
-[Service]
 public partial class ServiceB : IB { [Inject] private readonly IC _c; }
-
-[Service]
 public partial class ServiceC : IC { [Inject] private readonly IA _a; }";
 
         // Act

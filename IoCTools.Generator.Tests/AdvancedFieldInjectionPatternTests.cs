@@ -1,7 +1,8 @@
-using System.Text.RegularExpressions;
-using Microsoft.CodeAnalysis;
-
 namespace IoCTools.Generator.Tests;
+
+using System.Text.RegularExpressions;
+
+using Microsoft.CodeAnalysis;
 
 /// <summary>
 ///     COMPREHENSIVE TESTS FOR ADVANCED FIELD INJECTION PATTERNS
@@ -41,8 +42,6 @@ namespace Test;
 
 public interface ITestService { }
 public interface IAnotherService { }
-
-[Service]
 public partial class PropertyInjectionService
 {
     [Inject] private readonly ITestService _fieldService;  // Field injection
@@ -90,13 +89,13 @@ namespace Test;
 
 public interface ITestService { }
 
-[Service]
-public class TestService1 : ITestService { }
+[Scoped]
+public partial class TestService1 : ITestService { }
 
-[Service]
-public class TestService2 : ITestService { }
+[Scoped] 
+public partial class TestService2 : ITestService { }
 
-[Service]
+[Scoped]
 public partial class CollectionConsumerService
 {
     [Inject] private readonly IEnumerable<ITestService> _services;
@@ -139,8 +138,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 public interface ITestService { }
-
-[Service]
 public class NonPartialService  // Missing 'partial' keyword
 {
     [Inject] private readonly ITestService _service;
@@ -179,8 +176,6 @@ using System.Collections.Generic;
 namespace Test;
 
 public interface ITestService { }
-
-[Service]
 public partial class CollectionInjectionService
 {
     [Inject] private readonly IEnumerable<ITestService> _enumerable;
@@ -226,8 +221,6 @@ using System.Collections.Generic;
 namespace Test;
 
 public interface ITestService { }
-
-[Service]
 public partial class ConcreteCollectionService
 {
     [Inject] private readonly List<ITestService> _list;
@@ -262,8 +255,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 public interface ITestService { }
-
-[Service]
 public partial class ArrayInjectionService
 {
     [Inject] private readonly ITestService[] _serviceArray;
@@ -297,8 +288,6 @@ using System.Collections.Generic;
 namespace Test;
 
 public interface ITestService { }
-
-[Service]
 public partial class NestedCollectionService
 {
     [Inject] private readonly IEnumerable<IList<ITestService>> _enumerableOfLists;
@@ -341,8 +330,6 @@ namespace Test;
 
 public interface IOptionalService { }
 public struct TestStruct { }
-
-[Service]
 public partial class OptionalDependencyService
 {
     [Inject] private readonly IOptionalService? _optionalService;
@@ -385,8 +372,6 @@ using System.Collections.Generic;
 namespace Test;
 
 public interface ITestService { }
-
-[Service]
 public partial class NullableCollectionService
 {
     [Inject] private readonly IEnumerable<ITestService>? _optionalEnumerable;
@@ -426,8 +411,6 @@ using System;
 namespace Test;
 
 public interface ITestService { }
-
-[Service]
 public partial class FuncFactoryService
 {
     [Inject] private readonly Func<ITestService> _simpleFactory;
@@ -464,8 +447,6 @@ using System;
 namespace Test;
 
 public interface ITestService { }
-
-[Service]
 public partial class ActionPatternService
 {
     [Inject] private readonly Action _simpleAction;
@@ -502,8 +483,6 @@ public interface ITestService { }
 public delegate ITestService ServiceFactory(string key);
 public delegate void ServiceProcessor(ITestService service);
 public delegate TResult GenericFactory<TResult>(string input);
-
-[Service]
 public partial class CustomDelegateService
 {
     [Inject] private readonly ServiceFactory _customFactory;
@@ -539,8 +518,6 @@ using IoCTools.Abstractions.Annotations;
 using System;
 
 namespace Test;
-
-[Service]
 public partial class ServiceProviderInjectionService
 {
     [Inject] private readonly IServiceProvider _serviceProvider;
@@ -571,8 +548,6 @@ using System;
 namespace Test;
 
 public interface ITestService { }
-
-[Service]
 public partial class ManualResolutionService
 {
     [Inject] private readonly IServiceProvider _serviceProvider;
@@ -615,8 +590,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 public interface ITestService { }
-
-[Service]
 public partial class PrivateFieldService
 {
     [Inject] private readonly ITestService _privateReadonly;
@@ -649,8 +622,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 public interface ITestService { }
-
-[Service]
 public partial class ProtectedFieldService
 {
     [Inject] protected readonly ITestService _protectedReadonly;
@@ -681,8 +652,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 public interface ITestService { }
-
-[Service]
 public partial class InternalFieldService
 {
     [Inject] internal readonly ITestService _internalReadonly;
@@ -715,8 +684,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 public interface ITestService { }
-
-[Service]
 public partial class PublicFieldService
 {
     [Inject] public readonly ITestService _publicReadonly;
@@ -747,8 +714,6 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 
 public interface ITestService { }
-
-[Service]
 public partial class StaticFieldService
 {
     [Inject] private readonly ITestService _instanceField;
@@ -791,8 +756,6 @@ namespace Test;
 public interface IDependsOnService { }
 public interface IInjectService1 { }
 public interface IInjectService2 { }
-
-[Service]
 [DependsOn<IDependsOnService>]
 public partial class MixedInjectionService
 {
@@ -846,8 +809,6 @@ public interface IFirst { }
 public interface ISecond { }
 public interface IThird { }
 public interface IInjectService { }
-
-[Service]
 [DependsOn<IFirst, ISecond, IThird>]
 public partial class MultipleDependsOnWithInjectService
 {
@@ -900,8 +861,6 @@ namespace Test;
 public interface IRepository<T> { }
 public interface IValidator<T> { }
 public interface ICacheService<TKey, TValue> { }
-
-[Service]
 public partial class GenericService<T> where T : class
 {
     [Inject] private readonly IRepository<T> _repository;
@@ -938,8 +897,6 @@ namespace Test;
 
 public interface IEntity { }
 public interface IRepository<T> where T : IEntity { }
-
-[Service]
 public partial class ConstrainedGenericService<T, U> 
     where T : class, IEntity, new()
     where U : struct
@@ -983,8 +940,6 @@ using System;
 namespace Test;
 
 public interface ITestService { }
-
-[Service]
 public partial class LazyService
 {
     [Inject] private readonly Lazy<ITestService> _lazyService;
@@ -1017,8 +972,6 @@ namespace Test;
 
 public interface IServiceA { }
 public interface IServiceB { }
-
-[Service]
 public partial class ValueTupleService
 {
     [Inject] private readonly (IServiceA ServiceA, IServiceB ServiceB) _serviceTuple;

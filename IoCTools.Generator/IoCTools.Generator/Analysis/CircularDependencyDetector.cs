@@ -1,7 +1,7 @@
+namespace IoCTools.Generator.Analysis;
+
 using System.Collections.Generic;
 using System.Linq;
-
-namespace IoCTools.Generator.Analysis;
 
 internal class CircularDependencyDetector
 {

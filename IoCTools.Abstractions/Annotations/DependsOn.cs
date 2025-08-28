@@ -1,7 +1,8 @@
-using System;
-using IoCTools.Abstractions.Enumerations;
-
 namespace IoCTools.Abstractions.Annotations;
+
+using System;
+
+using Enumerations;
 
 // Template for backwards-compatible DependsOn attribute:
 // 1. Parameterless constructor with original defaults
@@ -32,7 +33,7 @@ public sealed class DependsOnAttribute<TDep1> : Attribute
     public NamingConvention NamingConvention { get; set; } = NamingConvention.CamelCase;
     public bool StripI { get; set; } = true;
     public string Prefix { get; set; } = "_";
-    public bool External { get; set; } = false;
+    public bool External { get; set; }
 }
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
@@ -60,7 +61,7 @@ public sealed class DependsOnAttribute<TDep1, TDep2> : Attribute
     public NamingConvention NamingConvention { get; set; } = NamingConvention.CamelCase;
     public bool StripI { get; set; } = true;
     public string Prefix { get; set; } = "_";
-    public bool External { get; set; } = false;
+    public bool External { get; set; }
 }
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
@@ -88,7 +89,7 @@ public sealed class DependsOnAttribute<TDep1, TDep2, TDep3> : Attribute
     public NamingConvention NamingConvention { get; set; } = NamingConvention.CamelCase;
     public bool StripI { get; set; } = true;
     public string Prefix { get; set; } = "_";
-    public bool External { get; set; } = false;
+    public bool External { get; set; }
 }
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
@@ -116,7 +117,7 @@ public sealed class DependsOnAttribute<TDep1, TDep2, TDep3, TDep4> : Attribute
     public NamingConvention NamingConvention { get; set; } = NamingConvention.CamelCase;
     public bool StripI { get; set; } = true;
     public string Prefix { get; set; } = "_";
-    public bool External { get; set; } = false;
+    public bool External { get; set; }
 }
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
@@ -144,7 +145,7 @@ public sealed class DependsOnAttribute<TDep1, TDep2, TDep3, TDep4, TDep5> : Attr
     public NamingConvention NamingConvention { get; set; } = NamingConvention.CamelCase;
     public bool StripI { get; set; } = true;
     public string Prefix { get; set; } = "_";
-    public bool External { get; set; } = false;
+    public bool External { get; set; }
 }
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
@@ -172,7 +173,7 @@ public sealed class DependsOnAttribute<TDep1, TDep2, TDep3, TDep4, TDep5, TDep6>
     public NamingConvention NamingConvention { get; set; } = NamingConvention.CamelCase;
     public bool StripI { get; set; } = true;
     public string Prefix { get; set; } = "_";
-    public bool External { get; set; } = false;
+    public bool External { get; set; }
 }
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
@@ -200,7 +201,7 @@ public sealed class DependsOnAttribute<TDep1, TDep2, TDep3, TDep4, TDep5, TDep6,
     public NamingConvention NamingConvention { get; set; } = NamingConvention.CamelCase;
     public bool StripI { get; set; } = true;
     public string Prefix { get; set; } = "_";
-    public bool External { get; set; } = false;
+    public bool External { get; set; }
 }
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
@@ -228,7 +229,7 @@ public sealed class DependsOnAttribute<TDep1, TDep2, TDep3, TDep4, TDep5, TDep6,
     public NamingConvention NamingConvention { get; set; } = NamingConvention.CamelCase;
     public bool StripI { get; set; } = true;
     public string Prefix { get; set; } = "_";
-    public bool External { get; set; } = false;
+    public bool External { get; set; }
 }
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
@@ -256,7 +257,7 @@ public sealed class DependsOnAttribute<TDep1, TDep2, TDep3, TDep4, TDep5, TDep6,
     public NamingConvention NamingConvention { get; set; } = NamingConvention.CamelCase;
     public bool StripI { get; set; } = true;
     public string Prefix { get; set; } = "_";
-    public bool External { get; set; } = false;
+    public bool External { get; set; }
 }
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
@@ -285,7 +286,7 @@ public sealed class
     public NamingConvention NamingConvention { get; set; } = NamingConvention.CamelCase;
     public bool StripI { get; set; } = true;
     public string Prefix { get; set; } = "_";
-    public bool External { get; set; } = false;
+    public bool External { get; set; }
 }
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
@@ -314,7 +315,7 @@ public sealed class
     public NamingConvention NamingConvention { get; set; } = NamingConvention.CamelCase;
     public bool StripI { get; set; } = true;
     public string Prefix { get; set; } = "_";
-    public bool External { get; set; } = false;
+    public bool External { get; set; }
 }
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
@@ -343,7 +344,7 @@ public sealed class DependsOnAttribute<TDep1, TDep2, TDep3, TDep4, TDep5, TDep6,
     public NamingConvention NamingConvention { get; set; } = NamingConvention.CamelCase;
     public bool StripI { get; set; } = true;
     public string Prefix { get; set; } = "_";
-    public bool External { get; set; } = false;
+    public bool External { get; set; }
 }
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
@@ -372,7 +373,7 @@ public sealed class DependsOnAttribute<TDep1, TDep2, TDep3, TDep4, TDep5, TDep6,
     public NamingConvention NamingConvention { get; set; } = NamingConvention.CamelCase;
     public bool StripI { get; set; } = true;
     public string Prefix { get; set; } = "_";
-    public bool External { get; set; } = false;
+    public bool External { get; set; }
 }
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
@@ -401,7 +402,7 @@ public sealed class DependsOnAttribute<TDep1, TDep2, TDep3, TDep4, TDep5, TDep6,
     public NamingConvention NamingConvention { get; set; } = NamingConvention.CamelCase;
     public bool StripI { get; set; } = true;
     public string Prefix { get; set; } = "_";
-    public bool External { get; set; } = false;
+    public bool External { get; set; }
 }
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
@@ -430,7 +431,7 @@ public sealed class DependsOnAttribute<TDep1, TDep2, TDep3, TDep4, TDep5, TDep6,
     public NamingConvention NamingConvention { get; set; } = NamingConvention.CamelCase;
     public bool StripI { get; set; } = true;
     public string Prefix { get; set; } = "_";
-    public bool External { get; set; } = false;
+    public bool External { get; set; }
 }
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
@@ -459,7 +460,7 @@ public sealed class DependsOnAttribute<TDep1, TDep2, TDep3, TDep4, TDep5, TDep6,
     public NamingConvention NamingConvention { get; set; } = NamingConvention.CamelCase;
     public bool StripI { get; set; } = true;
     public string Prefix { get; set; } = "_";
-    public bool External { get; set; } = false;
+    public bool External { get; set; }
 }
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
@@ -488,7 +489,7 @@ public sealed class DependsOnAttribute<TDep1, TDep2, TDep3, TDep4, TDep5, TDep6,
     public NamingConvention NamingConvention { get; set; } = NamingConvention.CamelCase;
     public bool StripI { get; set; } = true;
     public string Prefix { get; set; } = "_";
-    public bool External { get; set; } = false;
+    public bool External { get; set; }
 }
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
@@ -517,7 +518,7 @@ public sealed class DependsOnAttribute<TDep1, TDep2, TDep3, TDep4, TDep5, TDep6,
     public NamingConvention NamingConvention { get; set; } = NamingConvention.CamelCase;
     public bool StripI { get; set; } = true;
     public string Prefix { get; set; } = "_";
-    public bool External { get; set; } = false;
+    public bool External { get; set; }
 }
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
@@ -546,7 +547,7 @@ public sealed class DependsOnAttribute<TDep1, TDep2, TDep3, TDep4, TDep5, TDep6,
     public NamingConvention NamingConvention { get; set; } = NamingConvention.CamelCase;
     public bool StripI { get; set; } = true;
     public string Prefix { get; set; } = "_";
-    public bool External { get; set; } = false;
+    public bool External { get; set; }
 }
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
@@ -575,5 +576,5 @@ public sealed class DependsOnAttribute<TDep1, TDep2, TDep3, TDep4, TDep5, TDep6,
     public NamingConvention NamingConvention { get; set; } = NamingConvention.CamelCase;
     public bool StripI { get; set; } = true;
     public string Prefix { get; set; } = "_";
-    public bool External { get; set; } = false;
+    public bool External { get; set; }
 }

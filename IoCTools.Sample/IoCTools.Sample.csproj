@@ -7,31 +7,31 @@
         <OutputType>Exe</OutputType>
         <UserSecretsId>dotnet-IoCTools.Sample23-9C46F370-098A-49FE-B264-6E7434A9C3AD</UserSecretsId>
         <LangVersion>default</LangVersion>
-        
+
         <!-- IoCTools MSBuild Diagnostic Configuration Examples -->
         <!-- These properties configure the severity of IoCTools source generator diagnostics -->
-        
+
         <!-- Configure severity for missing implementations (default: Warning) -->
         <IoCToolsNoImplementationSeverity>Warning</IoCToolsNoImplementationSeverity>
-        
+
         <!-- Configure severity for unregistered implementations (default: Warning) -->
         <IoCToolsUnregisteredSeverity>Info</IoCToolsUnregisteredSeverity>
-        
+
         <!-- Configure lifetime validation severity (default: Warning) -->
         <IoCToolsLifetimeValidationSeverity>Warning</IoCToolsLifetimeValidationSeverity>
-        
+
         <!-- Configure educational diagnostic example severities to Warning for non-blocking builds -->
         <IoCToolsConditionalServiceValidationSeverity>Warning</IoCToolsConditionalServiceValidationSeverity>
         <IoCToolsPartialClassValidationSeverity>Warning</IoCToolsPartialClassValidationSeverity>
         <IoCToolsBackgroundServiceValidationSeverity>Warning</IoCToolsBackgroundServiceValidationSeverity>
         <IoCToolsInheritanceChainValidationSeverity>Warning</IoCToolsInheritanceChainValidationSeverity>
-        
+
         <!-- Disable all dependency validation diagnostics (default: false) -->
         <!-- <IoCToolsDisableDiagnostics>true</IoCToolsDisableDiagnostics> -->
-        
+
         <!-- Available severity options: Error, Warning, Info, Hidden -->
         <!-- To see diagnostic examples in action, build the project and check build output -->
-        
+
         <!-- Enable generated file output for debugging (commented by default) -->
         <!-- Uncomment these to view generated files in the 'generated' folder during development -->
         <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
@@ -41,7 +41,7 @@
     <ItemGroup>
         <!-- Core package references for sample functionality -->
         <PackageReference Include="Mediator.Abstractions" Version="2.1.7"/>
-        
+
         <!-- Microsoft.Extensions packages for background services, configuration, and options -->
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="6.0.1"/>
         <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="6.0.2"/>
@@ -59,15 +59,15 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Compile Remove="generated\**" />
+        <Compile Remove="generated\**"/>
     </ItemGroup>
 
     <ItemGroup>
-      <EmbeddedResource Remove="generated\**" />
+        <EmbeddedResource Remove="generated\**"/>
     </ItemGroup>
 
     <ItemGroup>
-      <None Remove="generated\**" />
-      <None Remove="build.log" />
+        <None Remove="generated\**"/>
+        <None Remove="build.log"/>
     </ItemGroup>
 </Project>

@@ -1,13 +1,13 @@
+namespace IoCTools.Generator.Tests;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace IoCTools.Generator.Tests;
-
 /// <summary>
 ///     Comprehensive tests for MSBuild diagnostic configuration system.
 ///     Tests the new MSBuild property support: IoCToolsNoImplementationSeverity,
-///     IoCToolsUnregisteredSeverity, and IoCToolsDisableDiagnostics.
+///     IoCToolsManualSeverity, and IoCToolsDisableDiagnostics.
 ///     These tests validate that MSBuild properties correctly configure diagnostic severity
 ///     and enable/disable functionality for dependency validation features.
 /// </summary>
@@ -97,12 +97,14 @@ public class MSBuildDiagnosticConfigurationTests
     /// </summary>
     private static string GetMissingImplementationSource() => @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace
 {
     public interface IMissingService { }
 
-    [Service]
+    
+    [Scoped]
     public partial class TestService
     {
         [Inject] private readonly IMissingService _missingService;
@@ -112,19 +114,22 @@ namespace TestNamespace
     /// <summary>
     ///     Creates standard test source code with unregistered service
     /// </summary>
-    private static string GetUnregisteredServiceSource() => @"
+    private static string GetUnmanagedServiceSource() => @"
 using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
 
 namespace TestNamespace
 {
-    public interface IUnregisteredService { }
+    public interface IUnmanagedService { }
     
-    public class UnregisteredService : IUnregisteredService { }
+    // NOTE: UnmanagedService deliberately lacks lifetime attribute to trigger IOC002
+    public partial class UnmanagedService : IUnmanagedService { }
 
-    [Service]
+    
+    [Scoped]
     public partial class TestService
     {
-        [Inject] private readonly IUnregisteredService _unregisteredService;
+        [Inject] private readonly IUnmanagedService _unmanagedService;
     }
 }";
 
@@ -149,10 +154,10 @@ namespace TestNamespace
     }
 
     [Fact]
-    public void MSBuildDiagnostics_DefaultBehavior_UnregisteredService_ReportsWarning()
+    public void MSBuildDiagnostics_DefaultBehavior_UnmanagedService_ReportsWarning()
     {
         // Test default behavior for IOC002 - Unregistered implementation
-        var sourceCode = GetUnregisteredServiceSource();
+        var sourceCode = GetUnmanagedServiceSource();
         var properties = new Dictionary<string, string>(); // No MSBuild properties = default behavior
 
         var (compilation, diagnostics) = CompileWithMSBuildProperties(sourceCode, properties);
@@ -160,8 +165,8 @@ namespace TestNamespace
 
         Assert.Single(ioc002Diagnostics);
         Assert.Equal(DiagnosticSeverity.Warning, ioc002Diagnostics[0].Severity);
-        Assert.Contains("implementation exists but lacks [Service] attribute", ioc002Diagnostics[0].GetMessage());
-        Assert.Contains("UnregisteredService", ioc002Diagnostics[0].GetMessage());
+        Assert.Contains("implementation exists but lacks lifetime attribute", ioc002Diagnostics[0].GetMessage());
+        Assert.Contains("UnmanagedService", ioc002Diagnostics[0].GetMessage());
     }
 
     #endregion
@@ -239,7 +244,7 @@ namespace TestNamespace
 
     #endregion
 
-    #region IoCToolsUnregisteredSeverity Configuration Tests
+    #region IoCToolsManualSeverity Configuration Tests
 
     [Theory]
     [InlineData("Error", DiagnosticSeverity.Error)]
@@ -249,11 +254,8 @@ namespace TestNamespace
     public void MSBuildDiagnostics_UnregisteredSeverity_ConfiguresCorrectly(string severityValue,
         DiagnosticSeverity expectedSeverity)
     {
-        var sourceCode = GetUnregisteredServiceSource();
-        var properties = new Dictionary<string, string>
-        {
-            ["build_property.IoCToolsUnregisteredSeverity"] = severityValue
-        };
+        var sourceCode = GetUnmanagedServiceSource();
+        var properties = new Dictionary<string, string> { ["build_property.IoCToolsManualSeverity"] = severityValue };
 
         var (compilation, diagnostics) = CompileWithMSBuildProperties(sourceCode, properties);
 
@@ -269,11 +271,8 @@ namespace TestNamespace
     [InlineData("HIDDEN")]
     public void MSBuildDiagnostics_UnregisteredSeverity_CaseInsensitive(string severityValue)
     {
-        var sourceCode = GetUnregisteredServiceSource();
-        var properties = new Dictionary<string, string>
-        {
-            ["build_property.IoCToolsUnregisteredSeverity"] = severityValue
-        };
+        var sourceCode = GetUnmanagedServiceSource();
+        var properties = new Dictionary<string, string> { ["build_property.IoCToolsManualSeverity"] = severityValue };
 
         var (compilation, diagnostics) = CompileWithMSBuildProperties(sourceCode, properties);
 
@@ -352,22 +351,23 @@ using IoCTools.Abstractions.Annotations;
 namespace TestNamespace
 {
     public interface IMissingService { }
-    public interface IUnregisteredService { }
+    public interface IUnmanagedService { }
     
-    public class UnregisteredService : IUnregisteredService { }
+    // UnmanagedService lacks lifetime attribute to trigger IOC002
+    public class UnmanagedService : IUnmanagedService { }
 
-    [Service]
+    [Scoped]
     public partial class TestService
     {
         [Inject] private readonly IMissingService _missingService;
-        [Inject] private readonly IUnregisteredService _unregisteredService;
+        [Inject] private readonly IUnmanagedService _unmanagedService;
     }
 }";
 
         var properties = new Dictionary<string, string>
         {
             ["build_property.IoCToolsNoImplementationSeverity"] = "Error",
-            ["build_property.IoCToolsUnregisteredSeverity"] = "Info"
+            ["build_property.IoCToolsManualSeverity"] = "Info"
         };
 
         var (compilation, diagnostics) = CompileWithMSBuildProperties(combinedSource, properties);
@@ -391,7 +391,7 @@ namespace TestNamespace
         {
             ["build_property.IoCToolsDisableDiagnostics"] = "true",
             ["build_property.IoCToolsNoImplementationSeverity"] = "Error",
-            ["build_property.IoCToolsUnregisteredSeverity"] = "Error"
+            ["build_property.IoCToolsManualSeverity"] = "Error"
         };
 
         var (compilation, diagnostics) = CompileWithMSBuildProperties(sourceCode, properties);
@@ -413,7 +413,7 @@ namespace TestNamespace
         var properties = new Dictionary<string, string>
         {
             ["build_property.IoCToolsNoImplementationSeverity"] = "",
-            ["build_property.IoCToolsUnregisteredSeverity"] = "",
+            ["build_property.IoCToolsManualSeverity"] = "",
             ["build_property.IoCToolsDisableDiagnostics"] = ""
         };
 
@@ -454,8 +454,7 @@ namespace TestNamespace
         // Document the MSBuild property naming convention
         var expectedProperties = new[]
         {
-            "build_property.IoCToolsNoImplementationSeverity",
-            "build_property.IoCToolsUnregisteredSeverity",
+            "build_property.IoCToolsNoImplementationSeverity", "build_property.IoCToolsManualSeverity",
             "build_property.IoCToolsDisableDiagnostics"
         };
 
@@ -477,7 +476,7 @@ namespace TestNamespace
         //   <IoCToolsNoImplementationSeverity>Error</IoCToolsNoImplementationSeverity>
         //   
         //   <!-- Configure severity for unregistered implementations (default: Warning) -->
-        //   <IoCToolsUnregisteredSeverity>Info</IoCToolsUnregisteredSeverity>
+        //   <IoCToolsManualSeverity>Info</IoCToolsManualSeverity>
         //   
         //   <!-- Disable all dependency validation diagnostics (default: false) -->
         //   <IoCToolsDisableDiagnostics>true</IoCToolsDisableDiagnostics>

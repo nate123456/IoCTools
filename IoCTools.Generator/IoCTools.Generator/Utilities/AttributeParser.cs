@@ -1,10 +1,11 @@
+namespace IoCTools.Generator.Utilities;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using Microsoft.CodeAnalysis;
 
-namespace IoCTools.Generator.Utilities;
+using Microsoft.CodeAnalysis;
 
 internal static class AttributeParser
 {
@@ -161,20 +162,16 @@ internal static class AttributeParser
         // stripI only affects the naming convention application, not the fundamental semantic naming
         string fieldBaseName;
         if (originalTypeName.StartsWith("I") && originalTypeName.Length > 1 && char.IsUpper(originalTypeName[1]))
-        {
             // For interface types, always use semantic naming (strip 'I') for field names
             // This ensures consistent field naming: IService -> _service, IDerivedService -> _derivedService  
             fieldBaseName = originalTypeName.Substring(1);
-        }
         else
-        {
             // For non-interface types, use the original type name
             fieldBaseName = originalTypeName;
-        }
 
         // Generate the final field name based on prefix type
         string fieldName;
-        
+
         if (prefix == "")
         {
             // Empty prefix: apply naming convention to type name, no prefixes at all
@@ -229,6 +226,7 @@ internal static class AttributeParser
                     formattedTypeName = Regex.Replace(fieldBaseName, @"(?<!^)([A-Z])", "_$1").ToLower();
                     break;
             }
+
             fieldName = prefix + formattedTypeName;
         }
         else
@@ -300,15 +298,83 @@ internal static class AttributeParser
         // C# reserved keywords that could conflict with parameter names
         var reservedKeywords = new HashSet<string>
         {
-            "abstract", "as", "base", "bool", "break", "byte", "case", "catch", "char", "checked",
-            "class", "const", "continue", "decimal", "default", "delegate", "do", "double", "else",
-            "enum", "event", "explicit", "extern", "false", "finally", "fixed", "float", "for",
-            "foreach", "goto", "if", "implicit", "in", "int", "interface", "internal", "is", "lock",
-            "long", "namespace", "new", "null", "object", "operator", "out", "override", "params",
-            "private", "protected", "public", "readonly", "ref", "return", "sbyte", "sealed",
-            "short", "sizeof", "stackalloc", "static", "string", "struct", "switch", "this",
-            "throw", "true", "try", "typeof", "uint", "ulong", "unchecked", "unsafe", "ushort",
-            "using", "virtual", "void", "volatile", "while"
+            "abstract",
+            "as",
+            "base",
+            "bool",
+            "break",
+            "byte",
+            "case",
+            "catch",
+            "char",
+            "checked",
+            "class",
+            "const",
+            "continue",
+            "decimal",
+            "default",
+            "delegate",
+            "do",
+            "double",
+            "else",
+            "enum",
+            "event",
+            "explicit",
+            "extern",
+            "false",
+            "finally",
+            "fixed",
+            "float",
+            "for",
+            "foreach",
+            "goto",
+            "if",
+            "implicit",
+            "in",
+            "int",
+            "interface",
+            "internal",
+            "is",
+            "lock",
+            "long",
+            "namespace",
+            "new",
+            "null",
+            "object",
+            "operator",
+            "out",
+            "override",
+            "params",
+            "private",
+            "protected",
+            "public",
+            "readonly",
+            "ref",
+            "return",
+            "sbyte",
+            "sealed",
+            "short",
+            "sizeof",
+            "stackalloc",
+            "static",
+            "string",
+            "struct",
+            "switch",
+            "this",
+            "throw",
+            "true",
+            "try",
+            "typeof",
+            "uint",
+            "ulong",
+            "unchecked",
+            "unsafe",
+            "ushort",
+            "using",
+            "virtual",
+            "void",
+            "volatile",
+            "while"
         };
 
         if (reservedKeywords.Contains(identifier)) return identifier + "Value";

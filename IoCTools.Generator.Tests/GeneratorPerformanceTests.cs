@@ -1,10 +1,12 @@
+namespace IoCTools.Generator.Tests;
+
 using System.Diagnostics;
 using System.Text;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Xunit.Abstractions;
 
-namespace IoCTools.Generator.Tests;
+using Xunit.Abstractions;
 
 /// <summary>
 ///     Comprehensive performance tests for the IoCTools source generator.
@@ -304,7 +306,7 @@ public class GeneratorPerformanceTests
             if (i % 10 == 0 && i > 0) dependencies.Add("ILogger<Service" + i + ">");
 
             // Generate service class
-            code.AppendLine("    [Service(Lifetime.Scoped)]");
+            code.AppendLine("    [Scoped]");
             code.AppendLine($"    public partial class Service{i} : IService{i}");
             code.AppendLine("    {");
 
@@ -348,21 +350,21 @@ namespace TestNamespace
     public interface IServiceB { void DoWork(); }
     public interface IServiceC { void DoWork(); }
 
-    [Service]
+    
     public partial class ServiceA : IServiceA
     {
         [Inject] private readonly IServiceB _serviceB;
         public void DoWork() { }
     }
 
-    [Service]
+    
     public partial class ServiceB : IServiceB
     {
         [Inject] private readonly IServiceC _serviceC;
         public void DoWork() { }
     }
 
-    [Service]
+    
     public partial class ServiceC : IServiceC
     {
         [Inject] private readonly IServiceA _serviceA; // Circular dependency
@@ -374,21 +376,21 @@ namespace TestNamespace
     public interface IChain2 { void Execute(); }
     public interface IChain3 { void Execute(); }
 
-    [Service]
+    
     public partial class Chain1Service : IChain1
     {
         [Inject] private readonly IChain2 _chain2;
         public void Execute() { }
     }
 
-    [Service]
+    
     public partial class Chain2Service : IChain2
     {
         [Inject] private readonly IChain3 _chain3;
         public void Execute() { }
     }
 
-    [Service]
+    
     public partial class Chain3Service : IChain3
     {
         [Inject] private readonly IChain1 _chain1; // Circular dependency

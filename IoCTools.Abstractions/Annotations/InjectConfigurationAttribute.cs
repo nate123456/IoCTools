@@ -1,6 +1,6 @@
-using System;
-
 namespace IoCTools.Abstractions.Annotations;
+
+using System;
 
 /// <summary>
 ///     Marks a field or property for configuration injection from .NET's IConfiguration system.
@@ -45,7 +45,7 @@ namespace IoCTools.Abstractions.Annotations;
 ///         <strong>Mixed with Regular Dependency Injection:</strong>
 ///     </para>
 ///     <code>
-/// [Service]
+/// [Scoped]
 /// public partial class EmailService : IEmailService
 /// {
 ///     [Inject] private readonly ILogger&lt;EmailService&gt; _logger;
@@ -57,7 +57,7 @@ namespace IoCTools.Abstractions.Annotations;
 /// <example>
 ///     <para>Complete email service example:</para>
 ///     <code>
-/// [Service]
+/// [Scoped]
 /// public partial class EmailService : IEmailService
 /// {
 ///     [InjectConfiguration("Email:SmtpHost")] private readonly string _smtpHost;

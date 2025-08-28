@@ -1,7 +1,8 @@
-using System;
-using Microsoft.CodeAnalysis;
-
 namespace IoCTools.Generator.Diagnostics;
+
+using System;
+
+using Microsoft.CodeAnalysis;
 
 internal static class DiagnosticDescriptors
 {
@@ -12,16 +13,16 @@ internal static class DiagnosticDescriptors
         "IoCTools",
         DiagnosticSeverity.Warning,
         true,
-        "Fix options: 1) Create a class implementing '{1}' with [Service] attribute, 2) Add [ExternalService] attribute to this class if dependency is provided externally, or 3) Register manually with services.AddScoped<{1}, Implementation>() in Program.cs.");
+        "Fix options: 1) Create a class implementing '{1}' with lifetime attribute ([Scoped], [Singleton], or [Transient]), 2) Add [ExternalService] attribute to this class if dependency is provided externally, or 3) Register manually with services.AddScoped<{1}, Implementation>() in Program.cs.");
 
     public static readonly DiagnosticDescriptor ImplementationNotRegistered = new(
         "IOC002",
         "Implementation exists but not registered",
-        "Service '{0}' depends on '{1}' - implementation exists but lacks [Service] attribute",
+        "Service '{0}' depends on '{1}' - implementation exists but lacks lifetime attribute ([Scoped], [Singleton], or [Transient])",
         "IoCTools",
         DiagnosticSeverity.Warning,
         true,
-        "Fix options: 1) Add [Service] attribute to the implementation of '{1}', 2) Add [ExternalService] attribute to this class if dependency is provided externally, or 3) Register manually with services.AddScoped<{1}, Implementation>() in Program.cs.");
+        "Fix options: 1) Add lifetime attribute ([Scoped], [Singleton], or [Transient]) to the implementation of '{1}', 2) Add [ExternalService] attribute to this class if dependency is provided externally, or 3) Register manually with services.AddScoped<{1}, Implementation>() in Program.cs.");
 
     public static readonly DiagnosticDescriptor CircularDependency = new(
         "IOC003",
@@ -35,11 +36,11 @@ internal static class DiagnosticDescriptors
     public static readonly DiagnosticDescriptor RegisterAsAllRequiresService = new(
         "IOC004",
         "RegisterAsAll attribute requires Service attribute",
-        "Class '{0}' has [RegisterAsAll] attribute but is missing [Service] attribute",
+        "Class '{0}' has [RegisterAsAll] attribute but is missing lifetime attribute",
         "IoCTools",
         DiagnosticSeverity.Error,
         true,
-        "Add [Service] attribute to the class to enable multi-interface registration.");
+        "Add lifetime attribute ([Scoped], [Singleton], or [Transient]) to the class to enable multi-interface registration.");
 
     public static readonly DiagnosticDescriptor SkipRegistrationWithoutRegisterAsAll = new(
         "IOC005",
@@ -90,7 +91,7 @@ internal static class DiagnosticDescriptors
     public static readonly DiagnosticDescriptor BackgroundServiceLifetimeConflict = new(
         "IOC010",
         "Background service with non-Singleton lifetime (deprecated)",
-        "Background service '{0}' has [Service] attribute with '{1}' lifetime. Background services should typically be Singleton. Note: This diagnostic is deprecated - use IOC014 instead.",
+        "Background service '{0}' has lifetime attribute with '{1}' lifetime. Background services should typically be Singleton. Note: This diagnostic is deprecated - use IOC014 instead.",
         "IoCTools",
         DiagnosticSeverity.Warning,
         true,
@@ -108,29 +109,29 @@ internal static class DiagnosticDescriptors
     public static readonly DiagnosticDescriptor SingletonDependsOnScoped = new(
         "IOC012",
         "Singleton service depends on Scoped service",
-        "Singleton service '{0}' depends on Scoped service '{1}'. Singleton services cannot capture shorter-lived dependencies",
+        "Singleton service '{0}' depends on Scoped service '{1}'. Singleton services cannot capture shorter-lived dependencies.",
         "IoCTools",
         DiagnosticSeverity.Error,
         true,
-        "Fix the lifetime mismatch by: 1) Changing dependency '{1}' to [Service(Lifetime.Singleton)], 2) Changing this service to [Service(Lifetime.Scoped)] or [Service(Lifetime.Transient)], or 3) Use dependency factories/scoped service locator pattern.");
+        "Fix the lifetime mismatch by: 1) Changing dependency '{1}' to [Singleton], 2) Changing this service to [Scoped] or [Transient], or 3) Use dependency factories/scoped service locator pattern.");
 
     public static readonly DiagnosticDescriptor SingletonDependsOnTransient = new(
         "IOC013",
         "Singleton service depends on Transient service",
-        "Singleton service '{0}' depends on Transient service '{1}'. Consider if this transient should be Singleton or if the dependency is appropriate",
+        "Singleton service '{0}' depends on Transient service '{1}'. Consider if this transient should be Singleton or if the dependency is appropriate.",
         "IoCTools",
         DiagnosticSeverity.Warning,
         true,
-        "Review the design: 1) If '{1}' should be shared, change it to [Service(Lifetime.Singleton)], 2) If truly transient, this may cause issues as the singleton will capture only one instance - consider using IServiceProvider or factory pattern instead.");
+        "Review the design: 1) If '{1}' should be shared, change it to [Singleton], 2) If truly transient, this may cause issues as the singleton will capture only one instance - consider using IServiceProvider or factory pattern instead.");
 
     public static readonly DiagnosticDescriptor BackgroundServiceLifetimeValidation = new(
         "IOC014",
         "Background service with non-Singleton lifetime",
-        "Background service '{0}' has {1} lifetime. Background services should typically be Singleton",
+        "Background service '{0}' has {1} lifetime. Background services should typically be Singleton.",
         "IoCTools",
         DiagnosticSeverity.Error,
         true,
-        "Fix options: 1) Change to [Service(Lifetime.Singleton)] for proper background service lifetime, 2) Use [BackgroundService(SuppressLifetimeWarnings = true)] to suppress this warning if non-Singleton is intentional, or 3) Consider if this should inherit from BackgroundService at all.");
+        "Fix options: 1) Change to [Singleton] for optimal background service lifetime, 2) Use [BackgroundService(SuppressLifetimeWarnings = true)] to suppress this warning if the current lifetime is intentional, or 3) Consider if this should inherit from BackgroundService at all.");
 
     public static readonly DiagnosticDescriptor InheritanceChainLifetimeValidation = new(
         "IOC015",
@@ -191,11 +192,11 @@ internal static class DiagnosticDescriptors
     public static readonly DiagnosticDescriptor ConditionalServiceMissingServiceAttribute = new(
         "IOC021",
         "ConditionalService attribute requires Service attribute",
-        "Class '{0}' has [ConditionalService] attribute but [Service] attribute is required",
+        "Class '{0}' has [ConditionalService] attribute but lifetime attribute is required",
         "IoCTools",
         DiagnosticSeverity.Error, // Changed to Error to match test expectations
         true,
-        "Add [Service] attribute to the class to enable conditional service registration.");
+        "Add lifetime attribute ([Scoped], [Singleton], or [Transient]) to the class to enable conditional service registration.");
 
     public static readonly DiagnosticDescriptor ConditionalServiceEmptyConditions = new(
         "IOC022",
@@ -250,4 +251,41 @@ internal static class DiagnosticDescriptors
         DiagnosticSeverity.Info,
         true,
         "Review service registration patterns to ensure no unintended duplicates. The generator automatically deduplicates identical registrations.");
+
+    // RegisterAs Attribute Diagnostics (IOC028-IOC031)
+    public static readonly DiagnosticDescriptor RegisterAsRequiresService = new(
+        "IOC028",
+        "RegisterAs attribute requires service indicators",
+        "Class '{0}' has [RegisterAs] attribute but lacks service indicators like [Lifetime], [Inject] fields, or other registration attributes",
+        "IoCTools",
+        DiagnosticSeverity.Error,
+        true,
+        "Add [Lifetime], [Inject] fields, or other service indicators to enable selective interface registration.");
+
+    public static readonly DiagnosticDescriptor RegisterAsInterfaceNotImplemented = new(
+        "IOC029",
+        "RegisterAs specifies unimplemented interface",
+        "Class '{0}' has [RegisterAs] attribute specifying interface '{1}' but does not implement this interface",
+        "IoCTools",
+        DiagnosticSeverity.Error,
+        true,
+        "Ensure that all interfaces specified in [RegisterAs] are actually implemented by the class.");
+
+    public static readonly DiagnosticDescriptor RegisterAsDuplicateInterface = new(
+        "IOC030",
+        "RegisterAs contains duplicate interface",
+        "Class '{0}' has [RegisterAs] attribute with duplicate interface '{1}'",
+        "IoCTools",
+        DiagnosticSeverity.Warning,
+        true,
+        "Remove duplicate interface specifications from the [RegisterAs] attribute.");
+
+    public static readonly DiagnosticDescriptor RegisterAsNonInterfaceType = new(
+        "IOC031",
+        "RegisterAs specifies non-interface type",
+        "Class '{0}' has [RegisterAs] attribute specifying non-interface type '{1}'",
+        "IoCTools",
+        DiagnosticSeverity.Error,
+        true,
+        "RegisterAs can only specify interface types. Use concrete class types for direct registration.");
 }

@@ -1,14 +1,12 @@
-using IoCTools.Abstractions.Annotations;
-using IoCTools.Abstractions.Enumerations;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
+namespace IoCTools.Sample.Services;
+
+using System.ComponentModel.DataAnnotations;
+using System.Text.RegularExpressions;
+
+using Abstractions.Annotations;
+
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-
-namespace IoCTools.Sample.Services;
 
 // COMPREHENSIVE CONFIGURATION INJECTION EXAMPLES
 // This file demonstrates all configuration injection patterns supported by IoCTools
@@ -75,12 +73,10 @@ public class HotReloadSettings
 
 public class ValidationSettings
 {
-    [Range(1, 1000)]
-    public int MaxLength { get; set; }
-    
-    [Range(1, 100)]
-    public int MinLength { get; set; }
-    
+    [Range(1, 1000)] public int MaxLength { get; set; }
+
+    [Range(1, 100)] public int MinLength { get; set; }
+
     public bool RequireNumbers { get; set; }
     public bool RequireSymbols { get; set; }
     public string AllowedCharacters { get; set; } = string.Empty;
@@ -90,63 +86,72 @@ public class ValidationSettings
 
 // === 1. BASIC CONFIGURATION INJECTION FOR PRIMITIVES ===
 
-[Service]
+[Scoped]
 public partial class DatabaseConnectionService
 {
     // Inject primitive connection string directly from appsettings.json
-    [InjectConfiguration("Database:ConnectionString")] private readonly string _connectionString;
-    [InjectConfiguration("Database:TimeoutSeconds")] private readonly int _timeoutSeconds;
-    [InjectConfiguration("Database:EnableRetry")] private readonly bool _enableRetry;
+    [InjectConfiguration("Database:ConnectionString")]
+    private readonly string _connectionString;
+
+    [InjectConfiguration("Database:EnableRetry")]
+    private readonly bool _enableRetry;
+
     [Inject] private readonly ILogger<DatabaseConnectionService> _logger;
+
+    [InjectConfiguration("Database:TimeoutSeconds")]
+    private readonly int _timeoutSeconds;
 
     public async Task<bool> TestConnectionAsync()
     {
-        _logger.LogInformation("Testing database connection with timeout: {Timeout}s, Retry: {EnableRetry}", 
+        _logger.LogInformation("Testing database connection with timeout: {Timeout}s, Retry: {EnableRetry}",
             _timeoutSeconds, _enableRetry);
-        
+
         // Simulate connection test
         await Task.Delay(100);
-        _logger.LogInformation("Connection string configured: {HasConnection}", !string.IsNullOrEmpty(_connectionString));
+        _logger.LogInformation("Connection string configured: {HasConnection}",
+            !string.IsNullOrEmpty(_connectionString));
         return true;
     }
 
-    public string GetConnectionInfo()
-    {
-        return $"Connection: {_connectionString[..20]}..., Timeout: {_timeoutSeconds}s, Retry: {_enableRetry}";
-    }
+    public string GetConnectionInfo() =>
+        $"Connection: {_connectionString[..20]}..., Timeout: {_timeoutSeconds}s, Retry: {_enableRetry}";
 }
 
-[Service]
 public partial class AppInfoService
 {
     // Mix of different primitive types from App section
     [InjectConfiguration("App:Name")] private readonly string _appName;
-    [InjectConfiguration("App:Version")] private readonly int _version;
-    [InjectConfiguration("App:IsProduction")] private readonly bool _isProduction;
-    [InjectConfiguration("App:Price")] private readonly decimal _price;
+
+    [InjectConfiguration("App:IsProduction")]
+    private readonly bool _isProduction;
+
     [Inject] private readonly ILogger<AppInfoService> _logger;
+    [InjectConfiguration("App:Price")] private readonly decimal _price;
+    [InjectConfiguration("App:Version")] private readonly int _version;
 
     public void DisplayAppInfo()
     {
-        _logger.LogInformation("App: {Name} v{Version}, Production: {IsProduction}, Price: ${Price}", 
+        _logger.LogInformation("App: {Name} v{Version}, Production: {IsProduction}, Price: ${Price}",
             _appName, _version, _isProduction, _price);
     }
 }
 
 // === 2. SECTION BINDING FOR COMPLEX OBJECTS ===
 
-[Service]
+[Scoped]
 public partial class ConfigurationEmailService
 {
     // Inject entire Email section as strongly-typed object
     [InjectConfiguration] private readonly EmailSettings _emailSettings;
     [Inject] private readonly ILogger<ConfigurationEmailService> _logger;
 
-    public async Task<bool> SendEmailAsync(string to, string subject, string body)
+    public async Task<bool> SendEmailAsync(string to,
+        string subject,
+        string body)
     {
-        _logger.LogInformation("Sending email via {SmtpHost}:{Port} (SSL: {UseSsl}) from {FromAddress}", 
+        _logger.LogInformation("Sending email via {SmtpHost}:{Port} (SSL: {UseSsl}) from {FromAddress}",
             _emailSettings.SmtpHost, _emailSettings.SmtpPort, _emailSettings.UseSsl, _emailSettings.FromAddress);
-        
+
         // Simulate email sending
         await Task.Delay(200);
         _logger.LogInformation("Email sent to {To}: {Subject}", to, subject);
@@ -156,7 +161,7 @@ public partial class ConfigurationEmailService
     public EmailSettings GetEmailConfiguration() => _emailSettings;
 }
 
-[Service]
+[Scoped]
 public partial class ConfigurationCacheService
 {
     // Inject Cache section with nested Redis settings
@@ -165,13 +170,11 @@ public partial class ConfigurationCacheService
 
     public void ConfigureCache()
     {
-        _logger.LogInformation("Cache Provider: {Provider}, Expiration: {ExpirationMinutes}min, Max Items: {MaxItems}", 
+        _logger.LogInformation("Cache Provider: {Provider}, Expiration: {ExpirationMinutes}min, Max Items: {MaxItems}",
             _cacheSettings.Provider, _cacheSettings.ExpirationMinutes, _cacheSettings.MaxItems);
 
         if (_cacheSettings.Provider.Equals("Redis", StringComparison.OrdinalIgnoreCase))
-        {
             _logger.LogInformation("Redis Connection: {ConnectionString}", _cacheSettings.Redis.ConnectionString);
-        }
     }
 
     public async Task<T?> GetAsync<T>(string key) where T : class
@@ -184,15 +187,23 @@ public partial class ConfigurationCacheService
 
 // === 3. COLLECTIONS AND ARRAYS BINDING ===
 
-[Service]
+[Scoped]
 public partial class SecurityService
 {
     // Inject arrays and lists from configuration
-    [InjectConfiguration("Security:AllowedHosts")] private readonly string[] _allowedHosts;
-    [InjectConfiguration("Security:SupportedLanguages")] private readonly List<string> _supportedLanguages;
-    [InjectConfiguration("Security:FeatureFlags")] private readonly List<string> _featureFlags;
-    [InjectConfiguration("Security:TrustedPorts")] private readonly List<int> _trustedPorts;
+    [InjectConfiguration("Security:AllowedHosts")]
+    private readonly string[] _allowedHosts;
+
+    [InjectConfiguration("Security:FeatureFlags")]
+    private readonly List<string> _featureFlags;
+
     [Inject] private readonly ILogger<SecurityService> _logger;
+
+    [InjectConfiguration("Security:SupportedLanguages")]
+    private readonly List<string> _supportedLanguages;
+
+    [InjectConfiguration("Security:TrustedPorts")]
+    private readonly List<int> _trustedPorts;
 
     public bool IsHostAllowed(string host)
     {
@@ -224,27 +235,28 @@ public partial class SecurityService
 
     public void DisplaySecurityConfig()
     {
-        _logger.LogInformation("Security Config - Hosts: {HostCount}, Languages: {LanguageCount}, Features: {FeatureCount}, Ports: {PortCount}",
+        _logger.LogInformation(
+            "Security Config - Hosts: {HostCount}, Languages: {LanguageCount}, Features: {FeatureCount}, Ports: {PortCount}",
             _allowedHosts.Length, _supportedLanguages.Count, _featureFlags.Count, _trustedPorts.Count);
     }
 }
 
 // === 4. OPTIONS PATTERN INTEGRATION ===
 
-[Service]
+[Scoped]
 public partial class OptionsPatternService
 {
     // Demonstrate IOptions<T>, IOptionsSnapshot<T>, and IOptionsMonitor<T> injection
     [Inject] private readonly IOptions<AppSettings> _appOptions;
-    [Inject] private readonly IOptionsSnapshot<ValidationSettings> _validationSnapshot;
     [Inject] private readonly IOptionsMonitor<HotReloadSettings> _hotReloadMonitor;
     [Inject] private readonly ILogger<OptionsPatternService> _logger;
+    [Inject] private readonly IOptionsSnapshot<ValidationSettings> _validationSnapshot;
 
     public void DemonstrateOptionsPattern()
     {
         // IOptions<T> - Singleton, read once at startup
         var appSettings = _appOptions.Value;
-        _logger.LogInformation("App Options: {Name} v{Version}, Production: {IsProduction}", 
+        _logger.LogInformation("App Options: {Name} v{Version}, Production: {IsProduction}",
             appSettings.Name, appSettings.Version, appSettings.IsProduction);
 
         // IOptionsSnapshot<T> - Scoped, reloaded per request
@@ -269,13 +281,17 @@ public partial class OptionsPatternService
 
 // === 5. HOT RELOADING WITH SupportsReloading = true ===
 
-[Service]
+[Scoped]
 public partial class HotReloadableService
 {
-    // Configuration injection with hot reloading support
-    [InjectConfiguration("Reload:Setting", SupportsReloading = true)] private readonly string _reloadableSetting;
-    [InjectConfiguration("HotReload", SupportsReloading = true)] private readonly HotReloadSettings _hotReloadSettings;
+    [InjectConfiguration("HotReload", SupportsReloading = true)]
+    private readonly HotReloadSettings _hotReloadSettings;
+
     [Inject] private readonly ILogger<HotReloadableService> _logger;
+
+    // Configuration injection with hot reloading support
+    [InjectConfiguration("Reload:Setting", SupportsReloading = true)]
+    private readonly string _reloadableSetting;
 
     private string _cachedValue = string.Empty;
 
@@ -283,7 +299,7 @@ public partial class HotReloadableService
     {
         if (_cachedValue != _reloadableSetting)
         {
-            _logger.LogInformation("Configuration changed! Old: '{OldValue}', New: '{NewValue}'", 
+            _logger.LogInformation("Configuration changed! Old: '{OldValue}', New: '{NewValue}'",
                 _cachedValue, _reloadableSetting);
             _cachedValue = _reloadableSetting;
         }
@@ -296,43 +312,52 @@ public partial class HotReloadableService
 
 // === 6. DEFAULT VALUES AND REQUIRED CONFIGURATION ===
 
-[Service]
+[Scoped]
 public partial class ConfigurationValidationService
 {
-    // Required configuration with proper validation
-    [InjectConfiguration("Validation:RequiredSetting", Required = true)] private readonly string _requiredSetting;
-    
-    // Optional with default values
-    [InjectConfiguration("Validation:OptionalSetting", Required = false)] private readonly string _optionalSetting;
-    [InjectConfiguration("Validation:DefaultTimeout", DefaultValue = "30")] private readonly int _defaultTimeout;
-    [InjectConfiguration("Validation:DefaultFlag", DefaultValue = "true")] private readonly bool _defaultFlag;
-    
-    // Configuration with fallback values
-    [InjectConfiguration("Validation:SettingWithFallback", DefaultValue = "fallback")] private readonly string _settingWithFallback;
-    [InjectConfiguration("Validation:EmptySetting", Required = false)] private readonly string _emptySetting;
-    [InjectConfiguration("Validation:WhitespaceSetting", Required = false)] private readonly string _whitespaceSetting;
-    
+    [InjectConfiguration("Validation:DefaultFlag", DefaultValue = "true")]
+    private readonly bool _defaultFlag;
+
+    [InjectConfiguration("Validation:DefaultTimeout", DefaultValue = "30")]
+    private readonly int _defaultTimeout;
+
+    [InjectConfiguration("Validation:EmptySetting", Required = false)]
+    private readonly string _emptySetting;
+
     [Inject] private readonly ILogger<ConfigurationValidationService> _logger;
+
+    // Optional with default values
+    [InjectConfiguration("Validation:OptionalSetting", Required = false)]
+    private readonly string _optionalSetting;
+
+    // Required configuration with proper validation
+    [InjectConfiguration("Validation:RequiredSetting", Required = true)]
+    private readonly string _requiredSetting;
+
+    // Configuration with fallback values
+    [InjectConfiguration("Validation:SettingWithFallback", DefaultValue = "fallback")]
+    private readonly string _settingWithFallback;
+
+    [InjectConfiguration("Validation:WhitespaceSetting", Required = false)]
+    private readonly string _whitespaceSetting;
 
     public void ValidateConfiguration()
     {
-        _logger.LogInformation("Required Setting: {Required} (Length: {Length})", 
+        _logger.LogInformation("Required Setting: {Required} (Length: {Length})",
             _requiredSetting, _requiredSetting.Length);
-        
-        _logger.LogInformation("Optional Setting: '{Optional}' (IsNull: {IsNull}, IsEmpty: {IsEmpty})", 
+
+        _logger.LogInformation("Optional Setting: '{Optional}' (IsNull: {IsNull}, IsEmpty: {IsEmpty})",
             _optionalSetting, _optionalSetting is null, string.IsNullOrEmpty(_optionalSetting));
-        
-        _logger.LogInformation("Default Values - Timeout: {Timeout}, Flag: {Flag}", 
+
+        _logger.LogInformation("Default Values - Timeout: {Timeout}, Flag: {Flag}",
             _defaultTimeout, _defaultFlag);
-        
-        _logger.LogInformation("Validation Demo - TestValue: '{TestValue}', Empty: '{Empty}', Whitespace: '{Whitespace}'",
+
+        _logger.LogInformation(
+            "Validation Demo - TestValue: '{TestValue}', Empty: '{Empty}', Whitespace: '{Whitespace}'",
             _settingWithFallback, _emptySetting, _whitespaceSetting);
     }
 
-    public bool IsConfigurationValid()
-    {
-        return !string.IsNullOrWhiteSpace(_requiredSetting);
-    }
+    public bool IsConfigurationValid() => !string.IsNullOrWhiteSpace(_requiredSetting);
 }
 
 // === 7. MIXED CONFIGURATION INJECTION WITH REGULAR DI ===
@@ -342,7 +367,7 @@ public interface IConfigurationNotificationProvider
     Task SendNotificationAsync(string message);
 }
 
-[Service]
+[Scoped]
 public partial class ConfigurationEmailNotificationProvider : IConfigurationNotificationProvider
 {
     [InjectConfiguration] private readonly EmailSettings _emailSettings;
@@ -355,73 +380,87 @@ public partial class ConfigurationEmailNotificationProvider : IConfigurationNoti
     }
 }
 
-[Service]
+[Scoped]
 public partial class ComprehensiveBusinessService
 {
+    [InjectConfiguration("App:Name")] private readonly string _appName;
+
+    [Inject] private readonly ConfigurationCacheService _cacheService;
+
     // Mix of configuration injection and regular DI
     [InjectConfiguration] private readonly DatabaseSettings _dbSettings;
+    [Inject] private readonly ConfigurationEmailService _emailService;
     [InjectConfiguration] private readonly FeatureFlags _features;
-    [InjectConfiguration("App:Name")] private readonly string _appName;
-    [InjectConfiguration("App:IsProduction")] private readonly bool _isProduction;
-    
+
+    [InjectConfiguration("App:IsProduction")]
+    private readonly bool _isProduction;
+
+    [Inject] private readonly ILogger<ComprehensiveBusinessService> _logger;
+
     // Regular DI dependencies
     [Inject] private readonly IConfigurationNotificationProvider _notificationProvider;
-    [Inject] private readonly ConfigurationEmailService _emailService;
-    [Inject] private readonly ConfigurationCacheService _cacheService;
-    [Inject] private readonly ILogger<ComprehensiveBusinessService> _logger;
 
     public async Task ProcessBusinessOperationAsync(string operationId)
     {
-        _logger.LogInformation("Processing operation {OperationId} in {AppName} (Production: {IsProduction})", 
+        _logger.LogInformation("Processing operation {OperationId} in {AppName} (Production: {IsProduction})",
             operationId, _appName, _isProduction);
 
         // Use configuration-based decisions
         if (_features.EnableAdvancedLogging)
-        {
             _logger.LogInformation("Advanced logging enabled for operation {OperationId}", operationId);
-        }
 
         // Use database with configured settings
-        _logger.LogInformation("Using database provider: {Provider} with {Timeout}s timeout", 
+        _logger.LogInformation("Using database provider: {Provider} with {Timeout}s timeout",
             _dbSettings.Provider, _dbSettings.TimeoutSeconds);
 
         // Use injected services
         await _cacheService.GetAsync<object>($"operation:{operationId}");
-        
+
         if (_features.NewPaymentProcessor == "enabled")
-        {
-            await _notificationProvider.SendNotificationAsync($"Operation {operationId} completed with new payment processor");
-        }
+            await _notificationProvider.SendNotificationAsync(
+                $"Operation {operationId} completed with new payment processor");
 
         // Use email service
-        await _emailService.SendEmailAsync("admin@example.com", "Operation Complete", $"Operation {operationId} finished");
+        await _emailService.SendEmailAsync("admin@example.com", "Operation Complete",
+            $"Operation {operationId} finished");
     }
 
     public void DisplayConfiguration()
     {
         _logger.LogInformation("=== COMPREHENSIVE CONFIGURATION DISPLAY ===");
         _logger.LogInformation("App: {AppName}, Production: {IsProduction}", _appName, _isProduction);
-        _logger.LogInformation("Database: {Provider}, Connection: {Connection}", 
+        _logger.LogInformation("Database: {Provider}, Connection: {Connection}",
             _dbSettings.Provider, _dbSettings.ConnectionString[..20] + "...");
-        _logger.LogInformation("Features - AdvancedLogging: {AdvancedLogging}, PaymentProcessor: {PaymentProcessor}", 
+        _logger.LogInformation("Features - AdvancedLogging: {AdvancedLogging}, PaymentProcessor: {PaymentProcessor}",
             _features.EnableAdvancedLogging, _features.NewPaymentProcessor);
     }
 }
 
 // === ADVANCED CONFIGURATION PATTERNS ===
 
-[Service]
+[Scoped]
 public partial class NestedConfigurationService
 {
+    [InjectConfiguration("Logging:Console:Enabled")]
+    private readonly bool _consoleEnabled;
+
+    [InjectConfiguration("Logging:Console:Format")]
+    private readonly string _consoleFormat;
+
     // Demonstrate deeply nested configuration paths
-    [InjectConfiguration("Logging:Custom:Level")] private readonly string _customLogLevel;
-    [InjectConfiguration("Logging:Custom:IncludeTimestamp")] private readonly bool _includeTimestamp;
-    [InjectConfiguration("Logging:File:Path")] private readonly string _logFilePath;
-    [InjectConfiguration("Logging:File:MaxSizeMB")] private readonly int _maxLogSize;
-    [InjectConfiguration("Logging:Console:Enabled")] private readonly bool _consoleEnabled;
-    [InjectConfiguration("Logging:Console:Format")] private readonly string _consoleFormat;
-    
+    [InjectConfiguration("Logging:Custom:Level")]
+    private readonly string _customLogLevel;
+
+    [InjectConfiguration("Logging:Custom:IncludeTimestamp")]
+    private readonly bool _includeTimestamp;
+
+    [InjectConfiguration("Logging:File:Path")]
+    private readonly string _logFilePath;
+
     [Inject] private readonly ILogger<NestedConfigurationService> _logger;
+
+    [InjectConfiguration("Logging:File:MaxSizeMB")]
+    private readonly int _maxLogSize;
 
     public void ConfigureCustomLogging()
     {
@@ -432,15 +471,20 @@ public partial class NestedConfigurationService
     }
 }
 
-[Service]
+[Scoped]
 public partial class ConfigurationArrayService
 {
-    // Complex array/list configurations
-    [InjectConfiguration("Validation:Patterns")] private readonly List<string> _validationPatterns;
-    [InjectConfiguration("Validation:AllowedCharacters")] private readonly string _allowedCharacters;
-    [InjectConfiguration("Validation:MaxLength")] private readonly int _maxLength;
-    
+    [InjectConfiguration("Validation:AllowedCharacters")]
+    private readonly string _allowedCharacters;
+
     [Inject] private readonly ILogger<ConfigurationArrayService> _logger;
+
+    [InjectConfiguration("Validation:MaxLength")]
+    private readonly int _maxLength;
+
+    // Complex array/list configurations
+    [InjectConfiguration("Validation:Patterns")]
+    private readonly List<string> _validationPatterns;
 
     public bool ValidateInput(string input)
     {
@@ -457,13 +501,11 @@ public partial class ConfigurationArrayService
         }
 
         foreach (var pattern in _validationPatterns)
-        {
-            if (System.Text.RegularExpressions.Regex.IsMatch(input, pattern))
+            if (Regex.IsMatch(input, pattern))
             {
                 _logger.LogDebug("Input matches validation pattern: {Pattern}", pattern);
                 return true;
             }
-        }
 
         _logger.LogWarning("Input doesn't match any validation patterns");
         return false;
@@ -472,20 +514,20 @@ public partial class ConfigurationArrayService
 
 // === DEMONSTRATION RUNNER SERVICE ===
 
-[Service]
+[Scoped]
 public partial class ConfigurationDemoRunner
 {
+    [Inject] private readonly ConfigurationArrayService _arrayService;
+    [Inject] private readonly ComprehensiveBusinessService _businessService;
+    [Inject] private readonly ConfigurationCacheService _cacheService;
     [Inject] private readonly DatabaseConnectionService _databaseService;
     [Inject] private readonly ConfigurationEmailService _emailService;
-    [Inject] private readonly ConfigurationCacheService _cacheService;
-    [Inject] private readonly SecurityService _securityService;
-    [Inject] private readonly OptionsPatternService _optionsService;
     [Inject] private readonly HotReloadableService _hotReloadService;
-    [Inject] private readonly ConfigurationValidationService _validationService;
-    [Inject] private readonly ComprehensiveBusinessService _businessService;
-    [Inject] private readonly NestedConfigurationService _nestedService;
-    [Inject] private readonly ConfigurationArrayService _arrayService;
     [Inject] private readonly ILogger<ConfigurationDemoRunner> _logger;
+    [Inject] private readonly NestedConfigurationService _nestedService;
+    [Inject] private readonly OptionsPatternService _optionsService;
+    [Inject] private readonly SecurityService _securityService;
+    [Inject] private readonly ConfigurationValidationService _validationService;
 
     public async Task RunAllConfigurationDemosAsync()
     {
@@ -505,7 +547,8 @@ public partial class ConfigurationDemoRunner
         _logger.LogInformation("\n3. Testing collections and arrays:");
         _securityService.DisplaySecurityConfig();
         _logger.LogInformation("localhost allowed: {Allowed}", _securityService.IsHostAllowed("localhost"));
-        _logger.LogInformation("NewPaymentProcessor enabled: {Enabled}", _securityService.IsFeatureEnabled("NewPaymentProcessor"));
+        _logger.LogInformation("NewPaymentProcessor enabled: {Enabled}",
+            _securityService.IsFeatureEnabled("NewPaymentProcessor"));
 
         // 4. Options pattern
         _logger.LogInformation("\n4. Testing Options pattern:");

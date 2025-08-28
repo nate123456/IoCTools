@@ -1,32 +1,34 @@
+namespace IoCTools.Generator.Tests;
+
 using System.Reflection;
 using System.Runtime.CompilerServices;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace IoCTools.Generator.Tests;
-
 /// <summary>
 ///     COMPREHENSIVE RUNTIME VALIDATION TESTS FOR CONDITIONAL SERVICE REGISTRATION
 ///     These tests validate the ACTUAL RUNTIME BEHAVIOR of conditional service registration,
 ///     testing real service provider instantiation, service resolution, and runtime condition evaluation.
-///     
 ///     AUDIT CONFIRMED: ConditionalService runtime behavior is WORKING CORRECTLY.
 ///     - Environment-based conditions: Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
-///     - Configuration-based conditions: configuration.GetValue<string>(configKey)
-///     - Services resolve based on runtime environment and configuration values
-///     - Multiple conditional services for same interface work correctly
-///     - Combined conditions (environment + configuration) evaluate properly
-///     
-///     Test Coverage:
-///     - Runtime service resolution with environment-based conditions
-///     - Configuration-based conditional service resolution
-///     - Combined condition evaluation (environment + configuration)
-///     - Service lifecycle management with conditional services
-///     - Multi-interface conditional services
-///     - Integration with ASP.NET Core service provider patterns
+///     - Configuration-based conditions: configuration.GetValue
+///     <string>
+///         (configKey)
+///         - Services resolve based on runtime environment and configuration values
+///         - Multiple conditional services for same interface work correctly
+///         - Combined conditions (environment + configuration) evaluate properly
+///         Test Coverage:
+///         - Runtime service resolution with environment-based conditions
+///         - Configuration-based conditional service resolution
+///         - Combined condition evaluation (environment + configuration)
+///         - Service lifecycle management with conditional services
+///         - Multi-interface conditional services
+///         - Integration with ASP.NET Core service provider patterns
 /// </summary>
+[Collection("EnvironmentDependent")]
 public class ConditionalServiceRuntimeTests
 {
     #region Runtime Service Resolution Tests
@@ -47,14 +49,14 @@ public interface IPaymentService
 }
 
 [ConditionalService(Environment = ""Development"")]
-[Service]
+
 public partial class MockPaymentService : IPaymentService
 {
     public string ProcessPayment() => ""Mock Payment"";
 }
 
 [ConditionalService(Environment = ""Production"")]
-[Service]
+
 public partial class StripePaymentService : IPaymentService
 {
     public string ProcessPayment() => ""Stripe Payment"";
@@ -62,7 +64,7 @@ public partial class StripePaymentService : IPaymentService
 
         // Use proper environment variable isolation to prevent test interference
         var originalEnvironment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-        
+
         try
         {
             // Act - Test Development Environment
@@ -109,32 +111,26 @@ public interface ICacheService
 }
 
 [ConditionalService(ConfigValue = ""Features:UseRedisCache"", Equals = ""true"")]
-[Service]
+
 public partial class RedisCacheService : ICacheService
 {
     public string GetCacheType() => ""Redis"";
 }
 
 [ConditionalService(ConfigValue = ""Features:UseRedisCache"", Equals = ""false"")]
-[Service]
+
 public partial class MemoryCacheService : ICacheService
 {
     public string GetCacheType() => ""Memory"";
 }";
 
         // Act - Test with Redis enabled
-        var redisConfig = new Dictionary<string, string>
-        {
-            ["Features:UseRedisCache"] = "true"
-        };
+        var redisConfig = new Dictionary<string, string> { ["Features:UseRedisCache"] = "true" };
         var redisServiceProvider = BuildServiceProviderFromSource(source, redisConfig);
         var redisCacheService = ResolveServiceByInterfaceName(redisServiceProvider, "ICacheService");
 
         // Act - Test with Redis disabled
-        var memoryConfig = new Dictionary<string, string>
-        {
-            ["Features:UseRedisCache"] = "false"
-        };
+        var memoryConfig = new Dictionary<string, string> { ["Features:UseRedisCache"] = "false" };
         var memoryServiceProvider = BuildServiceProviderFromSource(source, memoryConfig);
         var memoryCacheService = ResolveServiceByInterfaceName(memoryServiceProvider, "ICacheService");
 
@@ -166,14 +162,14 @@ public interface IEmailService
 }
 
 [ConditionalService(Environment = ""Development"", ConfigValue = ""Features:UseMockEmail"", Equals = ""true"")]
-[Service]
+
 public partial class MockEmailService : IEmailService
 {
     public string SendEmail() => ""Mock Email Sent"";
 }
 
 [ConditionalService(Environment = ""Production"", ConfigValue = ""Features:UseSendGrid"", Equals = ""true"")]
-[Service]
+
 public partial class SendGridEmailService : IEmailService
 {
     public string SendEmail() => ""SendGrid Email Sent"";
@@ -181,33 +177,24 @@ public partial class SendGridEmailService : IEmailService
 
         // Use proper environment variable isolation to prevent test interference
         var originalEnvironment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-        
+
         try
         {
             // Act - Test Development + Mock enabled
             Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
-            var mockConfig = new Dictionary<string, string>
-            {
-                ["Features:UseMockEmail"] = "true"
-            };
+            var mockConfig = new Dictionary<string, string> { ["Features:UseMockEmail"] = "true" };
             var mockServiceProvider = BuildServiceProviderFromSource(source, mockConfig);
             var mockEmailService = ResolveServiceByInterfaceName(mockServiceProvider, "IEmailService");
 
             // Act - Test Production + SendGrid enabled
             Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Production");
-            var sendGridConfig = new Dictionary<string, string>
-            {
-                ["Features:UseSendGrid"] = "true"
-            };
+            var sendGridConfig = new Dictionary<string, string> { ["Features:UseSendGrid"] = "true" };
             var sendGridServiceProvider = BuildServiceProviderFromSource(source, sendGridConfig);
             var sendGridEmailService = ResolveServiceByInterfaceName(sendGridServiceProvider, "IEmailService");
 
             // Act - Test Development + Mock disabled (should not resolve)
             Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
-            var disabledConfig = new Dictionary<string, string>
-            {
-                ["Features:UseMockEmail"] = "false"
-            };
+            var disabledConfig = new Dictionary<string, string> { ["Features:UseMockEmail"] = "false" };
             var disabledServiceProvider = BuildServiceProviderFromSource(source, disabledConfig);
             var disabledEmailService = ResolveServiceByInterfaceName(disabledServiceProvider, "IEmailService");
 

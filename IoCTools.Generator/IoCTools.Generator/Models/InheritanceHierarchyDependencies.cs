@@ -1,8 +1,9 @@
+namespace IoCTools.Generator.Models;
+
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.CodeAnalysis;
 
-namespace IoCTools.Generator.Models;
+using Microsoft.CodeAnalysis;
 
 internal class InheritanceHierarchyDependencies(
     List<(ITypeSymbol ServiceType, string FieldName, DependencySource Source)> allDependencies,
@@ -86,10 +87,7 @@ internal class InheritanceChainLifetimeAnalysis
     /// <summary>
     ///     Gets the deepest inheritance level
     /// </summary>
-    public int GetMaxInheritanceLevel()
-    {
-        return _rawDependencies.Any() ? _rawDependencies.Max(d => d.Level) : 0;
-    }
+    public int GetMaxInheritanceLevel() => _rawDependencies.Any() ? _rawDependencies.Max(d => d.Level) : 0;
 
     /// <summary>
     ///     Analyzes lifetime compatibility across the entire inheritance chain

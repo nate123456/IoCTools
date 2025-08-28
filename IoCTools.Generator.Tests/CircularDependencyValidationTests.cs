@@ -1,6 +1,6 @@
-using Microsoft.CodeAnalysis;
-
 namespace IoCTools.Generator.Tests;
+
+using Microsoft.CodeAnalysis;
 
 /// <summary>
 ///     Focused tests for validating circular dependency detection functionality.
@@ -18,14 +18,10 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 public interface IA { }
 public interface IB { }
-
-[Service]
 public partial class A : IA
 {
     [Inject] private readonly IB _b;
 }
-
-[Service]
 public partial class B : IB
 {
     [Inject] private readonly IA _a;
@@ -49,8 +45,6 @@ using IoCTools.Abstractions.Annotations;
 
 namespace Test;
 public interface ISelf { }
-
-[Service]
 public partial class Self : ISelf
 {
     [Inject] private readonly ISelf _self;
@@ -76,20 +70,14 @@ namespace Test;
 public interface IA { }
 public interface IB { }
 public interface IC { }
-
-[Service]
 public partial class A : IA
 {
     [Inject] private readonly IB _b;
 }
-
-[Service]
 public partial class B : IB
 {
     [Inject] private readonly IC _c;
 }
-
-[Service]
 public partial class C : IC { }";
 
         // Act
@@ -112,14 +100,10 @@ using System.Collections.Generic;
 namespace Test;
 public interface IService { }
 public interface IHandler { }
-
-[Service]
 public partial class Service : IService
 {
     [Inject] private readonly IEnumerable<IHandler> _handlers;
 }
-
-[Service]
 public partial class Handler : IHandler
 {
     [Inject] private readonly IService _service;
@@ -144,12 +128,8 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 public interface IX { }
 public interface IY { }
-
-[Service]
 [DependsOn<IY>]
 public partial class X : IX { }
-
-[Service]
 [DependsOn<IX>]
 public partial class Y : IY { }";
 
@@ -172,14 +152,10 @@ using IoCTools.Abstractions.Annotations;
 namespace Test;
 public interface IA { }
 public interface IB { }
-
-[Service]
 public partial class A : IA
 {
     [Inject] private readonly IB _b;
 }
-
-[Service]
 [ExternalService]
 public partial class B : IB
 {
@@ -205,20 +181,14 @@ namespace Test;
 public interface IA { }
 public interface IB { }
 public interface IC { }
-
-[Service]
 public partial class A : IA
 {
     [Inject] private readonly IB _b;
 }
-
-[Service]
 public partial class B : IB
 {
     [Inject] private readonly IC _c;
 }
-
-[Service]
 public partial class C : IC
 {
     [Inject] private readonly IA _a;
