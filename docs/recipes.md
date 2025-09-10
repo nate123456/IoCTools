@@ -64,3 +64,21 @@ public partial class CleanupService : BackgroundService
     }
 }
 ```
+## Prefer DependsOn over Inject
+
+```csharp
+// Preferred — no fields, constructor parameter only
+[Scoped]
+public partial class PaymentService : IPaymentService
+{
+    [DependsOn<ILogger<PaymentService>>]
+    public Task PayAsync(decimal amount) => Task.CompletedTask;
+}
+
+// Last resort — field is needed across methods or for explicit naming
+[Scoped]
+public partial class PaymentAuditor
+{
+    [Inject] private readonly ILogger<PaymentAuditor> _log; // stored and reused
+}
+```

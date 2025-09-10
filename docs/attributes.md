@@ -20,13 +20,25 @@ public partial class UserService : IUserService
 
 ## Dependency Injection
 
-- `Inject`: Marks a field for DI constructor injection. Use for services like `ILogger<T>`, repositories, etc.
+- Recommended: `DependsOn<T...>` — declare constructor parameters without creating fields. Use this for most dependencies to keep classes minimal and avoid unnecessary state.
+- Last resort: `Inject` — only when you truly need a field (e.g., you read it across methods, you need specific field naming, or you must store the instance).
+
+Examples
 
 ```csharp
+// Preferred: constructor-only dependency, no field created
+[Scoped]
 public partial class ReportGenerator
 {
-    [Inject] private readonly IEmailService _email;
-    [Inject] private readonly ILogger<ReportGenerator> _log;
+    [DependsOn<IEmailService, ILogger<ReportGenerator>>]
+    public Task GenerateAsync() => Task.CompletedTask;
+}
+
+// Last resort: field is genuinely needed (e.g., reused across methods)
+[Scoped]
+public partial class StatefulProcessor
+{
+    [Inject] private readonly ILogger<StatefulProcessor> _log; // field required by design
 }
 ```
 

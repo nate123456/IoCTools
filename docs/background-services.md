@@ -7,6 +7,7 @@ Key points
 - Mark the class `partial` so IoCTools can generate the constructor.
 - Registration uses `AddHostedService<T>()`; lifetime attributes on the class are ignored for registration.
 - Prefer singleton-compatible dependencies. Resolve scopes inside `ExecuteAsync` if you need scoped services.
+- Prefer `[DependsOn<T...>]` to request dependencies as parameters; use `[Inject]` only when a field is truly required in the background worker.
 
 Example
 

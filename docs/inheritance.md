@@ -25,4 +25,5 @@ public partial class OrderProcessor : BaseProcessor, IOrderProcessor
 
 - Keep base classes partial if they declare `[Inject]`/`[InjectConfiguration]` fields.
 - Prefer `[DependsOn<T>]` for pass-through dependencies when the class does not need a private field.
+- Treat `[Inject]` as a last resort for cases where a field is genuinely required or specific field naming is important.
 - Avoid duplicate declarations across levels; diagnostics help catch collisions and duplicates.

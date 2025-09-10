@@ -39,7 +39,8 @@ That’s it: IoCTools generates the constructor and service registrations.
 ## Core Features
 
 - Modern lifetimes: `[Scoped]`, `[Singleton]`, `[Transient]`
-- Field injection: `[Inject]` for DI services
+- Constructor params (recommended): `[DependsOn<T...>]` — no fields created
+- Field injection (last resort): `[Inject]` only when you truly need a field or specific naming
 - Configuration injection: `[InjectConfiguration]` (values, sections, options)
 - Interface control: `RegisterAs<T...>`, `RegisterAsAll`, `SkipRegistration`
 - Conditional registration: `[ConditionalService]` by environment/config

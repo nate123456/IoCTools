@@ -15,6 +15,7 @@ public partial class EmailService { [Inject] private readonly ILogger<EmailServi
 
 - Singleton depending on scoped service → make the dependency singleton or resolve via scope factory.
 - Background service using scoped dependency directly → resolve a scope inside `ExecuteAsync`.
+- Prefer `[DependsOn<T...>]` to avoid unnecessary fields; use `[Inject]` as last resort when a field is required. Excess fields can trigger naming or duplication issues in complex hierarchies.
 
 ## Conditional Services
 

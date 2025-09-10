@@ -11,13 +11,14 @@ Add package references:
 <PackageReference Include="IoCTools.Generator" Version="*" PrivateAssets="all" />
 ```
 
-## First Service
+## First Service (Preferred: DependsOn)
 
 ```csharp
 [Scoped]
 public partial class EmailService : IEmailService
 {
-    [Inject] private readonly ILogger<EmailService> _log;
+    // Prefer DependsOn: request constructor parameters, no fields created
+    [DependsOn<ILogger<EmailService>>]
     public Task SendAsync(string to, string subject, string body) => Task.CompletedTask;
 }
 ```
@@ -25,7 +26,7 @@ public partial class EmailService : IEmailService
 IoCTools generates a constructor equivalent to:
 
 ```csharp
-public EmailService(ILogger<EmailService> log) { _log = log; }
+public EmailService(ILogger<EmailService> log) { /* use log inside method scope */ }
 ```
 
 ## Register Generated Services
@@ -46,9 +47,14 @@ IoCTools discovers annotated partial classes in your project and registers them 
 public partial class CacheService : ICache
 {
     [InjectConfiguration("Cache:TTL", DefaultValue = "00:05:00")] private readonly TimeSpan _ttl;
+    // When a field is truly needed, use Inject as a last resort
     [Inject] private readonly ILogger<CacheService> _log;
 }
 ```
+
+Note on patterns
+- Prefer `[DependsOn<T...>]` for most dependencies (constructor parameters, no fields).
+- Use `[Inject]` only when a field is genuinely required or specific field naming is needed.
 
 ## What To Read Next
 
