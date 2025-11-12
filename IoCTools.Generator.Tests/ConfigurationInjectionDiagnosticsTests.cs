@@ -30,12 +30,12 @@ public partial class EmptyKeyService
 
         // Assert
         var diagnostics = result.GetDiagnosticsByCode("IOC016");
-        Assert.Single(diagnostics);
+        diagnostics.Should().ContainSingle();
 
         var diagnostic = diagnostics[0];
-        Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
-        Assert.Contains("empty", diagnostic.GetMessage());
-        Assert.Contains("whitespace-only", diagnostic.GetMessage());
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
+        diagnostic.GetMessage().Should().Contain("empty");
+        diagnostic.GetMessage().Should().Contain("whitespace-only");
     }
 
     [Fact]
@@ -62,12 +62,12 @@ public partial class WhitespaceKeyService
         // Assert
         var diagnostics = result.GetDiagnosticsByCode("IOC016");
         // IOC016 diagnostics found
-        Assert.Equal(2, diagnostics.Count);
+        diagnostics.Count.Should().Be(2);
 
         foreach (var diagnostic in diagnostics)
         {
-            Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
-            Assert.Contains("empty", diagnostic.GetMessage());
+            diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
+            diagnostic.GetMessage().Should().Contain("empty");
         }
     }
 
@@ -92,12 +92,12 @@ public partial class DoubleColonKeyService
 
         // Assert
         var diagnostics = result.GetDiagnosticsByCode("IOC016");
-        Assert.Equal(2, diagnostics.Count);
+        diagnostics.Count.Should().Be(2);
 
         foreach (var diagnostic in diagnostics)
         {
-            Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
-            Assert.Contains("double colons", diagnostic.GetMessage());
+            diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
+            diagnostic.GetMessage().Should().Contain("double colons");
         }
     }
 
@@ -123,12 +123,12 @@ public partial class LeadingTrailingColonService
 
         // Assert
         var diagnostics = result.GetDiagnosticsByCode("IOC016");
-        Assert.Equal(3, diagnostics.Count);
+        diagnostics.Count.Should().Be(3);
 
         foreach (var diagnostic in diagnostics)
         {
-            Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
-            Assert.Contains("start or end with a colon", diagnostic.GetMessage());
+            diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
+            diagnostic.GetMessage().Should().Contain("start or end with a colon");
         }
     }
 
@@ -155,12 +155,12 @@ public partial class InvalidCharactersService
 
         // Assert
         var diagnostics = result.GetDiagnosticsByCode("IOC016");
-        Assert.Equal(4, diagnostics.Count);
+        diagnostics.Count.Should().Be(4);
 
         foreach (var diagnostic in diagnostics)
         {
-            Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
-            Assert.Contains("invalid characters", diagnostic.GetMessage());
+            diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
+            diagnostic.GetMessage().Should().Contain("invalid characters");
         }
     }
 
@@ -189,7 +189,7 @@ public partial class ValidKeysService
 
         // Assert
         var diagnostics = result.GetDiagnosticsByCode("IOC016");
-        Assert.Empty(diagnostics);
+        diagnostics.Should().BeEmpty();
     }
 
     [Fact]
@@ -217,7 +217,7 @@ public partial class InferredKeyService
 
         // Assert
         var diagnostics = result.GetDiagnosticsByCode("IOC016");
-        Assert.Empty(diagnostics);
+        diagnostics.Should().BeEmpty();
     }
 
     #endregion
@@ -248,12 +248,13 @@ public partial class InterfaceTypeService
 
         // Assert
         var diagnostics = result.GetDiagnosticsByCode("IOC017");
-        Assert.Single(diagnostics); // Only IConfigService should produce diagnostic, IList<string> is supported
+        diagnostics.Should()
+            .ContainSingle(); // Only IConfigService should produce diagnostic, IList<string> is supported
 
         var diagnostic = diagnostics[0];
-        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
-        Assert.Contains("IConfigService", diagnostic.GetMessage());
-        Assert.Contains("Interfaces cannot be bound", diagnostic.GetMessage());
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+        diagnostic.GetMessage().Should().Contain("IConfigService");
+        diagnostic.GetMessage().Should().Contain("Interfaces cannot be bound");
     }
 
     [Fact]
@@ -281,12 +282,12 @@ public partial class AbstractTypeService
 
         // Assert
         var diagnostics = result.GetDiagnosticsByCode("IOC017");
-        Assert.Single(diagnostics);
+        diagnostics.Should().ContainSingle();
 
         var diagnostic = diagnostics[0];
-        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
-        Assert.Contains("AbstractConfigBase", diagnostic.GetMessage());
-        Assert.Contains("cannot be bound from configuration", diagnostic.GetMessage());
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+        diagnostic.GetMessage().Should().Contain("AbstractConfigBase");
+        diagnostic.GetMessage().Should().Contain("cannot be bound from configuration");
     }
 
     [Fact]
@@ -320,12 +321,12 @@ public partial class ComplexTypeService
 
         // Assert
         var diagnostics = result.GetDiagnosticsByCode("IOC017");
-        Assert.Single(diagnostics);
+        diagnostics.Should().ContainSingle();
 
         var diagnostic = diagnostics[0];
-        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
-        Assert.Contains("ComplexConfigWithoutDefaultConstructor", diagnostic.GetMessage());
-        Assert.Contains("parameterless constructor", diagnostic.GetMessage());
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+        diagnostic.GetMessage().Should().Contain("ComplexConfigWithoutDefaultConstructor");
+        diagnostic.GetMessage().Should().Contain("parameterless constructor");
     }
 
     [Fact]
@@ -353,13 +354,13 @@ public partial class CollectionElementTypeService
 
         // Assert
         var diagnostics = result.GetDiagnosticsByCode("IOC017");
-        Assert.Single(diagnostics); // Only List<IUnsupportedElement> should fail
+        diagnostics.Should().ContainSingle(); // Only List<IUnsupportedElement> should fail
 
         var diagnostic = diagnostics[0];
-        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
-        Assert.Contains("List<Test.IUnsupportedElement>", diagnostic.GetMessage());
-        Assert.Contains("cannot be bound from configuration", diagnostic.GetMessage());
-        Assert.Contains("Collection element type is not supported", diagnostic.GetMessage());
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+        diagnostic.GetMessage().Should().Contain("List<Test.IUnsupportedElement>");
+        diagnostic.GetMessage().Should().Contain("cannot be bound from configuration");
+        diagnostic.GetMessage().Should().Contain("Collection element type is not supported");
     }
 
     [Fact]
@@ -384,13 +385,13 @@ public partial class ArrayElementTypeService
 
         // Assert
         var diagnostics = result.GetDiagnosticsByCode("IOC017");
-        Assert.Single(diagnostics); // Only Task[] should fail
+        diagnostics.Should().ContainSingle(); // Only Task[] should fail
 
         var diagnostic = diagnostics[0];
-        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
-        Assert.Contains("Task[]", diagnostic.GetMessage());
-        Assert.Contains("cannot be bound from configuration", diagnostic.GetMessage());
-        Assert.Contains("Array element type is not supported", diagnostic.GetMessage());
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+        diagnostic.GetMessage().Should().Contain("Task[]");
+        diagnostic.GetMessage().Should().Contain("cannot be bound from configuration");
+        diagnostic.GetMessage().Should().Contain("Array element type is not supported");
     }
 
     [Fact]
@@ -455,7 +456,7 @@ public partial class SupportedTypesService
 
         // Assert
         var diagnostics = result.GetDiagnosticsByCode("IOC017");
-        Assert.Empty(diagnostics);
+        diagnostics.Should().BeEmpty();
     }
 
     [Fact]
@@ -482,12 +483,12 @@ public partial class UnsupportedTypesService
 
         // Assert
         var diagnostics = result.GetDiagnosticsByCode("IOC017");
-        Assert.Equal(3, diagnostics.Count);
+        diagnostics.Count.Should().Be(3);
 
         foreach (var diagnostic in diagnostics)
         {
-            Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
-            Assert.Contains("cannot be bound from configuration", diagnostic.GetMessage());
+            diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+            diagnostic.GetMessage().Should().Contain("cannot be bound from configuration");
         }
     }
 
@@ -515,12 +516,12 @@ public class NonPartialConfigService // Missing 'partial' keyword
 
         // Assert
         var diagnostics = result.GetDiagnosticsByCode("IOC018");
-        Assert.Single(diagnostics);
+        diagnostics.Should().ContainSingle();
 
         var diagnostic = diagnostics[0];
-        Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
-        Assert.Contains("NonPartialConfigService", diagnostic.GetMessage());
-        Assert.Contains("partial", diagnostic.GetMessage());
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
+        diagnostic.GetMessage().Should().Contain("NonPartialConfigService");
+        diagnostic.GetMessage().Should().Contain("partial");
     }
 
     [Fact]
@@ -543,12 +544,12 @@ public record NonPartialConfigRecord // Missing 'partial' keyword
 
         // Assert
         var diagnostics = result.GetDiagnosticsByCode("IOC018");
-        Assert.Single(diagnostics);
+        diagnostics.Should().ContainSingle();
 
         var diagnostic = diagnostics[0];
-        Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
-        Assert.Contains("NonPartialConfigRecord", diagnostic.GetMessage());
-        Assert.Contains("partial", diagnostic.GetMessage());
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
+        diagnostic.GetMessage().Should().Contain("NonPartialConfigRecord");
+        diagnostic.GetMessage().Should().Contain("partial");
     }
 
     [Fact]
@@ -571,7 +572,7 @@ public partial class PartialConfigService
 
         // Assert
         var diagnostics = result.GetDiagnosticsByCode("IOC018");
-        Assert.Empty(diagnostics);
+        diagnostics.Should().BeEmpty();
     }
 
     [Fact]
@@ -594,7 +595,7 @@ public partial record PartialConfigRecord
 
         // Assert
         var diagnostics = result.GetDiagnosticsByCode("IOC018");
-        Assert.Empty(diagnostics);
+        diagnostics.Should().BeEmpty();
     }
 
     [Fact]
@@ -625,11 +626,11 @@ public partial class ValidPartialService
 
         // Assert
         var diagnostics = result.GetDiagnosticsByCode("IOC018");
-        Assert.Equal(2, diagnostics.Count);
+        diagnostics.Count.Should().Be(2);
 
         var classNames = diagnostics.Select(d => d.GetMessage()).ToList();
-        Assert.Contains(classNames, msg => msg.Contains("FirstNonPartialService"));
-        Assert.Contains(classNames, msg => msg.Contains("SecondNonPartialService"));
+        classNames.Should().Contain(msg => msg.Contains("FirstNonPartialService"));
+        classNames.Should().Contain(msg => msg.Contains("SecondNonPartialService"));
     }
 
     #endregion
@@ -657,13 +658,13 @@ public partial class StaticFieldService
 
         // Assert
         var diagnostics = result.GetDiagnosticsByCode("IOC019");
-        Assert.Single(diagnostics);
+        diagnostics.Should().ContainSingle();
 
         var diagnostic = diagnostics[0];
-        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
-        Assert.Contains("_appVersion", diagnostic.GetMessage());
-        Assert.Contains("StaticFieldService", diagnostic.GetMessage());
-        Assert.Contains("static", diagnostic.GetMessage());
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+        diagnostic.GetMessage().Should().Contain("_appVersion");
+        diagnostic.GetMessage().Should().Contain("StaticFieldService");
+        diagnostic.GetMessage().Should().Contain("static");
     }
 
     [Fact]
@@ -689,17 +690,17 @@ public partial class MultipleStaticFieldsService
 
         // Assert
         var diagnostics = result.GetDiagnosticsByCode("IOC019");
-        Assert.Equal(3, diagnostics.Count);
+        diagnostics.Count.Should().Be(3);
 
         var fieldNames = diagnostics.Select(d => d.GetMessage()).ToList();
-        Assert.Contains(fieldNames, msg => msg.Contains("_appVersion"));
-        Assert.Contains(fieldNames, msg => msg.Contains("_appName"));
-        Assert.Contains(fieldNames, msg => msg.Contains("_cacheTtl"));
+        fieldNames.Should().Contain(msg => msg.Contains("_appVersion"));
+        fieldNames.Should().Contain(msg => msg.Contains("_appName"));
+        fieldNames.Should().Contain(msg => msg.Contains("_cacheTtl"));
 
         foreach (var diagnostic in diagnostics)
         {
-            Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
-            Assert.Contains("static", diagnostic.GetMessage());
+            diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+            diagnostic.GetMessage().Should().Contain("static");
         }
     }
 
@@ -728,7 +729,7 @@ public partial class InstanceFieldsOnlyService
 
         // Assert
         var diagnostics = result.GetDiagnosticsByCode("IOC019");
-        Assert.Empty(diagnostics);
+        diagnostics.Should().BeEmpty();
     }
 
     [Fact]
@@ -759,16 +760,16 @@ public partial class StaticComplexFieldService
 
         // Assert
         var diagnostics = result.GetDiagnosticsByCode("IOC019");
-        Assert.Equal(2, diagnostics.Count);
+        diagnostics.Count.Should().Be(2);
 
         var fieldNames = diagnostics.Select(d => d.GetMessage()).ToList();
-        Assert.Contains(fieldNames, msg => msg.Contains("_staticDatabaseSettings"));
-        Assert.Contains(fieldNames, msg => msg.Contains("_staticOptions"));
+        fieldNames.Should().Contain(msg => msg.Contains("_staticDatabaseSettings"));
+        fieldNames.Should().Contain(msg => msg.Contains("_staticOptions"));
 
         foreach (var diagnostic in diagnostics)
         {
-            Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
-            Assert.Contains("static", diagnostic.GetMessage());
+            diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+            diagnostic.GetMessage().Should().Contain("static");
         }
     }
 
@@ -804,16 +805,16 @@ public class MultipleViolationsService // Missing partial (IOC018)
         var ioc018Diagnostics = result.GetDiagnosticsByCode("IOC018");
         var ioc019Diagnostics = result.GetDiagnosticsByCode("IOC019");
 
-        Assert.Single(ioc016Diagnostics); // Empty key
-        Assert.Single(ioc017Diagnostics); // FileStream unsupported
-        Assert.Single(ioc018Diagnostics); // Non-partial class
-        Assert.Single(ioc019Diagnostics); // Static field
+        ioc016Diagnostics.Should().ContainSingle(); // Empty key
+        ioc017Diagnostics.Should().ContainSingle(); // FileStream unsupported
+        ioc018Diagnostics.Should().ContainSingle(); // Non-partial class
+        ioc019Diagnostics.Should().ContainSingle(); // Static field
 
         // Verify severity levels
-        Assert.Equal(DiagnosticSeverity.Error, ioc016Diagnostics[0].Severity);
-        Assert.Equal(DiagnosticSeverity.Warning, ioc017Diagnostics[0].Severity);
-        Assert.Equal(DiagnosticSeverity.Error, ioc018Diagnostics[0].Severity);
-        Assert.Equal(DiagnosticSeverity.Warning, ioc019Diagnostics[0].Severity);
+        ioc016Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Error);
+        ioc017Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Warning);
+        ioc018Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Error);
+        ioc019Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Warning);
     }
 
     [Fact]
@@ -844,8 +845,8 @@ public partial class DerivedConfigService : BaseConfigService
         var ioc016Diagnostics = result.GetDiagnosticsByCode("IOC016");
         var ioc019Diagnostics = result.GetDiagnosticsByCode("IOC019");
 
-        Assert.Equal(2, ioc016Diagnostics.Count); // Empty key being reported twice due to inheritance traversal
-        Assert.Single(ioc019Diagnostics); // Static field in derived class
+        ioc016Diagnostics.Count.Should().Be(2); // Empty key being reported twice due to inheritance traversal
+        ioc019Diagnostics.Should().ContainSingle(); // Static field in derived class
     }
 
     [Fact]
@@ -877,10 +878,10 @@ public class ExternalConfigService // Missing partial, but should be skipped
         var ioc018Diagnostics = result.GetDiagnosticsByCode("IOC018");
         var ioc019Diagnostics = result.GetDiagnosticsByCode("IOC019");
 
-        Assert.Empty(ioc016Diagnostics);
-        Assert.Empty(ioc017Diagnostics);
-        Assert.Empty(ioc018Diagnostics);
-        Assert.Empty(ioc019Diagnostics);
+        ioc016Diagnostics.Should().BeEmpty();
+        ioc017Diagnostics.Should().BeEmpty();
+        ioc018Diagnostics.Should().BeEmpty();
+        ioc019Diagnostics.Should().BeEmpty();
     }
 
     [Fact]
@@ -908,10 +909,10 @@ public class NoConfigFieldsService // Not partial, but no config fields
         var ioc018Diagnostics = result.GetDiagnosticsByCode("IOC018");
         var ioc019Diagnostics = result.GetDiagnosticsByCode("IOC019");
 
-        Assert.Empty(ioc016Diagnostics);
-        Assert.Empty(ioc017Diagnostics);
-        Assert.Empty(ioc018Diagnostics);
-        Assert.Empty(ioc019Diagnostics);
+        ioc016Diagnostics.Should().BeEmpty();
+        ioc017Diagnostics.Should().BeEmpty();
+        ioc018Diagnostics.Should().BeEmpty();
+        ioc019Diagnostics.Should().BeEmpty();
     }
 
     [Fact]
@@ -995,13 +996,12 @@ public partial class ComplexValidConfigurationService
         var ioc018Diagnostics = result.GetDiagnosticsByCode("IOC018");
         var ioc019Diagnostics = result.GetDiagnosticsByCode("IOC019");
 
-        Assert.Empty(ioc016Diagnostics);
-        Assert.Empty(ioc017Diagnostics);
-        Assert.Empty(ioc018Diagnostics);
-        Assert.Empty(ioc019Diagnostics);
+        ioc016Diagnostics.Should().BeEmpty();
+        ioc017Diagnostics.Should().BeEmpty();
+        ioc018Diagnostics.Should().BeEmpty();
+        ioc019Diagnostics.Should().BeEmpty();
 
-        // TODO: Complex scenario has compilation errors that need investigation
-        // Assert.False(result.HasErrors);
+        // TODO: Complex scenario has compilation errors that need investigation (expected HasErrors == false eventually).
     }
 
     #endregion
@@ -1030,18 +1030,18 @@ public partial class DiagnosticMessageTestService
 
         // Assert
         var diagnostics = result.GetDiagnosticsByCode("IOC016");
-        Assert.Equal(4, diagnostics.Count);
+        diagnostics.Count.Should().Be(4);
 
         var messages = diagnostics.Select(d => d.GetMessage()).ToList();
 
         // Verify specific error messages
-        Assert.Contains(messages, msg => msg.Contains("Configuration key ''") && msg.Contains("empty"));
-        Assert.Contains(messages,
-            msg => msg.Contains("Configuration key 'Key::Value'") && msg.Contains("double colons"));
-        Assert.Contains(messages,
-            msg => msg.Contains("Configuration key ':Leading'") && msg.Contains("start or end with a colon"));
-        Assert.Contains(messages,
-            msg => msg.Contains("Configuration key 'Trailing:'") && msg.Contains("start or end with a colon"));
+        messages.Should().Contain(msg => msg.Contains("Configuration key ''") && msg.Contains("empty"));
+        messages.Should()
+            .Contain(msg => msg.Contains("Configuration key 'Key::Value'") && msg.Contains("double colons"));
+        messages.Should().Contain(msg =>
+            msg.Contains("Configuration key ':Leading'") && msg.Contains("start or end with a colon"));
+        messages.Should().Contain(msg =>
+            msg.Contains("Configuration key 'Trailing:'") && msg.Contains("start or end with a colon"));
     }
 
     [Fact]
@@ -1070,7 +1070,7 @@ public partial class UnsupportedTypesMessageService
 
         // Assert
         var diagnostics = result.GetDiagnosticsByCode("IOC017");
-        Assert.Equal(3, diagnostics.Count);
+        diagnostics.Count.Should().Be(3);
 
         // TODO: More specific message content validation needs investigation due to test framework issues
         // Test passes with correct number of IOC017 diagnostics for interface, abstract class, and complex type
@@ -1103,10 +1103,10 @@ public class SeverityTestService // Non-partial (IOC018 - Error)
         var ioc019Diagnostics = result.GetDiagnosticsByCode("IOC019");
 
         // Verify severity levels
-        Assert.True(ioc016Diagnostics.All(d => d.Severity == DiagnosticSeverity.Error));
-        Assert.True(ioc017Diagnostics.All(d => d.Severity == DiagnosticSeverity.Warning));
-        Assert.True(ioc018Diagnostics.All(d => d.Severity == DiagnosticSeverity.Error));
-        Assert.True(ioc019Diagnostics.All(d => d.Severity == DiagnosticSeverity.Warning));
+        ioc016Diagnostics.All(d => d.Severity == DiagnosticSeverity.Error).Should().BeTrue();
+        ioc017Diagnostics.All(d => d.Severity == DiagnosticSeverity.Warning).Should().BeTrue();
+        ioc018Diagnostics.All(d => d.Severity == DiagnosticSeverity.Error).Should().BeTrue();
+        ioc019Diagnostics.All(d => d.Severity == DiagnosticSeverity.Warning).Should().BeTrue();
     }
 
     #endregion

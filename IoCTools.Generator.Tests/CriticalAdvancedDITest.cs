@@ -41,23 +41,23 @@ public partial class AdvancedDIService
         var (compilation, generatedCode) = GenerateCode(sourceCode);
 
         // Assert: Constructor should include both logger and Func<T> parameters
-        Assert.NotNull(generatedCode);
+        generatedCode.Should().NotBeNull();
 
         // CRITICAL: Currently FAILS - generator ignores Func<T> dependencies entirely
         // Should generate constructor with: ILogger<AdvancedDIService> logger, Func<IEmailValidator> emailValidatorFactory
-        Assert.Contains("ILogger<AdvancedDIService>", generatedCode);
-        Assert.Contains("Func<IEmailValidator>", generatedCode);
+        generatedCode.Should().Contain("ILogger<AdvancedDIService>");
+        generatedCode.Should().Contain("Func<IEmailValidator>");
 
         // Should have field assignments for both dependencies
-        Assert.Contains("_logger = ", generatedCode);
-        Assert.Contains("_emailValidatorFactory = ", generatedCode);
+        generatedCode.Should().Contain("_logger = ");
+        generatedCode.Should().Contain("_emailValidatorFactory = ");
 
         // Generated code should compile without assembly reference issues
         var errors = compilation.GetDiagnostics()
             .Where(d => d.Severity == DiagnosticSeverity.Error)
             .Where(d => !d.Id.StartsWith("CS0012")) // Ignore assembly reference errors for now
             .ToArray();
-        Assert.Empty(errors);
+        errors.Should().BeEmpty();
     }
 
     [Fact]
@@ -93,19 +93,19 @@ public partial class LazyDependencyService
         var (compilation, generatedCode) = GenerateCode(sourceCode);
 
         // Assert: Constructor should include Lazy<T> parameter
-        Assert.NotNull(generatedCode);
+        generatedCode.Should().NotBeNull();
 
         // CRITICAL: Currently FAILS - generator ignores Lazy<T> dependencies
-        Assert.Contains("ILogger<LazyDependencyService>", generatedCode);
-        Assert.Contains("Lazy<ICacheService>", generatedCode);
+        generatedCode.Should().Contain("ILogger<LazyDependencyService>");
+        generatedCode.Should().Contain("Lazy<ICacheService>");
 
-        Assert.Contains("_logger = ", generatedCode);
-        Assert.Contains("_lazyCacheService = ", generatedCode);
+        generatedCode.Should().Contain("_logger = ");
+        generatedCode.Should().Contain("_lazyCacheService = ");
 
         var errors = compilation.GetDiagnostics()
             .Where(d => d.Severity == DiagnosticSeverity.Error)
             .ToArray();
-        Assert.Empty(errors);
+        errors.Should().BeEmpty();
     }
 
     [Fact]
@@ -138,19 +138,19 @@ public partial class OptionalDependencyService
         var (compilation, generatedCode) = GenerateCode(sourceCode);
 
         // Assert: Constructor should handle optional dependencies
-        Assert.NotNull(generatedCode);
+        generatedCode.Should().NotBeNull();
 
         // CRITICAL: Currently FAILS - generator ignores optional nullable dependencies
-        Assert.Contains("ILogger<OptionalDependencyService>", generatedCode);
-        Assert.Contains("IOptionalService?", generatedCode);
+        generatedCode.Should().Contain("ILogger<OptionalDependencyService>");
+        generatedCode.Should().Contain("IOptionalService?");
 
-        Assert.Contains("_logger = ", generatedCode);
-        Assert.Contains("_optionalService = ", generatedCode);
+        generatedCode.Should().Contain("_logger = ");
+        generatedCode.Should().Contain("_optionalService = ");
 
         var errors = compilation.GetDiagnostics()
             .Where(d => d.Severity == DiagnosticSeverity.Error)
             .ToArray();
-        Assert.Empty(errors);
+        errors.Should().BeEmpty();
     }
 
     [Fact]
@@ -179,7 +179,7 @@ public partial class CompleteAdvancedService
         var (compilation, generatedCode) = GenerateCode(sourceCode);
 
         // Assert: All advanced pattern dependencies should be in constructor
-        Assert.NotNull(generatedCode);
+        generatedCode.Should().NotBeNull();
 
         // CRITICAL: This reproduces the exact AdvancedDependencyService failure
         // Currently generates empty constructor despite 4 [Inject] fields
@@ -187,23 +187,23 @@ public partial class CompleteAdvancedService
             .Where(l => l.Trim().StartsWith("public CompleteAdvancedService("))
             .ToArray();
 
-        Assert.NotEmpty(constructorLines);
+        constructorLines.Should().NotBeEmpty();
 
         var constructorLine = constructorLines[0].Trim();
 
         // Constructor should not be empty
-        Assert.DoesNotContain("public CompleteAdvancedService() {", generatedCode);
+        generatedCode.Should().NotContain("public CompleteAdvancedService() {");
 
         // Should contain all dependency types
-        Assert.Contains("ILogger<CompleteAdvancedService>", generatedCode);
-        Assert.Contains("Func<IEmailValidator>", generatedCode);
-        Assert.Contains("Lazy<ICacheService>", generatedCode);
-        Assert.Contains("IOptionalService?", generatedCode);
+        generatedCode.Should().Contain("ILogger<CompleteAdvancedService>");
+        generatedCode.Should().Contain("Func<IEmailValidator>");
+        generatedCode.Should().Contain("Lazy<ICacheService>");
+        generatedCode.Should().Contain("IOptionalService?");
 
         var errors = compilation.GetDiagnostics()
             .Where(d => d.Severity == DiagnosticSeverity.Error)
             .ToArray();
-        Assert.Empty(errors);
+        errors.Should().BeEmpty();
     }
 
     private (Compilation compilation, string generatedCode) GenerateCode(string sourceCode)

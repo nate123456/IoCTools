@@ -31,17 +31,17 @@ public partial class TestService
 
         // Assert - Fix fragile message checking with robust validation
         var ioc008Diagnostics = result.GetDiagnosticsByCode("IOC008");
-        Assert.Single(ioc008Diagnostics); // Exact count validation
+        ioc008Diagnostics.Should().ContainSingle();
 
         var diagnostic = ioc008Diagnostics[0];
-        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
         var message = diagnostic.GetMessage();
-        Assert.Contains("IService1", message);
-        Assert.Contains("multiple times in the same", message);
+        message.Should().Contain("IService1");
+        message.Should().Contain("multiple times in the same");
 
         // Verify diagnostic location accuracy
-        Assert.True(diagnostic.Location.IsInSource);
-        Assert.Contains("DependsOn<IService1, IService1>", diagnostic.Location.SourceTree!.ToString());
+        diagnostic.Location.IsInSource.Should().BeTrue();
+        diagnostic.Location.SourceTree!.ToString().Should().Contain("DependsOn<IService1, IService1>");
     }
 
     [Fact]
@@ -66,18 +66,18 @@ public partial class TestService
 
         // Assert - Robust validation with exact diagnostic count
         var ioc006Diagnostics = result.GetDiagnosticsByCode("IOC006");
-        Assert.Single(ioc006Diagnostics); // Exact count validation
+        ioc006Diagnostics.Should().ContainSingle();
 
         var diagnostic = ioc006Diagnostics[0];
-        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
         var message = diagnostic.GetMessage();
-        Assert.Contains("IService1", message);
-        Assert.Contains("multiple times in [DependsOn]", message);
+        message.Should().Contain("IService1");
+        message.Should().Contain("multiple times in [DependsOn]");
 
         // Verify no other redundancy diagnostics are present
-        Assert.Empty(result.GetDiagnosticsByCode("IOC007"));
-        Assert.Empty(result.GetDiagnosticsByCode("IOC008"));
-        Assert.Empty(result.GetDiagnosticsByCode("IOC009"));
+        result.GetDiagnosticsByCode("IOC007").Should().BeEmpty();
+        result.GetDiagnosticsByCode("IOC008").Should().BeEmpty();
+        result.GetDiagnosticsByCode("IOC009").Should().BeEmpty();
     }
 
     [Fact]
@@ -101,20 +101,19 @@ public partial class TestService
 
         // Assert - Comprehensive validation with exact diagnostic count
         var ioc007Diagnostics = result.GetDiagnosticsByCode("IOC007");
-        Assert.Single(ioc007Diagnostics); // Exact count validation
+        ioc007Diagnostics.Should().ContainSingle();
 
         var diagnostic = ioc007Diagnostics[0];
-        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
         var message = diagnostic.GetMessage();
-        Assert.Contains("ILogger", message);
-        Assert.Contains("but also exists as [Inject] field", message);
+        message.Should().Contain("ILogger");
+        message.Should().Contain("but also exists as [Inject] field");
 
         // Verify generation vs diagnostic consistency
-        var constructorSource = result.GetConstructorSource("TestService");
-        Assert.NotNull(constructorSource);
+        var constructorText = result.GetConstructorSourceText("TestService");
         // Should prioritize [Inject] field over [DependsOn]
-        Assert.Contains("ILogger logger", constructorSource.Content);
-        Assert.Contains("this._logger = logger", constructorSource.Content);
+        constructorText.Should().Contain("ILogger logger");
+        constructorText.Should().Contain("this._logger = logger");
     }
 
     [Fact]
@@ -140,20 +139,19 @@ public partial class UserService : IUserService
 
         // Assert - Exact diagnostic validation
         var ioc009Diagnostics = result.GetDiagnosticsByCode("IOC009");
-        Assert.Single(ioc009Diagnostics); // Exact count validation
+        ioc009Diagnostics.Should().ContainSingle();
 
         var diagnostic = ioc009Diagnostics[0];
-        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
         var message = diagnostic.GetMessage();
-        Assert.Contains("INonImplemented", message);
-        Assert.Contains("not an interface that would be registered", message);
+        message.Should().Contain("INonImplemented");
+        message.Should().Contain("not an interface that would be registered");
 
         // Verify service registration behavior
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationText = result.GetServiceRegistrationText();
         // Should only register IUserService, not INonImplemented
-        Assert.Contains("IUserService", registrationSource.Content);
-        Assert.DoesNotContain("INonImplemented", registrationSource.Content);
+        registrationText.Should().Contain("IUserService");
+        registrationText.Should().NotContain("INonImplemented");
     }
 
     [Fact]
@@ -177,29 +175,28 @@ public partial class TestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("TestService");
-        Assert.NotNull(constructorSource);
+        var constructorText = result.GetConstructorSourceText("TestService");
 
         // Should have both IService1 and IService2 parameters (no duplicates)
-        Assert.Contains("IService1", constructorSource.Content);
-        Assert.Contains("IService2", constructorSource.Content);
+        constructorText.Should().Contain("IService1");
+        constructorText.Should().Contain("IService2");
 
         // Robust constructor content validation - replace brittle regex counting
-        var content = constructorSource.Content;
+        var content = constructorText;
 
         // Verify both service types appear in parameters (deduplication worked)
         var service1Count = Regex.Matches(content, @"\bIService1\b").Count;
         var service2Count = Regex.Matches(content, @"\bIService2\b").Count;
 
         // Each service type should appear (at least in parameter declarations)
-        Assert.True(service1Count > 0, "IService1 should appear in constructor");
-        Assert.True(service2Count > 0, "IService2 should appear in constructor");
+        service1Count.Should().BeGreaterThan(0, "IService1 should appear in constructor");
+        service2Count.Should().BeGreaterThan(0, "IService2 should appear in constructor");
 
         // Generation vs diagnostic consistency validation
         var ioc006Diagnostics = result.GetDiagnosticsByCode("IOC006");
-        Assert.Single(ioc006Diagnostics); // Warning should be generated despite auto-removal
+        ioc006Diagnostics.Should().ContainSingle(); // Warning should be generated despite auto-removal
     }
 
     [Fact]
@@ -223,25 +220,24 @@ public partial class TestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("TestService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("TestService");
 
         // Should have logger (from Inject) and service (from DependsOn)
-        Assert.Contains("ILogger logger", constructorSource.Content);
-        Assert.Contains("IService service", constructorSource.Content);
-        Assert.Contains("this._logger = logger", constructorSource.Content);
-        Assert.Contains("this._service = service", constructorSource.Content);
+        constructorSource.Should().Contain("ILogger logger");
+        constructorSource.Should().Contain("IService service");
+        constructorSource.Should().Contain("this._logger = logger");
+        constructorSource.Should().Contain("this._service = service");
 
         // Should generate warning about the conflict - exact validation
         var ioc007Diagnostics = result.GetDiagnosticsByCode("IOC007");
-        Assert.Single(ioc007Diagnostics); // Exact count validation
+        ioc007Diagnostics.Should().ContainSingle(); // Exact count validation
 
         // Verify no other redundancy diagnostics are present
-        Assert.Empty(result.GetDiagnosticsByCode("IOC006"));
-        Assert.Empty(result.GetDiagnosticsByCode("IOC008"));
-        Assert.Empty(result.GetDiagnosticsByCode("IOC009"));
+        result.GetDiagnosticsByCode("IOC006").Should().BeEmpty();
+        result.GetDiagnosticsByCode("IOC008").Should().BeEmpty();
+        result.GetDiagnosticsByCode("IOC009").Should().BeEmpty();
     }
 
     [Fact]
@@ -272,32 +268,32 @@ public partial class UserService : IUserService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - Comprehensive diagnostic validation with exact counts
-        Assert.Single(result.GetDiagnosticsByCode("IOC006")); // Duplicate across attributes
-        Assert.Single(result.GetDiagnosticsByCode("IOC007")); // DependsOn conflicts with Inject
-        Assert.Single(result.GetDiagnosticsByCode("IOC008")); // Duplicate in same attribute
-        Assert.Single(result.GetDiagnosticsByCode("IOC009")); // Unnecessary SkipRegistration
+        result.GetDiagnosticsByCode("IOC006").Should().ContainSingle(); // Duplicate across attributes
+        result.GetDiagnosticsByCode("IOC007").Should().ContainSingle(); // DependsOn conflicts with Inject
+        result.GetDiagnosticsByCode("IOC008").Should().ContainSingle(); // Duplicate in same attribute
+        result.GetDiagnosticsByCode("IOC009").Should().ContainSingle(); // Unnecessary SkipRegistration
+        result.GetDiagnosticsByCode("IOC035").Should().ContainSingle(); // Inject field could be DependsOn
 
         // Verify total diagnostic count is exactly what we expect
         var allRedundancyDiagnostics = result.CompilationDiagnostics.Concat(result.GeneratorDiagnostics)
             .Where(d => d.Id.StartsWith("IOC") && int.Parse(d.Id.Substring(3)) >= 6).ToList();
-        Assert.Equal(4, allRedundancyDiagnostics.Count);
+        allRedundancyDiagnostics.Count.Should().Be(5);
 
         // Generation vs diagnostic consistency - code should work despite warnings
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("UserService");
-        Assert.NotNull(constructorSource);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetConstructorSourceText("UserService");
 
         // Verify redundancies are handled correctly in generation
-        var content = constructorSource.Content;
+        var content = constructorSource;
         // Should have ILogger from [Inject], IService from [DependsOn] (no duplicates)
-        Assert.Contains("ILogger logger", content);
-        Assert.Contains("IService service", content);
-        Assert.Contains("this._logger = logger", content);
-        Assert.Contains("this._service = service", content);
+        content.Should().Contain("ILogger logger");
+        content.Should().Contain("IService service");
+        content.Should().Contain("this._logger = logger");
+        content.Should().Contain("this._service = service");
 
         // Verify no duplicate parameters exist
         var loggerParamMatches = Regex.Matches(content, @"\bILogger logger\b");
-        Assert.Single(loggerParamMatches);
+        loggerParamMatches.Should().ContainSingle();
     }
 
     [Fact]
@@ -331,28 +327,27 @@ public partial class UserService : IUserService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - Negative assertion patterns with exact validation
-        Assert.Empty(result.GetDiagnosticsByCode("IOC006")); // No duplicate across attributes
-        Assert.Empty(result.GetDiagnosticsByCode("IOC007")); // No DependsOn/Inject conflicts  
-        Assert.Empty(result.GetDiagnosticsByCode("IOC008")); // No duplicate in same attribute
-        Assert.Empty(result.GetDiagnosticsByCode("IOC009")); // No unnecessary SkipRegistration
+        result.GetDiagnosticsByCode("IOC006").Should().BeEmpty(); // No duplicate across attributes
+        result.GetDiagnosticsByCode("IOC007").Should().BeEmpty(); // No DependsOn/Inject conflicts  
+        result.GetDiagnosticsByCode("IOC008").Should().BeEmpty(); // No duplicate in same attribute
+        result.GetDiagnosticsByCode("IOC009").Should().BeEmpty(); // No unnecessary SkipRegistration
 
         // Verify no unexpected diagnostics are present
         var allIocDiagnostics = result.CompilationDiagnostics.Concat(result.GeneratorDiagnostics)
-            .Where(d => d.Id.StartsWith("IOC")).ToList();
-        Assert.Empty(allIocDiagnostics); // Should have zero IOC diagnostics
+            .Where(d => d.Id is "IOC006" or "IOC007" or "IOC008" or "IOC009").ToList();
+        allIocDiagnostics.Should().BeEmpty(); // Should have zero redundancy diagnostics
 
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Verify clean generation without redundancies
-        var constructorSource = result.GetConstructorSource("UserService");
-        Assert.NotNull(constructorSource);
-        var content = constructorSource.Content;
+        var constructorSource = result.GetConstructorSourceText("UserService");
+        var content = constructorSource;
 
         // Should have all three dependencies cleanly generated
-        Assert.Contains("ILogger logger", content); // From [Inject]
-        Assert.Contains("IService service", content); // From [DependsOn]
-        Assert.Contains("this._logger = logger", content);
-        Assert.Contains("this._service = service", content);
+        content.Should().Contain("ILogger logger"); // From [Inject]
+        content.Should().Contain("IService service"); // From [DependsOn]
+        content.Should().Contain("this._logger = logger");
+        content.Should().Contain("this._service = service");
     }
 
     #region Cross-Diagnostic Interaction Tests (IOC001-IOC005 with Redundancy)
@@ -380,12 +375,13 @@ public partial class TestService
         var ioc001Diagnostics = result.GetDiagnosticsByCode("IOC001");
         var ioc006Diagnostics = result.GetDiagnosticsByCode("IOC006");
 
-        Assert.NotEmpty(ioc001Diagnostics); // Missing implementation
-        Assert.Single(ioc006Diagnostics); // Duplicate dependency
+        ioc001Diagnostics.Should().NotBeEmpty(); // Missing implementation
+        ioc006Diagnostics.Should().ContainSingle(); // Duplicate dependency
 
         // Verify diagnostic messages
-        Assert.Contains(ioc001Diagnostics, d => d.GetMessage().Contains("IMissingService"));
-        Assert.Contains("ILogger", ioc006Diagnostics[0].GetMessage());
+        var missingMessages = ioc001Diagnostics.Select(d => d.GetMessage()).ToList();
+        missingMessages.Should().Contain(message => message.Contains("IMissingService"));
+        ioc006Diagnostics[0].GetMessage().Should().Contain("ILogger");
     }
 
     [Fact]
@@ -411,11 +407,11 @@ public partial class TestService
         var ioc002Diagnostics = result.GetDiagnosticsByCode("IOC002");
         var ioc008Diagnostics = result.GetDiagnosticsByCode("IOC008");
 
-        Assert.NotEmpty(ioc002Diagnostics); // Implementation not registered
-        Assert.Single(ioc008Diagnostics); // Duplicate in same attribute
+        ioc002Diagnostics.Should().NotBeEmpty(); // Implementation not registered
+        ioc008Diagnostics.Should().ContainSingle(); // Duplicate in same attribute
 
-        Assert.Contains("ILogger", ioc002Diagnostics[0].GetMessage());
-        Assert.Contains("ILogger", ioc008Diagnostics[0].GetMessage());
+        ioc002Diagnostics[0].GetMessage().Should().Contain("ILogger");
+        ioc008Diagnostics[0].GetMessage().Should().Contain("ILogger");
     }
 
     [Fact]
@@ -448,8 +444,8 @@ public partial class ServiceB : IServiceB
 
         // May or may not detect circular dependency depending on implementation
         // but should definitely detect the Inject/DependsOn conflict
-        Assert.Single(ioc007Diagnostics);
-        Assert.Contains("IServiceB", ioc007Diagnostics[0].GetMessage());
+        ioc007Diagnostics.Should().ContainSingle();
+        ioc007Diagnostics[0].GetMessage().Should().Contain("IServiceB");
     }
 
     [Fact]
@@ -475,15 +471,14 @@ public partial class UserService : IUserService, IAdminService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         var ioc009Diagnostics = result.GetDiagnosticsByCode("IOC009");
-        Assert.Single(ioc009Diagnostics); // Unnecessary SkipRegistration
-        Assert.Contains("INonExistentService", ioc009Diagnostics[0].GetMessage());
+        ioc009Diagnostics.Should().ContainSingle(); // Unnecessary SkipRegistration
+        ioc009Diagnostics[0].GetMessage().Should().Contain("INonExistentService");
 
         // Verify registration behavior
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("IUserService", registrationSource.Content); // Should be registered
-        Assert.DoesNotContain("IAdminService", registrationSource.Content); // Should be skipped
-        Assert.DoesNotContain("INonExistentService", registrationSource.Content); // Not implemented
+        var registrationSource = result.GetServiceRegistrationText();
+        registrationSource.Should().Contain("IUserService"); // Should be registered
+        registrationSource.Should().NotContain("IAdminService"); // Should be skipped
+        registrationSource.Should().NotContain("INonExistentService"); // Not implemented
     }
 
     #endregion
@@ -512,12 +507,12 @@ public partial class TestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         var ioc008Diagnostics = result.GetDiagnosticsByCode("IOC008");
-        Assert.Equal(2, ioc008Diagnostics.Count); // Should detect both duplicates
+        ioc008Diagnostics.Count.Should().Be(2); // Should detect both duplicates
 
         // Verify both duplicate types are mentioned
         var messages = ioc008Diagnostics.Select(d => d.GetMessage()).ToList();
-        Assert.Contains(messages, m => m.Contains("IService5"));
-        Assert.Contains(messages, m => m.Contains("IService10"));
+        messages.Should().Contain(m => m.Contains("IService5"));
+        messages.Should().Contain(m => m.Contains("IService10"));
     }
 
     [Fact]
@@ -542,11 +537,11 @@ public partial class TestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         var ioc006Diagnostics = result.GetDiagnosticsByCode("IOC006");
-        Assert.Equal(2, ioc006Diagnostics.Count); // Should detect both IService1 and IService2 duplicates
+        ioc006Diagnostics.Count.Should().Be(2); // Should detect both IService1 and IService2 duplicates
 
         var messages = ioc006Diagnostics.Select(d => d.GetMessage()).ToList();
-        Assert.Contains(messages, m => m.Contains("IService1"));
-        Assert.Contains(messages, m => m.Contains("IService2"));
+        messages.Should().Contain(m => m.Contains("IService1"));
+        messages.Should().Contain(m => m.Contains("IService2"));
     }
 
     [Fact]
@@ -570,11 +565,11 @@ public partial class TestService
 
         var ioc008Diagnostics = result.GetDiagnosticsByCode("IOC008");
         // Should detect duplicates for IServiceA (3 times) and IServiceB (2 times)
-        Assert.True(ioc008Diagnostics.Count >= 2); // At least one diagnostic per duplicate type
+        ioc008Diagnostics.Count.Should().BeGreaterOrEqualTo(2); // At least one diagnostic per duplicate type
 
         var messages = ioc008Diagnostics.Select(d => d.GetMessage()).ToList();
-        Assert.Contains(messages, m => m.Contains("IServiceA"));
-        Assert.Contains(messages, m => m.Contains("IServiceB"));
+        messages.Should().Contain(m => m.Contains("IServiceA"));
+        messages.Should().Contain(m => m.Contains("IServiceB"));
     }
 
     #endregion
@@ -603,14 +598,13 @@ public partial class DerivedService : BaseService
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
         var ioc007Diagnostics = result.GetDiagnosticsByCode("IOC007");
-        Assert.Single(ioc007Diagnostics);
-        Assert.Contains("ILogger", ioc007Diagnostics[0].GetMessage());
+        ioc007Diagnostics.Should().ContainSingle();
+        ioc007Diagnostics[0].GetMessage().Should().Contain("ILogger");
 
         // Verify generation behavior with inheritance
-        var derivedConstructor = result.GetConstructorSource("DerivedService");
-        Assert.NotNull(derivedConstructor);
+        var derivedConstructor = result.GetConstructorSourceText("DerivedService");
         // Should handle inheritance correctly
-        Assert.Contains("IService service", derivedConstructor.Content); // From DependsOn
+        derivedConstructor.Should().Contain("IService service"); // From DependsOn
     }
 
     [Fact]
@@ -644,10 +638,10 @@ public partial class DerivedService : MiddleService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         var ioc007Diagnostics = result.GetDiagnosticsByCode("IOC007");
-        Assert.True(ioc007Diagnostics.Count >= 1); // Should detect at least the ILogger conflict
+        ioc007Diagnostics.Count.Should().BeGreaterOrEqualTo(1); // Should detect at least the ILogger conflict
 
         var messages = ioc007Diagnostics.Select(d => d.GetMessage()).ToList();
-        Assert.Contains(messages, m => m.Contains("ILogger"));
+        messages.Should().Contain(m => m.Contains("ILogger"));
     }
 
     [Fact]
@@ -674,13 +668,12 @@ public partial class ConcreteService : AbstractService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         var ioc007Diagnostics = result.GetDiagnosticsByCode("IOC007");
-        Assert.Single(ioc007Diagnostics);
-        Assert.Contains("ILogger", ioc007Diagnostics[0].GetMessage());
+        ioc007Diagnostics.Should().ContainSingle();
+        ioc007Diagnostics[0].GetMessage().Should().Contain("ILogger");
 
         // Verify IConfig is still properly handled
-        var constructorSource = result.GetConstructorSource("ConcreteService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("IConfig config", constructorSource.Content);
+        var constructorSource = result.GetConstructorSourceText("ConcreteService");
+        constructorSource.Should().Contain("IConfig config");
     }
 
     #endregion
@@ -708,8 +701,8 @@ public partial class TestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         var ioc006Diagnostics = result.GetDiagnosticsByCode("IOC006");
-        Assert.Single(ioc006Diagnostics);
-        Assert.Contains("IRepository<User>", ioc006Diagnostics[0].GetMessage());
+        ioc006Diagnostics.Should().ContainSingle();
+        ioc006Diagnostics[0].GetMessage().Should().Contain("IRepository<User>");
     }
 
     [Fact]
@@ -746,13 +739,12 @@ namespace Test
 
         // Should NOT generate IOC006 - different namespaces mean different types
         var ioc006Diagnostics = result.GetDiagnosticsByCode("IOC006");
-        Assert.Empty(ioc006Diagnostics);
+        ioc006Diagnostics.Should().BeEmpty();
 
-        var constructorSource = result.GetConstructorSource("TestService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("TestService");
         // Should have both loggers as separate dependencies
-        var paramCount = Regex.Matches(constructorSource.Content, @"\blogger\d*\b").Count;
-        Assert.True(paramCount >= 2); // Should have parameters for both logger types
+        var paramCount = Regex.Matches(constructorSource, @"\blogger\d*\b").Count;
+        paramCount.Should().BeGreaterOrEqualTo(2); // Should have parameters for both logger types
     }
 
     [Fact]
@@ -775,14 +767,13 @@ public partial class TestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         var ioc006Diagnostics = result.GetDiagnosticsByCode("IOC006");
-        Assert.Single(ioc006Diagnostics);
-        Assert.Contains("IExternalService", ioc006Diagnostics[0].GetMessage());
+        ioc006Diagnostics.Should().ContainSingle();
+        ioc006Diagnostics[0].GetMessage().Should().Contain("IExternalService");
 
         // Verify generation handles external parameter correctly
-        var constructorSource = result.GetConstructorSource("TestService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("IExternalService", constructorSource.Content);
-        Assert.Contains("IInternalService", constructorSource.Content);
+        var constructorSource = result.GetConstructorSourceText("TestService");
+        constructorSource.Should().Contain("IExternalService");
+        constructorSource.Should().Contain("IInternalService");
     }
 
     #endregion
@@ -808,12 +799,12 @@ public partial class TestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Should have no redundancy diagnostics
-        Assert.Empty(result.GetDiagnosticsByCode("IOC006"));
-        Assert.Empty(result.GetDiagnosticsByCode("IOC007"));
-        Assert.Empty(result.GetDiagnosticsByCode("IOC008"));
-        Assert.Empty(result.GetDiagnosticsByCode("IOC009"));
+        result.GetDiagnosticsByCode("IOC006").Should().BeEmpty();
+        result.GetDiagnosticsByCode("IOC007").Should().BeEmpty();
+        result.GetDiagnosticsByCode("IOC008").Should().BeEmpty();
+        result.GetDiagnosticsByCode("IOC009").Should().BeEmpty();
 
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
     }
 
     [Fact]
@@ -846,19 +837,18 @@ public partial class TestService
         var ioc008Count = result.GetDiagnosticsByCode("IOC008").Count;
         var ioc006Count = result.GetDiagnosticsByCode("IOC006").Count;
 
-        Assert.True(ioc008Count > 0); // Should detect intra-attribute duplicates
-        Assert.True(ioc006Count > 0); // Should detect cross-attribute duplicates
+        ioc008Count.Should().BeGreaterThan(0); // Should detect intra-attribute duplicates
+        ioc006Count.Should().BeGreaterThan(0); // Should detect cross-attribute duplicates
 
         // Verify generation vs diagnostic consistency
-        var constructorSource = result.GetConstructorSource("TestService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("TestService");
 
         // Count unique service parameters (should be 3 despite duplicates)
         var uniqueServices = new[] { "IService1", "IService2", "IService3" };
         foreach (var service in uniqueServices)
             // Check that each service type appears in the constructor parameters
             // Don't be specific about parameter naming - just verify the service types are present
-            Assert.Contains(service, constructorSource.Content);
+            constructorSource.Should().Contain(service);
     }
 
     #endregion
@@ -887,14 +877,13 @@ public partial class TestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Should handle large numbers of attributes without crashing
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should detect redundancies efficiently
         var ioc006Count = result.GetDiagnosticsByCode("IOC006").Count;
-        Assert.True(ioc006Count > 0); // Should detect some duplicates
+        ioc006Count.Should().BeGreaterThan(0); // Should detect some duplicates
 
-        var constructorSource = result.GetConstructorSource("TestService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("TestService");
     }
 
     [Fact]
@@ -918,18 +907,17 @@ public partial class TestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Should handle massive duplication without performance issues
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         var ioc008Diagnostics = result.GetDiagnosticsByCode("IOC008");
-        Assert.True(ioc008Diagnostics.Count > 0); // Should detect the massive duplication
+        ioc008Diagnostics.Count.Should().BeGreaterThan(0); // Should detect the massive duplication
 
         // Generated constructor should still be clean
-        var constructorSource = result.GetConstructorSource("TestService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("TestService");
 
         // Should have exactly 2 unique service types despite massive duplication
-        Assert.Contains("IService1", constructorSource.Content);
-        Assert.Contains("IService2", constructorSource.Content);
+        constructorSource.Should().Contain("IService1");
+        constructorSource.Should().Contain("IService2");
     }
 
     [Fact]
@@ -956,16 +944,15 @@ public partial class TestService
 
         // Should detect redundancies regardless of parameter styles
         var ioc006Count = result.GetDiagnosticsByCode("IOC006").Count;
-        Assert.Equal(2, ioc006Count); // IService1 and IService2 duplicates
+        ioc006Count.Should().Be(2); // IService1 and IService2 duplicates
 
         // Generation should handle mixed parameter styles correctly
-        var constructorSource = result.GetConstructorSource("TestService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("TestService");
 
         // Should have all three services with appropriate parameter handling
-        Assert.Contains("IService1", constructorSource.Content);
-        Assert.Contains("IService2", constructorSource.Content);
-        Assert.Contains("IService3", constructorSource.Content);
+        constructorSource.Should().Contain("IService1");
+        constructorSource.Should().Contain("IService2");
+        constructorSource.Should().Contain("IService3");
     }
 
     #endregion

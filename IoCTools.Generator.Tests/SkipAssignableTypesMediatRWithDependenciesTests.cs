@@ -27,16 +27,15 @@ namespace Test
 namespace IoCTools.Generator.Configuration { public static class GeneratorOptions { public const string SkipAssignableTypesAdd = ""MediatR.*""; } }
 ";
         var result = SourceGeneratorTestHelper.CompileWithGenerator(code);
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should not be registered
         var reg = result.GetServiceRegistrationSource();
         if (reg != null)
-            Assert.DoesNotContain("Handler", reg.Content);
+            reg.Content.Should().NotContain("Handler");
 
         // Should still have constructor
-        var ctor = result.GetConstructorSource("Handler");
-        Assert.NotNull(ctor);
-        Assert.Contains("public Handler(", ctor!.Content);
+        var ctor = result.GetRequiredConstructorSource("Handler");
+        ctor!.Content.Should().Contain("public Handler(");
     }
 }

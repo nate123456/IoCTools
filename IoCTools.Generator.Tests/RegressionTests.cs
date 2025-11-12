@@ -43,19 +43,19 @@ public partial class TestService
         }
 
         // This should pass in tests but fails in real MSBuild projects
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+        result.HasErrors.Should()
+            .BeFalse(
+                $"Compilation errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Verify extension method is generated
-        Assert.Contains("AddTestAssemblyRegisteredServices", registrationSource.Content);
+        registrationSource.Content.Should().Contain("AddTestAssemblyRegisteredServices");
 
         // Verify namespace (this shows the breaking change)
         // 0.4.1 would generate: namespace IoCTools.Extensions
         // 1.0 generates: namespace TestAssembly.Extensions (based on assembly name + .Extensions suffix)
-        Assert.Contains("namespace TestAssembly.Extensions", registrationSource.Content);
+        registrationSource.Content.Should().Contain("namespace TestAssembly.Extensions");
     }
 
     [Fact]
@@ -74,10 +74,9 @@ public partial class TestService
 }";
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         _output.WriteLine("Generated Registration Code:");
         _output.WriteLine(registrationSource.Content);
@@ -87,13 +86,13 @@ public partial class TestService
         // 1.0 generates: namespace {AssemblyName}
 
         // This test documents the breaking change
-        Assert.DoesNotContain("namespace IoCTools.Extensions", registrationSource.Content);
-        Assert.Contains("namespace TestAssembly", registrationSource.Content);
+        registrationSource.Content.Should().NotContain("namespace IoCTools.Extensions");
+        registrationSource.Content.Should().Contain("namespace TestAssembly");
 
         // Extension method name also changed pattern
         // 0.4.1: Add{AssemblyName}RegisteredServices
         // 1.0: Add{AssemblyName}RegisteredServices (same pattern, but different namespace)
-        Assert.Contains("AddTestAssemblyRegisteredServices", registrationSource.Content);
+        registrationSource.Content.Should().Contain("AddTestAssemblyRegisteredServices");
     }
 
     [Fact]
@@ -123,14 +122,13 @@ public partial class ServiceFromReferencedProject
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(serviceInReferencedProject);
 
-        Assert.False(result.HasErrors);
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        result.HasErrors.Should().BeFalse();
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // In test framework: Service appears because generator runs
         // In real MSBuild: Service would NOT appear if this was in a referenced project
         // without direct IoCTools package references
-        Assert.Contains("ServiceFromReferencedProject", registrationSource.Content);
+        registrationSource.Content.Should().Contain("ServiceFromReferencedProject");
 
         _output.WriteLine(
             "TEST LIMITATION: This test passes in our framework but would fail in real MSBuild scenarios.");
@@ -152,24 +150,23 @@ public partial class TestService
 }";
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         _output.WriteLine("Generated Extension Method:");
         _output.WriteLine(registrationSource.Content);
 
         // Verify correct extension method signature
-        Assert.Contains(
-            "public static IServiceCollection AddTestAssemblyRegisteredServices(this IServiceCollection services",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain(
+                "public static IServiceCollection AddTestAssemblyRegisteredServices(this IServiceCollection services");
 
         // Verify it includes proper using statements
-        Assert.Contains("using Microsoft.Extensions.DependencyInjection;", registrationSource.Content);
+        registrationSource.Content.Should().Contain("using Microsoft.Extensions.DependencyInjection;");
 
         // Verify service registration (updated to match actual generator output)
-        Assert.Contains("services.AddScoped<global::TestNamespace.TestService, global::TestNamespace.TestService>();",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::TestNamespace.TestService, global::TestNamespace.TestService>();");
     }
 }

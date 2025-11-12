@@ -63,47 +63,45 @@ public partial class ProdLoggerService : ILoggerService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
+        result.HasErrors.Should()
+            .BeFalse(
+                $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
 
         // Should generate constructors with configuration injection for both services
-        var devConstructorSource = result.GetConstructorSource("DevLoggerService");
-        Assert.NotNull(devConstructorSource);
-        Assert.Contains("IConfiguration configuration", devConstructorSource.Content);
-        Assert.Contains("IOptions<LoggingSettings> loggingOptions", devConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Logging\").Get<LoggingSettings>()", devConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<bool>(\"Logging:DevSpecific:EnableDetailedErrors\")",
-            devConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<int>(\"Logging:DevSpecific:MaxFileSize\")",
-            devConstructorSource.Content);
+        var devConstructorSource = result.GetRequiredConstructorSource("DevLoggerService");
+        devConstructorSource.Content.Should().Contain("IConfiguration configuration");
+        devConstructorSource.Content.Should().Contain("IOptions<LoggingSettings> loggingOptions");
+        devConstructorSource.Content.Should().Contain("configuration.GetSection(\"Logging\").Get<LoggingSettings>()");
+        devConstructorSource.Content.Should()
+            .Contain("configuration.GetValue<bool>(\"Logging:DevSpecific:EnableDetailedErrors\")");
+        devConstructorSource.Content.Should()
+            .Contain("configuration.GetValue<int>(\"Logging:DevSpecific:MaxFileSize\")");
 
-        var prodConstructorSource = result.GetConstructorSource("ProdLoggerService");
-        Assert.NotNull(prodConstructorSource);
-        Assert.Contains("IConfiguration configuration", prodConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Logging\").Get<LoggingSettings>()", prodConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"Logging:Production:ApiKey\")", prodConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<int>(\"Logging:Production:BatchSize\")", prodConstructorSource.Content);
+        var prodConstructorSource = result.GetRequiredConstructorSource("ProdLoggerService");
+        prodConstructorSource.Content.Should().Contain("IConfiguration configuration");
+        prodConstructorSource.Content.Should().Contain("configuration.GetSection(\"Logging\").Get<LoggingSettings>()");
+        prodConstructorSource.Content.Should().Contain("configuration.GetValue<string>(\"Logging:Production:ApiKey\")");
+        prodConstructorSource.Content.Should().Contain("configuration.GetValue<int>(\"Logging:Production:BatchSize\")");
 
         // Should generate environment-based conditional registrations
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Verify environment-based conditional registration logic
-        Assert.Contains("var environment = Environment.GetEnvironmentVariable(\"ASPNETCORE_ENVIRONMENT\")",
-            registrationSource.Content);
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("AddScoped<global::Test.DevLoggerService>()", registrationSource.Content);
-        Assert.Contains(
-            "AddScoped<global::Test.ILoggerService>(provider => provider.GetRequiredService<global::Test.DevLoggerService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("var environment = Environment.GetEnvironmentVariable(\"ASPNETCORE_ENVIRONMENT\")");
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should().Contain("AddScoped<global::Test.DevLoggerService>()");
+        registrationSource.Content.Should()
+            .Contain(
+                "AddScoped<global::Test.ILoggerService>(provider => provider.GetRequiredService<global::Test.DevLoggerService>())");
 
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("AddScoped<global::Test.ProdLoggerService>()", registrationSource.Content);
-        Assert.Contains(
-            "AddScoped<global::Test.ILoggerService>(provider => provider.GetRequiredService<global::Test.ProdLoggerService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should().Contain("AddScoped<global::Test.ProdLoggerService>()");
+        registrationSource.Content.Should()
+            .Contain(
+                "AddScoped<global::Test.ILoggerService>(provider => provider.GetRequiredService<global::Test.ProdLoggerService>())");
     }
 
     [Fact]
@@ -141,7 +139,7 @@ public partial class ProdTestService : ITestService
             throw new Exception($"Compilation has errors:\n{errors}");
         }
 
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Debug: Check what was generated
         var generatedContent =
@@ -149,7 +147,7 @@ public partial class ProdTestService : ITestService
 
         if (result.GeneratedSources.Count == 0) throw new Exception("No sources were generated!");
 
-        var registrationSource = result.GetServiceRegistrationSource();
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
         if (registrationSource == null)
             throw new Exception(
                 $"No service registration source found. Generated {result.GeneratedSources.Count} sources:\n{generatedContent}");
@@ -160,9 +158,9 @@ public partial class ProdTestService : ITestService
                 $"Missing environment variable detection. Registration source content:\n{registrationSource.Content}\n\nAll generated:\n{generatedContent}");
 
         // Should contain environment detection and conditional logic
-        Assert.Contains("Environment.GetEnvironmentVariable", registrationSource.Content);
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
+        registrationSource.Content.Should().Contain("Environment.GetEnvironmentVariable");
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)");
     }
 
     [Fact]
@@ -185,24 +183,22 @@ public partial class SimpleService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - Configuration injection working correctly
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should generate constructor with configuration injection
-        var constructorSource = result.GetConstructorSource("SimpleService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("IConfiguration configuration", constructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"Test:Value\")", constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("SimpleService");
+        constructorSource.Content.Should().Contain("IConfiguration configuration");
+        constructorSource.Content.Should().Contain("configuration.GetValue<string>(\"Test:Value\")");
 
         // Should generate service registrations for services with configuration injection
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Both single-parameter and two-parameter forms are valid - accept both
         var hasExpectedRegistration = registrationSource.Content.Contains("AddScoped<global::Test.SimpleService>();") ||
                                       registrationSource.Content.Contains(
                                           "AddScoped<global::Test.SimpleService, global::Test.SimpleService>();");
-        Assert.True(hasExpectedRegistration,
-            "Expected either single-parameter or two-parameter form for SimpleService registration");
+        hasExpectedRegistration.Should()
+            .BeTrue("Expected either single-parameter or two-parameter form for SimpleService registration");
     }
 
     [Fact]
@@ -227,26 +223,24 @@ public partial class ConfigOnlyService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - Services with ONLY InjectConfiguration are auto-registered with default Scoped lifetime
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should generate constructor with configuration injection
-        var constructorSource = result.GetConstructorSource("ConfigOnlyService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("IConfiguration configuration", constructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"Database:ConnectionString\")", constructorSource.Content);
-        Assert.Contains("configuration.GetValue<int>(\"App:MaxRetries\")", constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("ConfigOnlyService");
+        constructorSource.Content.Should().Contain("IConfiguration configuration");
+        constructorSource.Content.Should().Contain("configuration.GetValue<string>(\"Database:ConnectionString\")");
+        constructorSource.Content.Should().Contain("configuration.GetValue<int>(\"App:MaxRetries\")");
 
         // Should auto-register services with configuration injection using default Scoped lifetime
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Both single-parameter and two-parameter forms are valid - accept both
         var hasExpectedRegistration =
             registrationSource.Content.Contains("AddScoped<global::Test.ConfigOnlyService>();") ||
             registrationSource.Content.Contains(
                 "AddScoped<global::Test.ConfigOnlyService, global::Test.ConfigOnlyService>();");
-        Assert.True(hasExpectedRegistration,
-            "Expected either single-parameter or two-parameter form for ConfigOnlyService registration");
+        hasExpectedRegistration.Should()
+            .BeTrue("Expected either single-parameter or two-parameter form for ConfigOnlyService registration");
     }
 
     [Fact]
@@ -292,44 +286,40 @@ public partial class MemoryCacheService : ICacheService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - Configuration-based conditional services with configuration injection work correctly
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should generate constructors with configuration injection for conditional services
-        var redisConstructorSource = result.GetConstructorSource("RedisCacheService");
-        Assert.NotNull(redisConstructorSource);
-        Assert.Contains("IConfiguration configuration", redisConstructorSource.Content);
-        Assert.Contains("IOptions<CacheSettings> cacheOptions", redisConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Cache\").Get<CacheSettings>()", redisConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<int>(\"Cache:MaxRetries\")", redisConstructorSource.Content);
+        var redisConstructorSource = result.GetRequiredConstructorSource("RedisCacheService");
+        redisConstructorSource.Content.Should().Contain("IConfiguration configuration");
+        redisConstructorSource.Content.Should().Contain("IOptions<CacheSettings> cacheOptions");
+        redisConstructorSource.Content.Should().Contain("configuration.GetSection(\"Cache\").Get<CacheSettings>()");
+        redisConstructorSource.Content.Should().Contain("configuration.GetValue<int>(\"Cache:MaxRetries\")");
 
-        var memoryConstructorSource = result.GetConstructorSource("MemoryCacheService");
-        Assert.NotNull(memoryConstructorSource);
-        Assert.Contains("IConfiguration configuration", memoryConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<int>(\"Cache:SizeLimit\")", memoryConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<global::System.TimeSpan>(\"Cache:ExpireAfter\")",
-            memoryConstructorSource.Content);
+        var memoryConstructorSource = result.GetRequiredConstructorSource("MemoryCacheService");
+        memoryConstructorSource.Content.Should().Contain("IConfiguration configuration");
+        memoryConstructorSource.Content.Should().Contain("configuration.GetValue<int>(\"Cache:SizeLimit\")");
+        memoryConstructorSource.Content.Should()
+            .Contain("configuration.GetValue<global::System.TimeSpan>(\"Cache:ExpireAfter\")");
 
         // Should generate configuration-based conditional registration  
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Verify conditional registration with proper null-coalescing - concrete classes
-        Assert.Contains(
-            "string.Equals(configuration[\"Cache:Provider\"], \"Redis\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("AddSingleton<global::Test.RedisCacheService>()", registrationSource.Content);
-        Assert.Contains(
-            "string.Equals(configuration[\"Cache:Provider\"], \"Memory\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("AddSingleton<global::Test.MemoryCacheService>()", registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("string.Equals(configuration[\"Cache:Provider\"], \"Redis\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should().Contain("AddSingleton<global::Test.RedisCacheService>()");
+        registrationSource.Content.Should()
+            .Contain(
+                "string.Equals(configuration[\"Cache:Provider\"], \"Memory\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should().Contain("AddSingleton<global::Test.MemoryCacheService>()");
 
         // Verify interface registrations (mutually exclusive)
-        Assert.Contains(
-            "AddSingleton<global::Test.ICacheService>(provider => provider.GetRequiredService<global::Test.RedisCacheService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "AddSingleton<global::Test.ICacheService>(provider => provider.GetRequiredService<global::Test.MemoryCacheService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain(
+                "AddSingleton<global::Test.ICacheService>(provider => provider.GetRequiredService<global::Test.RedisCacheService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "AddSingleton<global::Test.ICacheService>(provider => provider.GetRequiredService<global::Test.MemoryCacheService>())");
     }
 
     #endregion
@@ -377,18 +367,17 @@ public partial class CacheService : ICacheService
         // Assert
         // Should generate lifetime validation warning for transient dependency in singleton
         var lifetimeWarnings = result.GetDiagnosticsByCode("IOC013");
-        Assert.Single(lifetimeWarnings);
-        Assert.Contains("CacheService", lifetimeWarnings[0].GetMessage());
-        Assert.Contains("ITransientDependency", lifetimeWarnings[0].GetMessage());
+        lifetimeWarnings.Should().ContainSingle();
+        lifetimeWarnings[0].GetMessage().Should().Contain("CacheService");
+        lifetimeWarnings[0].GetMessage().Should().Contain("ITransientDependency");
 
         // Should still generate constructor with configuration injection
-        var constructorSource = result.GetConstructorSource("CacheService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("IConfiguration configuration", constructorSource.Content);
-        Assert.Contains("IOptions<CacheSettings> cacheOptions", constructorSource.Content);
-        Assert.Contains("ITransientDependency transientDep", constructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Cache\").Get<CacheSettings>()", constructorSource.Content);
-        Assert.Contains("configuration.GetValue<int>(\"Cache:MaxSize\")", constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("CacheService");
+        constructorSource.Content.Should().Contain("IConfiguration configuration");
+        constructorSource.Content.Should().Contain("IOptions<CacheSettings> cacheOptions");
+        constructorSource.Content.Should().Contain("ITransientDependency transientDep");
+        constructorSource.Content.Should().Contain("configuration.GetSection(\"Cache\").Get<CacheSettings>()");
+        constructorSource.Content.Should().Contain("configuration.GetValue<int>(\"Cache:MaxSize\")");
     }
 
     [Fact]
@@ -437,20 +426,18 @@ public partial class EmailProcessorService : BackgroundService
         // Assert
         // No IOC014 errors for hosted services - their lifetime is managed by AddHostedService()
         var lifetimeWarnings = result.GetDiagnosticsByCode("IOC014");
-        Assert.Empty(lifetimeWarnings);
+        lifetimeWarnings.Should().BeEmpty();
 
         // Should generate constructor with configuration injection
-        var constructorSource = result.GetConstructorSource("EmailProcessorService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("IConfiguration configuration", constructorSource.Content);
-        Assert.Contains("IEmailService emailService", constructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Email\").Get<EmailSettings>()", constructorSource.Content);
-        Assert.Contains("configuration.GetValue<int>(\"Email:BatchSize\")", constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("EmailProcessorService");
+        constructorSource.Content.Should().Contain("IConfiguration configuration");
+        constructorSource.Content.Should().Contain("IEmailService emailService");
+        constructorSource.Content.Should().Contain("configuration.GetSection(\"Email\").Get<EmailSettings>()");
+        constructorSource.Content.Should().Contain("configuration.GetValue<int>(\"Email:BatchSize\")");
 
         // Should register as IHostedService
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("services.AddHostedService<global::Test.EmailProcessorService>()", registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should().Contain("services.AddHostedService<global::Test.EmailProcessorService>()");
     }
 
     #endregion
@@ -491,29 +478,27 @@ public partial class EmailService : IEmailService, INotificationService, IMessag
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should generate constructor with configuration injection
-        var constructorSource = result.GetConstructorSource("EmailService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("IConfiguration configuration", constructorSource.Content);
-        Assert.Contains("IOptions<EmailSettings> emailOptions", constructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Email\").Get<EmailSettings>()", constructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"Email:ApiKey\")", constructorSource.Content);
-        Assert.Contains("configuration.GetValue<int>(\"Email:MaxRetries\")", constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("EmailService");
+        constructorSource.Content.Should().Contain("IConfiguration configuration");
+        constructorSource.Content.Should().Contain("IOptions<EmailSettings> emailOptions");
+        constructorSource.Content.Should().Contain("configuration.GetSection(\"Email\").Get<EmailSettings>()");
+        constructorSource.Content.Should().Contain("configuration.GetValue<string>(\"Email:ApiKey\")");
+        constructorSource.Content.Should().Contain("configuration.GetValue<int>(\"Email:MaxRetries\")");
 
         // Should register for all interfaces
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains(
-            "AddScoped<global::Test.IEmailService>(provider => provider.GetRequiredService<global::Test.EmailService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "AddScoped<global::Test.INotificationService>(provider => provider.GetRequiredService<global::Test.EmailService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "AddScoped<global::Test.IMessageService>(provider => provider.GetRequiredService<global::Test.EmailService>())",
-            registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should()
+            .Contain(
+                "AddScoped<global::Test.IEmailService>(provider => provider.GetRequiredService<global::Test.EmailService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "AddScoped<global::Test.INotificationService>(provider => provider.GetRequiredService<global::Test.EmailService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "AddScoped<global::Test.IMessageService>(provider => provider.GetRequiredService<global::Test.EmailService>())");
     }
 
     [Fact]
@@ -549,28 +534,26 @@ public partial class MainService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should generate constructor for skipped service
-        var utilityConstructorSource = result.GetConstructorSource("UtilityService");
-        Assert.NotNull(utilityConstructorSource);
-        Assert.Contains("IConfiguration configuration", utilityConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Utility\").Get<UtilitySettings>()",
-            utilityConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"Utility:WorkingDirectory\")",
-            utilityConstructorSource.Content);
+        var utilityConstructorSource = result.GetRequiredConstructorSource("UtilityService");
+        utilityConstructorSource.Content.Should().Contain("IConfiguration configuration");
+        utilityConstructorSource.Content.Should()
+            .Contain("configuration.GetSection(\"Utility\").Get<UtilitySettings>()");
+        utilityConstructorSource.Content.Should()
+            .Contain("configuration.GetValue<string>(\"Utility:WorkingDirectory\")");
 
         // Should not register skipped service but should register main service
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.DoesNotContain("AddScoped<global::Test.IUtilityService>", registrationSource.Content);
-        Assert.DoesNotContain("AddScoped<global::Test.UtilityService>", registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should().NotContain("AddScoped<global::Test.IUtilityService>");
+        registrationSource.Content.Should().NotContain("AddScoped<global::Test.UtilityService>");
         // Both single-parameter and two-parameter forms are valid - accept both
         var hasMainServiceRegistration =
             registrationSource.Content.Contains("AddScoped<global::Test.MainService>();") ||
             registrationSource.Content.Contains("AddScoped<global::Test.MainService, global::Test.MainService>();");
-        Assert.True(hasMainServiceRegistration,
-            "Expected either single-parameter or two-parameter form for MainService registration");
+        hasMainServiceRegistration.Should()
+            .BeTrue("Expected either single-parameter or two-parameter form for MainService registration");
     }
 
     [Fact]
@@ -617,7 +600,7 @@ public partial class MyService : IMyService
             throw new Exception($"Compilation has errors:\n{errors}\n\nGenerated sources:\n{generatedContent}");
         }
 
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Debug: Show all generated sources to understand what's happening
         var debugContent =
@@ -627,26 +610,25 @@ public partial class MyService : IMyService
                 $"No meaningful content generated. Generated {result.GeneratedSources.Count} sources:\n{debugContent}");
 
         // Should generate constructor with both config injection and external dependency
-        var constructorSource = result.GetConstructorSource("MyService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("IConfiguration configuration", constructorSource.Content);
-        Assert.Contains("IExternalApi externalApi", constructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Api\").Get<ApiSettings>()", constructorSource.Content);
-        Assert.Contains("configuration.GetValue<int>(\"Api:Timeout\")", constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("MyService");
+        constructorSource.Content.Should().Contain("IConfiguration configuration");
+        constructorSource.Content.Should().Contain("IExternalApi externalApi");
+        constructorSource.Content.Should().Contain("configuration.GetSection(\"Api\").Get<ApiSettings>()");
+        constructorSource.Content.Should().Contain("configuration.GetValue<int>(\"Api:Timeout\")");
 
         // Should register only MyService, not external service
-        var registrationSource = result.GetServiceRegistrationSource();
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
         if (registrationSource == null)
             throw new Exception(
                 $"No service registration source found. Generated {result.GeneratedSources.Count} sources:\n" +
                 string.Join("\n",
                     result.GeneratedSources.Select(gs =>
                         $"- {gs.Hint}: {gs.Content.Substring(0, Math.Min(100, gs.Content.Length))}...")));
-        Assert.NotNull(registrationSource);
-        Assert.Contains(
-            "AddScoped<global::Test.IMyService>(provider => provider.GetRequiredService<global::Test.MyService>())",
-            registrationSource.Content);
-        Assert.DoesNotContain("AddScoped<IExternalApi", registrationSource.Content);
+        registrationSource.Should().NotBeNull();
+        registrationSource.Content.Should()
+            .Contain(
+                "AddScoped<global::Test.IMyService>(provider => provider.GetRequiredService<global::Test.MyService>())");
+        registrationSource.Content.Should().NotContain("AddScoped<IExternalApi");
     }
 
     #endregion
@@ -716,28 +698,26 @@ public partial class EmailProcessorBackgroundService : BackgroundService
             throw new Exception($"Compilation has errors:\n{errors}\n\nGenerated sources:\n{generatedContent}");
         }
 
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should generate constructor with all configuration injection types
-        var constructorSource = result.GetConstructorSource("EmailProcessorBackgroundService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("IConfiguration configuration", constructorSource.Content);
-        Assert.Contains("IOptionsMonitor<ProcessorSettings> processorMonitor", constructorSource.Content);
-        Assert.Contains("IEmailService emailService", constructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Processor\").Get<ProcessorSettings>()", constructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"Processor:LogLevel\")", constructorSource.Content);
-        Assert.Contains("configuration.GetValue<bool>(\"Processor:EnableMetrics\")", constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("EmailProcessorBackgroundService");
+        constructorSource.Content.Should().Contain("IConfiguration configuration");
+        constructorSource.Content.Should().Contain("IOptionsMonitor<ProcessorSettings> processorMonitor");
+        constructorSource.Content.Should().Contain("IEmailService emailService");
+        constructorSource.Content.Should().Contain("configuration.GetSection(\"Processor\").Get<ProcessorSettings>()");
+        constructorSource.Content.Should().Contain("configuration.GetValue<string>(\"Processor:LogLevel\")");
+        constructorSource.Content.Should().Contain("configuration.GetValue<bool>(\"Processor:EnableMetrics\")");
 
         // Should register as IHostedService
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("AddHostedService<global::Test.EmailProcessorBackgroundService>()", registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should().Contain("AddHostedService<global::Test.EmailProcessorBackgroundService>()");
         // Both single-parameter and two-parameter forms are valid - accept both
         var hasEmailServiceRegistration =
             registrationSource.Content.Contains("AddScoped<global::Test.EmailService>();") ||
             registrationSource.Content.Contains("AddScoped<global::Test.EmailService, global::Test.EmailService>();");
-        Assert.True(hasEmailServiceRegistration,
-            "Expected either single-parameter or two-parameter form for EmailService registration");
+        hasEmailServiceRegistration.Should()
+            .BeTrue("Expected either single-parameter or two-parameter form for EmailService registration");
     }
 
     [Fact]
@@ -788,18 +768,16 @@ public partial class ConfigReloadService : BackgroundService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("ConfigReloadService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("IOptionsMonitor<ReloadableSettings> reloadableSettings", constructorSource.Content);
-        Assert.Contains("IOptions<StaticSettings> staticSettings", constructorSource.Content);
-        Assert.Contains("IConfiguration configuration", constructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"Service:Name\")", constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("ConfigReloadService");
+        constructorSource.Content.Should().Contain("IOptionsMonitor<ReloadableSettings> reloadableSettings");
+        constructorSource.Content.Should().Contain("IOptions<StaticSettings> staticSettings");
+        constructorSource.Content.Should().Contain("IConfiguration configuration");
+        constructorSource.Content.Should().Contain("configuration.GetValue<string>(\"Service:Name\")");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("AddHostedService<global::Test.ConfigReloadService>()", registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should().Contain("AddHostedService<global::Test.ConfigReloadService>()");
     }
 
     #endregion
@@ -859,35 +837,33 @@ public partial class ProcessorFactory : IProcessorFactory
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var factoryConstructorSource = result.GetConstructorSource("ProcessorFactory");
-        Assert.NotNull(factoryConstructorSource);
-        Assert.Contains("IConfiguration configuration", factoryConstructorSource.Content);
-        Assert.Contains("IServiceProvider serviceProvider", factoryConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Processor\").Get<ProcessorSettings>()",
-            factoryConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<global::System.TimeSpan>(\"Factory:CreateTimeout\")",
-            factoryConstructorSource.Content);
+        var factoryConstructorSource = result.GetRequiredConstructorSource("ProcessorFactory");
+        factoryConstructorSource.Content.Should().Contain("IConfiguration configuration");
+        factoryConstructorSource.Content.Should().Contain("IServiceProvider serviceProvider");
+        factoryConstructorSource.Content.Should()
+            .Contain("configuration.GetSection(\"Processor\").Get<ProcessorSettings>()");
+        factoryConstructorSource.Content.Should()
+            .Contain("configuration.GetValue<global::System.TimeSpan>(\"Factory:CreateTimeout\")");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
-        Assert.Contains(
-            "AddScoped<global::Test.IProcessorFactory>(provider => provider.GetRequiredService<global::Test.ProcessorFactory>())",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain(
+                "AddScoped<global::Test.IProcessorFactory>(provider => provider.GetRequiredService<global::Test.ProcessorFactory>())");
         // Both single-parameter and two-parameter forms are valid - accept both
         var hasProcessorARegistration = registrationSource.Content.Contains("AddScoped<global::Test.ProcessorA>();") ||
                                         registrationSource.Content.Contains(
                                             "AddScoped<global::Test.ProcessorA, global::Test.ProcessorA>();");
-        Assert.True(hasProcessorARegistration,
-            "Expected either single-parameter or two-parameter form for ProcessorA registration");
+        hasProcessorARegistration.Should()
+            .BeTrue("Expected either single-parameter or two-parameter form for ProcessorA registration");
 
         var hasProcessorBRegistration = registrationSource.Content.Contains("AddScoped<global::Test.ProcessorB>();") ||
                                         registrationSource.Content.Contains(
                                             "AddScoped<global::Test.ProcessorB, global::Test.ProcessorB>();");
-        Assert.True(hasProcessorBRegistration,
-            "Expected either single-parameter or two-parameter form for ProcessorB registration");
+        hasProcessorBRegistration.Should()
+            .BeTrue("Expected either single-parameter or two-parameter form for ProcessorB registration");
     }
 
     [Fact]
@@ -927,30 +903,28 @@ public partial class RetryEmailDecorator : IEmailService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var decoratorConstructorSource = result.GetConstructorSource("RetryEmailDecorator");
-        Assert.NotNull(decoratorConstructorSource);
-        Assert.Contains("IConfiguration configuration", decoratorConstructorSource.Content);
-        Assert.Contains("EmailService inner", decoratorConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Retry\").Get<RetrySettings>()", decoratorConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<double>(\"Retry:BackoffMultiplier\")",
-            decoratorConstructorSource.Content);
+        var decoratorConstructorSource = result.GetRequiredConstructorSource("RetryEmailDecorator");
+        decoratorConstructorSource.Content.Should().Contain("IConfiguration configuration");
+        decoratorConstructorSource.Content.Should().Contain("EmailService inner");
+        decoratorConstructorSource.Content.Should().Contain("configuration.GetSection(\"Retry\").Get<RetrySettings>()");
+        decoratorConstructorSource.Content.Should()
+            .Contain("configuration.GetValue<double>(\"Retry:BackoffMultiplier\")");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains(
-            "AddSingleton<global::Test.IEmailService>(provider => provider.GetRequiredService<global::Test.RetryEmailDecorator>())",
-            registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should()
+            .Contain(
+                "AddSingleton<global::Test.IEmailService>(provider => provider.GetRequiredService<global::Test.RetryEmailDecorator>())");
         // Both single-parameter and two-parameter forms are valid - accept both
         var hasEmailServiceRegistration =
             registrationSource.Content.Contains("AddScoped<global::Test.EmailService>();") ||
             registrationSource.Content.Contains("AddScoped<global::Test.EmailService, global::Test.EmailService>();");
-        Assert.True(hasEmailServiceRegistration,
-            "Expected either single-parameter or two-parameter form for EmailService registration");
+        hasEmailServiceRegistration.Should()
+            .BeTrue("Expected either single-parameter or two-parameter form for EmailService registration");
         // Should NOT register EmailService for IEmailService (due to DirectOnly mode)
-        Assert.DoesNotContain("AddScoped<global::Test.IEmailService, global::Test.EmailService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .NotContain("AddScoped<global::Test.IEmailService, global::Test.EmailService>");
     }
 
     [Fact]
@@ -992,20 +966,18 @@ public partial class GenericService<T> : IGenericService<T> where T : class
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var repoConstructorSource = result.GetConstructorSource("Repository");
-        Assert.NotNull(repoConstructorSource);
-        Assert.Contains("IConfiguration configuration", repoConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Repository\").Get<RepositorySettings>()",
-            repoConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<bool>(\"Repository:CacheEnabled\")", repoConstructorSource.Content);
+        var repoConstructorSource = result.GetRequiredConstructorSource("Repository");
+        repoConstructorSource.Content.Should().Contain("IConfiguration configuration");
+        repoConstructorSource.Content.Should()
+            .Contain("configuration.GetSection(\"Repository\").Get<RepositorySettings>()");
+        repoConstructorSource.Content.Should().Contain("configuration.GetValue<bool>(\"Repository:CacheEnabled\")");
 
-        var serviceConstructorSource = result.GetConstructorSource("GenericService");
-        Assert.NotNull(serviceConstructorSource);
-        Assert.Contains("IConfiguration configuration", serviceConstructorSource.Content);
-        Assert.Contains("IRepository<T> repository", serviceConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<int>(\"Service:BatchSize\")", serviceConstructorSource.Content);
+        var serviceConstructorSource = result.GetRequiredConstructorSource("GenericService");
+        serviceConstructorSource.Content.Should().Contain("IConfiguration configuration");
+        serviceConstructorSource.Content.Should().Contain("IRepository<T> repository");
+        serviceConstructorSource.Content.Should().Contain("configuration.GetValue<int>(\"Service:BatchSize\")");
     }
 
     #endregion
@@ -1081,35 +1053,31 @@ public partial class UserService : IUserService
             throw new Exception($"Compilation has errors:\n{errors}\n\nGenerated sources:\n{generatedContent}");
         }
 
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Validate all constructors
-        var dbConstructorSource = result.GetConstructorSource("DatabaseService");
-        Assert.NotNull(dbConstructorSource);
-        Assert.Contains("configuration.GetSection(\"Database\").Get<DatabaseSettings>()", dbConstructorSource.Content);
+        var dbConstructorSource = result.GetRequiredConstructorSource("DatabaseService");
+        dbConstructorSource.Content.Should().Contain("configuration.GetSection(\"Database\").Get<DatabaseSettings>()");
 
-        var emailConstructorSource = result.GetConstructorSource("EmailService");
-        Assert.NotNull(emailConstructorSource);
-        Assert.Contains("IOptions<EmailSettings> emailOptions", emailConstructorSource.Content);
+        var emailConstructorSource = result.GetRequiredConstructorSource("EmailService");
+        emailConstructorSource.Content.Should().Contain("IOptions<EmailSettings> emailOptions");
 
-        var userConstructorSource = result.GetConstructorSource("UserService");
-        Assert.NotNull(userConstructorSource);
-        Assert.Contains("IConfiguration configuration", userConstructorSource.Content);
-        Assert.Contains("IDatabaseService database", userConstructorSource.Content);
-        Assert.Contains("IEmailService email", userConstructorSource.Content);
+        var userConstructorSource = result.GetRequiredConstructorSource("UserService");
+        userConstructorSource.Content.Should().Contain("IConfiguration configuration");
+        userConstructorSource.Content.Should().Contain("IDatabaseService database");
+        userConstructorSource.Content.Should().Contain("IEmailService email");
 
         // Validate registrations with correct lifetimes
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains(
-            "AddSingleton<global::Test.IDatabaseService>(provider => provider.GetRequiredService<global::Test.DatabaseService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "AddScoped<global::Test.IEmailService>(provider => provider.GetRequiredService<global::Test.EmailService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "AddScoped<global::Test.IUserService>(provider => provider.GetRequiredService<global::Test.UserService>())",
-            registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should()
+            .Contain(
+                "AddSingleton<global::Test.IDatabaseService>(provider => provider.GetRequiredService<global::Test.DatabaseService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "AddScoped<global::Test.IEmailService>(provider => provider.GetRequiredService<global::Test.EmailService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "AddScoped<global::Test.IUserService>(provider => provider.GetRequiredService<global::Test.UserService>())");
     }
 
     [Fact]
@@ -1177,23 +1145,21 @@ public partial class DatabaseService : IDatabaseService
             }
         }
 
-        Assert.False(result.HasErrors,
-            $"Compilation failed with {result.ErrorCount} errors. See console output for details.");
+        result.HasErrors.Should()
+            .BeFalse($"Compilation failed with {result.ErrorCount} errors. See console output for details.");
 
-        var factoryConstructorSource = result.GetConstructorSource("ConnectionFactory");
-        Assert.NotNull(factoryConstructorSource);
-        Assert.Contains("configuration.GetValue<string>(\"Database:ConnectionString\")",
-            factoryConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"Database:SecondaryConnectionString\")",
-            factoryConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Database\").Get<DatabaseOptions>()",
-            factoryConstructorSource.Content);
+        var factoryConstructorSource = result.GetRequiredConstructorSource("ConnectionFactory");
+        factoryConstructorSource.Content.Should()
+            .Contain("configuration.GetValue<string>(\"Database:ConnectionString\")");
+        factoryConstructorSource.Content.Should()
+            .Contain("configuration.GetValue<string>(\"Database:SecondaryConnectionString\")");
+        factoryConstructorSource.Content.Should()
+            .Contain("configuration.GetSection(\"Database\").Get<DatabaseOptions>()");
 
-        var serviceConstructorSource = result.GetConstructorSource("DatabaseService");
-        Assert.NotNull(serviceConstructorSource);
-        Assert.Contains("IConnectionFactory connectionFactory", serviceConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<int>(\"Database:QueryTimeout\")", serviceConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<int>(\"Database:RetryAttempts\")", serviceConstructorSource.Content);
+        var serviceConstructorSource = result.GetRequiredConstructorSource("DatabaseService");
+        serviceConstructorSource.Content.Should().Contain("IConnectionFactory connectionFactory");
+        serviceConstructorSource.Content.Should().Contain("configuration.GetValue<int>(\"Database:QueryTimeout\")");
+        serviceConstructorSource.Content.Should().Contain("configuration.GetValue<int>(\"Database:RetryAttempts\")");
     }
 
     [Fact]
@@ -1246,30 +1212,25 @@ public partial class NullCacheService : ICacheService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var redisConstructorSource = result.GetConstructorSource("RedisCacheService");
-        Assert.NotNull(redisConstructorSource);
-        Assert.Contains("configuration.GetSection(\"Cache\").Get<CacheConfiguration>()",
-            redisConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"Redis:ConnectionString\")", redisConstructorSource.Content);
+        var redisConstructorSource = result.GetRequiredConstructorSource("RedisCacheService");
+        redisConstructorSource.Content.Should()
+            .Contain("configuration.GetSection(\"Cache\").Get<CacheConfiguration>()");
+        redisConstructorSource.Content.Should().Contain("configuration.GetValue<string>(\"Redis:ConnectionString\")");
 
-        var memoryConstructorSource = result.GetConstructorSource("MemoryCacheService");
-        Assert.NotNull(memoryConstructorSource);
-        Assert.Contains("IOptionsSnapshot<CacheConfiguration> configSnapshot", memoryConstructorSource.Content);
+        var memoryConstructorSource = result.GetRequiredConstructorSource("MemoryCacheService");
+        memoryConstructorSource.Content.Should().Contain("IOptionsSnapshot<CacheConfiguration> configSnapshot");
 
-        var nullConstructorSource = result.GetConstructorSource("NullCacheService");
-        Assert.NotNull(nullConstructorSource);
-        Assert.Contains("configuration.GetValue<bool>(\"Cache:LogMisses\")", nullConstructorSource.Content);
+        var nullConstructorSource = result.GetRequiredConstructorSource("NullCacheService");
+        nullConstructorSource.Content.Should().Contain("configuration.GetValue<bool>(\"Cache:LogMisses\")");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains(
-            "string.Equals(configuration[\"Cache:Provider\"], \"Redis\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains(
-            "AddSingleton<global::Test.ICacheService>(provider => provider.GetRequiredService<global::Test.RedisCacheService>())",
-            registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should()
+            .Contain("string.Equals(configuration[\"Cache:Provider\"], \"Redis\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should()
+            .Contain(
+                "AddSingleton<global::Test.ICacheService>(provider => provider.GetRequiredService<global::Test.RedisCacheService>())");
     }
 
     [Fact]
@@ -1322,22 +1283,19 @@ public partial class ApplicationService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var searchConstructorSource = result.GetConstructorSource("AdvancedSearchService");
-        Assert.NotNull(searchConstructorSource);
-        Assert.Contains("configuration.GetSection(\"FeatureFlags\").Get<FeatureFlags>()",
-            searchConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<int>(\"Search:MaxResults\")", searchConstructorSource.Content);
+        var searchConstructorSource = result.GetRequiredConstructorSource("AdvancedSearchService");
+        searchConstructorSource.Content.Should()
+            .Contain("configuration.GetSection(\"FeatureFlags\").Get<FeatureFlags>()");
+        searchConstructorSource.Content.Should().Contain("configuration.GetValue<int>(\"Search:MaxResults\")");
 
-        var analyticsConstructorSource = result.GetConstructorSource("AnalyticsService");
-        Assert.NotNull(analyticsConstructorSource);
-        Assert.Contains("configuration.GetValue<string>(\"Analytics:TrackingId\")", analyticsConstructorSource.Content);
+        var analyticsConstructorSource = result.GetRequiredConstructorSource("AnalyticsService");
+        analyticsConstructorSource.Content.Should().Contain("configuration.GetValue<string>(\"Analytics:TrackingId\")");
 
-        var appConstructorSource = result.GetConstructorSource("ApplicationService");
-        Assert.NotNull(appConstructorSource);
-        Assert.Contains("IFeatureService? featureService", appConstructorSource.Content);
-        Assert.Contains("IAnalyticsService? analyticsService", appConstructorSource.Content);
+        var appConstructorSource = result.GetRequiredConstructorSource("ApplicationService");
+        appConstructorSource.Content.Should().Contain("IFeatureService? featureService");
+        appConstructorSource.Content.Should().Contain("IAnalyticsService? analyticsService");
     }
 
     #endregion
@@ -1370,12 +1328,12 @@ public partial class ConflictingService : ITestService
         // Should handle conflicting conditions gracefully
         var conflictDiagnostics = result.GetDiagnosticsByCode("IOC020");
         if (conflictDiagnostics.Any())
-            Assert.Contains("conflicting", conflictDiagnostics.First().GetMessage().ToLower());
+            conflictDiagnostics.First().GetMessage().ToLower().Should().Contain("conflicting");
 
         // Should still generate constructor even with conflicting conditions
         var constructorSource = result.GetConstructorSource("ConflictingService");
         if (constructorSource != null)
-            Assert.Contains("configuration.GetValue<string>(\"Test:Value\")", constructorSource.Content);
+            constructorSource.Content.Should().Contain("configuration.GetValue<string>(\"Test:Value\")");
     }
 
     // REMOVED: ConfigurationIntegration_InvalidCombination_BackgroundServiceWithRegisterAsAll
@@ -1417,20 +1375,18 @@ public partial class ProblematicService : ISingletonService
         // Assert
         // Should produce lifetime warning for transient dependency in singleton (IOC013)
         var lifetimeWarnings = result.GetDiagnosticsByCode("IOC013");
-        Assert.Single(lifetimeWarnings);
-        Assert.Contains("ProblematicService", lifetimeWarnings[0].GetMessage());
+        lifetimeWarnings.Should().ContainSingle();
+        lifetimeWarnings[0].GetMessage().Should().Contain("ProblematicService");
 
         // Should still generate constructor with configuration injection
-        var constructorSource = result.GetConstructorSource("ProblematicService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("IConfiguration configuration", constructorSource.Content);
-        Assert.Contains("ITransientService transientService", constructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"Service:Setting\")", constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("ProblematicService");
+        constructorSource.Content.Should().Contain("IConfiguration configuration");
+        constructorSource.Content.Should().Contain("ITransientService transientService");
+        constructorSource.Content.Should().Contain("configuration.GetValue<string>(\"Service:Setting\")");
 
         // Should register services despite warnings
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.NotEmpty(registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should().NotBeEmpty();
     }
 
     #endregion
@@ -1529,61 +1485,56 @@ public partial class ProcessorBackgroundService : BackgroundService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
+        result.HasErrors.Should()
+            .BeFalse(
+                $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
 
         // Validate all constructors are generated with proper configuration injection
-        var repoConstructorSource = result.GetConstructorSource("Repository");
-        Assert.NotNull(repoConstructorSource);
-        Assert.Contains("IConfiguration configuration", repoConstructorSource.Content);
+        var repoConstructorSource = result.GetRequiredConstructorSource("Repository");
+        repoConstructorSource.Content.Should().Contain("IConfiguration configuration");
 
-        var mockEmailConstructorSource = result.GetConstructorSource("MockEmailService");
-        Assert.NotNull(mockEmailConstructorSource);
-        Assert.Contains("configuration.GetSection(\"App\").Get<AppSettings>()", mockEmailConstructorSource.Content);
+        var mockEmailConstructorSource = result.GetRequiredConstructorSource("MockEmailService");
+        mockEmailConstructorSource.Content.Should().Contain("configuration.GetSection(\"App\").Get<AppSettings>()");
 
-        var smtpEmailConstructorSource = result.GetConstructorSource("SmtpEmailService");
-        Assert.NotNull(smtpEmailConstructorSource);
-        Assert.Contains("IOptions<AppSettings> appOptions", smtpEmailConstructorSource.Content);
+        var smtpEmailConstructorSource = result.GetRequiredConstructorSource("SmtpEmailService");
+        smtpEmailConstructorSource.Content.Should().Contain("IOptions<AppSettings> appOptions");
 
-        var cacheConstructorSource = result.GetConstructorSource("CacheService");
-        Assert.NotNull(cacheConstructorSource);
-        Assert.Contains("IRepository repository", cacheConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Cache\").Get<CacheSettings>()", cacheConstructorSource.Content);
+        var cacheConstructorSource = result.GetRequiredConstructorSource("CacheService");
+        cacheConstructorSource.Content.Should().Contain("IRepository repository");
+        cacheConstructorSource.Content.Should().Contain("configuration.GetSection(\"Cache\").Get<CacheSettings>()");
 
-        var processorConstructorSource = result.GetConstructorSource("ProcessorBackgroundService");
-        Assert.NotNull(processorConstructorSource);
-        Assert.Contains("IEmailService emailService", processorConstructorSource.Content);
-        Assert.Contains("ICacheService cacheService", processorConstructorSource.Content);
-        Assert.Contains("IExternalApi externalApi", processorConstructorSource.Content);
+        var processorConstructorSource = result.GetRequiredConstructorSource("ProcessorBackgroundService");
+        processorConstructorSource.Content.Should().Contain("IEmailService emailService");
+        processorConstructorSource.Content.Should().Contain("ICacheService cacheService");
+        processorConstructorSource.Content.Should().Contain("IExternalApi externalApi");
 
         // Validate comprehensive service registration
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Environment-based registration
-        Assert.Contains("var environment = Environment.GetEnvironmentVariable(\"ASPNETCORE_ENVIRONMENT\")",
-            registrationSource.Content);
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("var environment = Environment.GetEnvironmentVariable(\"ASPNETCORE_ENVIRONMENT\")");
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)");
 
         // Regular registrations
-        Assert.Contains(
-            "AddSingleton<global::Test.IRepository>(provider => provider.GetRequiredService<global::Test.Repository>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "AddSingleton<global::Test.ICacheService>(provider => provider.GetRequiredService<global::Test.CacheService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "AddSingleton<global::Test.INotificationService>(provider => provider.GetRequiredService<global::Test.CacheService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain(
+                "AddSingleton<global::Test.IRepository>(provider => provider.GetRequiredService<global::Test.Repository>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "AddSingleton<global::Test.ICacheService>(provider => provider.GetRequiredService<global::Test.CacheService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "AddSingleton<global::Test.INotificationService>(provider => provider.GetRequiredService<global::Test.CacheService>())");
 
         // Background service registration
-        Assert.Contains("AddHostedService<global::Test.ProcessorBackgroundService>()", registrationSource.Content);
+        registrationSource.Content.Should().Contain("AddHostedService<global::Test.ProcessorBackgroundService>()");
 
         // Should not register external services
-        Assert.DoesNotContain("AddScoped<IExternalApi", registrationSource.Content);
+        registrationSource.Content.Should().NotContain("AddScoped<IExternalApi");
     }
 
     [Fact]
@@ -1651,7 +1602,7 @@ public partial class ConfigConsumerService
             throw new Exception($"Compilation has errors:\n{errors}\n\nGenerated sources:\n{generatedContent}");
         }
 
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Debug: Show all generated sources to understand what's happening
         var debugContent =
@@ -1660,37 +1611,35 @@ public partial class ConfigConsumerService
             throw new Exception(
                 $"No meaningful content generated. Generated {result.GeneratedSources.Count} sources:\n{debugContent}");
 
-        var adaptiveConstructorSource = result.GetConstructorSource("AdaptiveService");
-        Assert.NotNull(adaptiveConstructorSource);
-        Assert.Contains("IOptionsMonitor<AdaptiveSettings> settingsMonitor", adaptiveConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"Service:CurrentMode\")", adaptiveConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<bool>(\"Service:DebugEnabled\")", adaptiveConstructorSource.Content);
+        var adaptiveConstructorSource = result.GetRequiredConstructorSource("AdaptiveService");
+        adaptiveConstructorSource.Content.Should().Contain("IOptionsMonitor<AdaptiveSettings> settingsMonitor");
+        adaptiveConstructorSource.Content.Should().Contain("configuration.GetValue<string>(\"Service:CurrentMode\")");
+        adaptiveConstructorSource.Content.Should().Contain("configuration.GetValue<bool>(\"Service:DebugEnabled\")");
 
-        var consumerConstructorSource = result.GetConstructorSource("ConfigConsumerService");
-        Assert.NotNull(consumerConstructorSource);
-        Assert.Contains("IAdaptiveService adaptiveService", consumerConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<bool>(\"Consumer:ProcessingEnabled\")",
-            consumerConstructorSource.Content);
+        var consumerConstructorSource = result.GetRequiredConstructorSource("ConfigConsumerService");
+        consumerConstructorSource.Content.Should().Contain("IAdaptiveService adaptiveService");
+        consumerConstructorSource.Content.Should()
+            .Contain("configuration.GetValue<bool>(\"Consumer:ProcessingEnabled\")");
 
-        var registrationSource = result.GetServiceRegistrationSource();
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
         if (registrationSource == null)
             throw new Exception(
                 $"No service registration source found. Generated {result.GeneratedSources.Count} sources:\n" +
                 string.Join("\n",
                     result.GeneratedSources.Select(gs =>
                         $"- {gs.Hint}: {gs.Content.Substring(0, Math.Min(100, gs.Content.Length))}...")));
-        Assert.NotNull(registrationSource);
+        registrationSource.Should().NotBeNull();
 
-        Assert.Contains(
-            "AddScoped<global::Test.IAdaptiveService>(provider => provider.GetRequiredService<global::Test.AdaptiveService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain(
+                "AddScoped<global::Test.IAdaptiveService>(provider => provider.GetRequiredService<global::Test.AdaptiveService>())");
         // Both single-parameter and two-parameter forms are valid - accept both
         var hasConfigConsumerServiceRegistration =
             registrationSource.Content.Contains("AddScoped<global::Test.ConfigConsumerService>();") ||
             registrationSource.Content.Contains(
                 "AddScoped<global::Test.ConfigConsumerService, global::Test.ConfigConsumerService>();");
-        Assert.True(hasConfigConsumerServiceRegistration,
-            "Expected either single-parameter or two-parameter form for ConfigConsumerService registration");
+        hasConfigConsumerServiceRegistration.Should()
+            .BeTrue("Expected either single-parameter or two-parameter form for ConfigConsumerService registration");
     }
 
     [Fact]
@@ -1735,39 +1684,35 @@ public partial class AggregateService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should generate constructors for all services
         for (var i = 1; i <= 5; i++)
         {
-            var constructorSource = result.GetConstructorSource($"Service{i}");
-            Assert.NotNull(constructorSource);
-            Assert.Contains("IConfiguration configuration", constructorSource.Content);
-            Assert.Contains($"configuration.GetSection(\"Service{i}\").Get<Service{i}Settings>()",
-                constructorSource.Content);
-            Assert.Contains($"configuration.GetValue<string>(\"Service{i}:Key\")", constructorSource.Content);
+            var constructorContent = result.GetConstructorSourceText($"Service{i}");
+            constructorContent.Should().Contain("IConfiguration configuration");
+            constructorContent.Should().Contain($"configuration.GetSection(\"Service{i}\").Get<Service{i}Settings>()");
+            constructorContent.Should().Contain($"configuration.GetValue<string>(\"Service{i}:Key\")");
         }
 
         // Should generate aggregate constructor with all dependencies
-        var aggregateConstructorSource = result.GetConstructorSource("AggregateService");
-        Assert.NotNull(aggregateConstructorSource);
-        Assert.Contains("IConfiguration configuration", aggregateConstructorSource.Content);
-        for (var i = 1; i <= 5; i++) Assert.Contains($"IService{i} service{i}", aggregateConstructorSource.Content);
+        var aggregateConstructorSource = result.GetRequiredConstructorSource("AggregateService");
+        aggregateConstructorSource.Content.Should().Contain("IConfiguration configuration");
+        for (var i = 1; i <= 5; i++) aggregateConstructorSource.Content.Should().Contain($"IService{i} service{i}");
 
         // Should register all services
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
         for (var i = 1; i <= 5; i++)
-            Assert.Contains(
-                $"AddScoped<global::Test.IService{i}>(provider => provider.GetRequiredService<global::Test.Service{i}>())",
-                registrationSource.Content);
+            registrationSource.Content.Should()
+                .Contain(
+                    $"AddScoped<global::Test.IService{i}>(provider => provider.GetRequiredService<global::Test.Service{i}>())");
         // Both single-parameter and two-parameter forms are valid - accept both
         var hasAggregateServiceRegistration =
             registrationSource.Content.Contains("AddScoped<global::Test.AggregateService>();") ||
             registrationSource.Content.Contains(
                 "AddScoped<global::Test.AggregateService, global::Test.AggregateService>();");
-        Assert.True(hasAggregateServiceRegistration,
-            "Expected either single-parameter or two-parameter form for AggregateService registration");
+        hasAggregateServiceRegistration.Should()
+            .BeTrue("Expected either single-parameter or two-parameter form for AggregateService registration");
     }
 
     #endregion

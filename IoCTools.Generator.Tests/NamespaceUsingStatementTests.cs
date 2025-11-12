@@ -39,19 +39,18 @@ public partial class CollectionService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("CollectionService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("CollectionService");
 
         // Should include System.Collections.Generic namespace using robust pattern matching
         var systemCollectionsPattern = @"^\s*using\s+System\.Collections\.Generic\s*;\s*$";
         var systemCollectionsMatches =
-            Regex.Matches(constructorSource.Content, systemCollectionsPattern, RegexOptions.Multiline);
-        Assert.Equal(1, systemCollectionsMatches.Count);
+            Regex.Matches(constructorSource, systemCollectionsPattern, RegexOptions.Multiline);
+        systemCollectionsMatches.Count.Should().Be(1);
 
         // CRITICAL: Should NOT include self-namespace (constructor is generated IN Complex.Nested.Namespace)
-        Assert.DoesNotContain("using Complex.Nested.Namespace;", constructorSource.Content);
+        constructorSource.Should().NotContain("using Complex.Nested.Namespace;");
     }
 
     [Fact]
@@ -90,17 +89,16 @@ namespace ProjectC.Main
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("NestedGenericService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("NestedGenericService");
 
         // Should collect ALL namespaces from nested generics
-        Assert.Contains("using System.Collections.Generic;", constructorSource.Content);
-        Assert.Contains("using ProjectA.Services;", constructorSource.Content);
-        Assert.Contains("using ProjectB.Repositories;", constructorSource.Content);
+        constructorSource.Should().Contain("using System.Collections.Generic;");
+        constructorSource.Should().Contain("using ProjectA.Services;");
+        constructorSource.Should().Contain("using ProjectB.Repositories;");
         // Note: Constructor is generated IN ProjectC.Main, so it shouldn't import its own namespace
-        Assert.DoesNotContain("using ProjectC.Main;", constructorSource.Content);
+        constructorSource.Should().NotContain("using ProjectC.Main;");
     }
 
     [Fact]
@@ -132,15 +130,14 @@ namespace Consumer.Namespace
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("ArrayConsumer");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("ArrayConsumer");
 
         // Should collect namespace from array element type
-        Assert.Contains("using Arrays.Test;", constructorSource.Content);
+        constructorSource.Should().Contain("using Arrays.Test;");
         // Note: Constructor is generated IN Consumer.Namespace, so it shouldn't import its own namespace
-        Assert.DoesNotContain("using Consumer.Namespace;", constructorSource.Content);
+        constructorSource.Should().NotContain("using Consumer.Namespace;");
     }
 
     [Fact]
@@ -166,16 +163,15 @@ namespace Specific.Namespace
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("GlobalConsumer");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("GlobalConsumer");
 
         // Should handle global namespace correctly (no using statement for global)
         // Note: Constructor is generated IN Specific.Namespace, so it shouldn't import its own namespace
-        Assert.DoesNotContain("using Specific.Namespace;", constructorSource.Content);
+        constructorSource.Should().NotContain("using Specific.Namespace;");
         // Global namespace types don't need using statements
-        Assert.Contains("IGlobalService globalService", constructorSource.Content);
+        constructorSource.Should().Contain("IGlobalService globalService");
     }
 
     [Fact]
@@ -212,16 +208,15 @@ namespace Consumer.Application.Main
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("LongNamespaceConsumer");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("LongNamespaceConsumer");
 
         // Should handle extremely long namespaces
-        Assert.Contains("using Very.Very.Very.Very.Very.Long.Namespace.That.Goes.On.And.On.Services;",
-            constructorSource.Content);
-        Assert.Contains("using Another.Extremely.Long.Namespace.With.Many.Levels.Of.Nesting.Repositories;",
-            constructorSource.Content);
+        constructorSource.Should().Contain(
+            "using Very.Very.Very.Very.Very.Long.Namespace.That.Goes.On.And.On.Services;");
+        constructorSource.Should().Contain(
+            "using Another.Extremely.Long.Namespace.With.Many.Levels.Of.Nesting.Repositories;");
     }
 
     [Fact]
@@ -264,17 +259,16 @@ namespace Services.Application
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("ComplexConstraintService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("ComplexConstraintService");
 
         // Should collect all namespaces from generic constraints and types
-        Assert.Contains("using System.Collections.Generic;", constructorSource.Content);
-        Assert.Contains("using Entities.Domain;", constructorSource.Content);
-        Assert.Contains("using Repositories.Contracts;", constructorSource.Content);
+        constructorSource.Should().Contain("using System.Collections.Generic;");
+        constructorSource.Should().Contain("using Entities.Domain;");
+        constructorSource.Should().Contain("using Repositories.Contracts;");
         // Should NOT contain self-namespace (constructor is generated in Services.Application namespace)
-        Assert.DoesNotContain("using Services.Application;", constructorSource.Content);
+        constructorSource.Should().NotContain("using Services.Application;");
     }
 
     [Fact]
@@ -310,16 +304,15 @@ namespace Consumer.App
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("RecursiveService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("RecursiveService");
 
         // Should handle recursive generic types correctly
-        Assert.Contains("using System.Collections.Generic;", constructorSource.Content);
-        Assert.Contains("using Recursive.Types;", constructorSource.Content);
+        constructorSource.Should().Contain("using System.Collections.Generic;");
+        constructorSource.Should().Contain("using Recursive.Types;");
         // Should NOT contain self-namespace (constructor is generated in Consumer.App namespace)
-        Assert.DoesNotContain("using Consumer.App;", constructorSource.Content);
+        constructorSource.Should().NotContain("using Consumer.App;");
     }
 
     [Fact]
@@ -370,33 +363,30 @@ namespace Consumer.Application.Services.Main
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
+        result.HasErrors.Should().BeFalse(
             $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
 
-        var constructorSource = result.GetConstructorSource("InsanelyComplexNamespaceService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("InsanelyComplexNamespaceService");
 
         // Should collect ALL namespaces from this insane complexity
         var expectedUsings = new[]
         {
             "using System.Collections.Generic;", "using System.Collections.Concurrent;", "using Level1.Services;",
-            "using Level2.Repositories;", "using Level3.Validators;", "using Level4.Mappers;", "using Level5.Handlers;"
-            // NOTE: Removed "using Consumer.Application.Services.Main;" as it's redundant 
-            // (class is already in that namespace)
+            "using Level2.Repositories;", "using Level3.Validators;", "using Level4.Mappers;",
+            "using Level5.Handlers;"
         };
 
-        foreach (var expectedUsing in expectedUsings) Assert.Contains(expectedUsing, constructorSource.Content);
+        constructorSource.Should().ContainAll(expectedUsings);
 
         // Should have all these complex types in constructor
-        Assert.Contains("IEnumerable<IEnumerable<IEnumerable<IService1>>> tripleNestedService",
-            constructorSource.Content);
-        Assert.Contains("IList<IReadOnlyList<IRepo2<IService1>>> nestedRepoWithService", constructorSource.Content);
-        Assert.Contains(
-            "IDictionary<string, IEnumerable<IValidator3<IService1, IRepo2<IService1>>>> dictionaryWithComplex",
-            constructorSource.Content);
-        Assert.Contains(
-            "ConcurrentDictionary<int, IList<IMapper4<IService1, IRepo2<string>, IValidator3<int, string>>>> concurrentDictionary",
-            constructorSource.Content);
+        constructorSource.Should().Contain(
+            "IEnumerable<IEnumerable<IEnumerable<IService1>>> tripleNestedService");
+        constructorSource.Should().Contain(
+            "IList<IReadOnlyList<IRepo2<IService1>>> nestedRepoWithService");
+        constructorSource.Should().Contain(
+            "IDictionary<string, IEnumerable<IValidator3<IService1, IRepo2<IService1>>>> dictionaryWithComplex");
+        constructorSource.Should().Contain(
+            "ConcurrentDictionary<int, IList<IMapper4<IService1, IRepo2<string>, IValidator3<int, string>>>> concurrentDictionary");
     }
 
     [Fact]
@@ -439,25 +429,24 @@ namespace Consumer.App
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("DuplicateNamespaceService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("DuplicateNamespaceService");
 
         // Should deduplicate using statements - Use proper regex patterns for robustness
-        var systemCollectionsMatches = Regex.Matches(constructorSource.Content,
+        var systemCollectionsMatches = Regex.Matches(constructorSource,
             @"^\s*using\s+System\.Collections\.Generic\s*;\s*$", RegexOptions.Multiline);
-        Assert.Equal(1, systemCollectionsMatches.Count); // Should only appear once despite duplicates
+        systemCollectionsMatches.Count.Should().Be(1); // Should only appear once despite duplicates
 
-        var testServicesMatches = Regex.Matches(constructorSource.Content, @"^\s*using\s+Test\.Services\s*;\s*$",
+        var testServicesMatches = Regex.Matches(constructorSource, @"^\s*using\s+Test\.Services\s*;\s*$",
             RegexOptions.Multiline);
-        Assert.Equal(1, testServicesMatches.Count); // Should only appear once
+        testServicesMatches.Count.Should().Be(1); // Should only appear once
 
         // Verify exact using statement count to ensure no extras
         var allUsingMatches =
-            Regex.Matches(constructorSource.Content, @"^\s*using\s+[^;]+\s*;\s*$", RegexOptions.Multiline);
-        // Should have exactly: System.Collections.Generic + Test.Services (no duplicates, no self-namespace)
-        Assert.True(allUsingMatches.Count >= 2, $"Expected at least 2 using statements, got {allUsingMatches.Count}");
+            Regex.Matches(constructorSource, @"^\s*using\s+[^;]+\s*;\s*$", RegexOptions.Multiline);
+        allUsingMatches.Count.Should().BeGreaterOrEqualTo(2,
+            $"Expected at least 2 using statements, got {allUsingMatches.Count}");
     }
 
     /// <summary>
@@ -486,16 +475,15 @@ namespace MyApp.Services
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("TestService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("TestService");
 
         // CRITICAL: Should NOT include self-namespace (constructor is generated IN MyApp.Services)
-        Assert.DoesNotContain("using MyApp.Services;", constructorSource.Content);
+        constructorSource.Should().NotContain("using MyApp.Services;");
 
         // Verify it contains the expected constructor parameter
-        Assert.Contains("IExternalService external", constructorSource.Content);
+        constructorSource.Should().Contain("IExternalService external");
     }
 
     [Fact]
@@ -532,21 +520,19 @@ namespace Shared.Domain
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSourceA = result.GetConstructorSource("ServiceA");
-        var constructorSourceB = result.GetConstructorSource("ServiceB");
-        Assert.NotNull(constructorSourceA);
-        Assert.NotNull(constructorSourceB);
+        var constructorSourceA = result.GetConstructorSourceText("ServiceA");
+        var constructorSourceB = result.GetConstructorSourceText("ServiceB");
 
         // CRITICAL: Neither should include self-namespace (both generated IN Shared.Domain)
-        Assert.DoesNotContain("using Shared.Domain;", constructorSourceA.Content);
-        Assert.DoesNotContain("using Shared.Domain;", constructorSourceB.Content);
+        constructorSourceA.Should().NotContain("using Shared.Domain;");
+        constructorSourceB.Should().NotContain("using Shared.Domain;");
 
         // Verify both have expected parameters without namespace prefixes
-        Assert.Contains("ISharedService shared", constructorSourceA.Content);
-        Assert.Contains("ISharedService shared", constructorSourceB.Content);
-        Assert.Contains("ServiceA serviceA", constructorSourceB.Content);
+        constructorSourceA.Should().Contain("ISharedService shared");
+        constructorSourceB.Should().Contain("ISharedService shared");
+        constructorSourceB.Should().Contain("ServiceA serviceA");
     }
 
     [Fact]
@@ -579,20 +565,19 @@ namespace MyApp.Core
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("MixedDependencyService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("MixedDependencyService");
 
         // Should include external namespace
-        Assert.Contains("using External.Services;", constructorSource.Content);
+        constructorSource.Should().Contain("using External.Services;");
 
         // CRITICAL: Should NOT include self-namespace (constructor is generated IN MyApp.Core)
-        Assert.DoesNotContain("using MyApp.Core;", constructorSource.Content);
+        constructorSource.Should().NotContain("using MyApp.Core;");
 
         // Verify parameters are correct
-        Assert.Contains("IExternalService external", constructorSource.Content);
-        Assert.Contains("ILocalService local", constructorSource.Content);
+        constructorSource.Should().Contain("IExternalService external");
+        constructorSource.Should().Contain("ILocalService local");
     }
 
     /// <summary>
@@ -682,19 +667,18 @@ namespace Pointer.Consumer
             outputCompilation, generatedSources, diagnostics.ToList(), outputCompilation.GetDiagnostics().ToList());
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("PointerService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("PointerService");
 
         // Should include external namespace for IPointerHandler
-        Assert.Contains("using Unsafe.Types;", constructorSource.Content);
+        constructorSource.Should().Contain("using Unsafe.Types;");
 
         // CRITICAL: Should NOT include self-namespace
-        Assert.DoesNotContain("using Pointer.Consumer;", constructorSource.Content);
+        constructorSource.Should().NotContain("using Pointer.Consumer;");
 
         // Verify constructor parameter is correct
-        Assert.Contains("IPointerHandler pointerHandler", constructorSource.Content);
+        constructorSource.Should().Contain("IPointerHandler pointerHandler");
     }
 
     /// <summary>
@@ -734,25 +718,24 @@ namespace Consumer.App
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("MixedNamespaceService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("MixedNamespaceService");
 
         // Should include regular namespace
-        Assert.Contains("using Regular.Namespace;", constructorSource.Content);
+        constructorSource.Should().Contain("using Regular.Namespace;");
 
         // CRITICAL: Should NOT have malformed "using ;" statements
-        Assert.DoesNotContain("using ;", constructorSource.Content);
-        Assert.DoesNotContain("using <global namespace>;", constructorSource.Content);
+        constructorSource.Should().NotContain("using ;");
+        constructorSource.Should().NotContain("using <global namespace>;");
 
         // CRITICAL: Should NOT include self-namespace
-        Assert.DoesNotContain("using Consumer.App;", constructorSource.Content);
+        constructorSource.Should().NotContain("using Consumer.App;");
 
         // Global types should be accessible without using statements
-        Assert.Contains("IGlobalInterface global", constructorSource.Content);
-        Assert.Contains("GlobalClass globalClass", constructorSource.Content);
-        Assert.Contains("IRegularInterface regular", constructorSource.Content);
+        constructorSource.Should().Contain("IGlobalInterface global");
+        constructorSource.Should().Contain("GlobalClass globalClass");
+        constructorSource.Should().Contain("IRegularInterface regular");
     }
 
     /// <summary>
@@ -792,23 +775,22 @@ namespace App.Controllers
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("ControllerService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("ControllerService");
 
         // Should include framework namespaces
-        Assert.Contains("using Microsoft.Extensions.Logging;", constructorSource.Content);
-        Assert.Contains("using Microsoft.Extensions.Configuration;", constructorSource.Content);
-        Assert.Contains("using Business.Services;", constructorSource.Content);
+        constructorSource.Should().Contain("using Microsoft.Extensions.Logging;");
+        constructorSource.Should().Contain("using Microsoft.Extensions.Configuration;");
+        constructorSource.Should().Contain("using Business.Services;");
 
         // CRITICAL: Should NOT include self-namespace
-        Assert.DoesNotContain("using App.Controllers;", constructorSource.Content);
+        constructorSource.Should().NotContain("using App.Controllers;");
 
         // Verify generic ILogger parameter is handled correctly
-        Assert.Contains("ILogger<ControllerService> logger", constructorSource.Content);
-        Assert.Contains("IConfiguration config", constructorSource.Content);
-        Assert.Contains("IBusinessService business", constructorSource.Content);
+        constructorSource.Should().Contain("ILogger<ControllerService> logger");
+        constructorSource.Should().Contain("IConfiguration config");
+        constructorSource.Should().Contain("IBusinessService business");
     }
 
     /// <summary>
@@ -843,19 +825,18 @@ namespace Derived.Application
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("DerivedService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("DerivedService");
 
         // Should include base namespace
-        Assert.Contains("using Base.Infrastructure;", constructorSource.Content);
+        constructorSource.Should().Contain("using Base.Infrastructure;");
 
         // CRITICAL: Should NOT include self-namespace
-        Assert.DoesNotContain("using Derived.Application;", constructorSource.Content);
+        constructorSource.Should().NotContain("using Derived.Application;");
 
         // Verify inheritance and injection work together
-        Assert.Contains("IBaseRepository repository", constructorSource.Content);
+        constructorSource.Should().Contain("IBaseRepository repository");
     }
 
     /// <summary>
@@ -889,21 +870,19 @@ namespace Consumer.Level1.Level2.Level3.Level4.Level5.Level6.Level7.Level8.Level
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
+        result.HasErrors.Should().BeFalse(
             $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
 
-        var constructorSource = result.GetConstructorSource("ExtremelyDeepService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("ExtremelyDeepService");
 
         // Should handle extremely deep namespaces
-        Assert.Contains("using System.Collections.Generic;", constructorSource.Content);
-        Assert.Contains("using Level1.Level2.Level3.Level4.Level5.Level6.Level7.Level8.Level9.Level10.Services;",
-            constructorSource.Content);
+        constructorSource.Should().Contain("using System.Collections.Generic;");
+        constructorSource.Should().Contain(
+            "using Level1.Level2.Level3.Level4.Level5.Level6.Level7.Level8.Level9.Level10.Services;");
 
         // CRITICAL: Should NOT include self-namespace despite extreme depth
-        Assert.DoesNotContain(
-            "using Consumer.Level1.Level2.Level3.Level4.Level5.Level6.Level7.Level8.Level9.Level10.App;",
-            constructorSource.Content);
+        constructorSource.Should().NotContain(
+            "using Consumer.Level1.Level2.Level3.Level4.Level5.Level6.Level7.Level8.Level9.Level10.App;");
     }
 
     /// <summary>
@@ -930,17 +909,16 @@ namespace Empty.Test
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("EmptyService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("EmptyService");
 
         // Should generate minimal constructor with no using statements except standard ones
         // CRITICAL: Should NOT include self-namespace
-        Assert.DoesNotContain("using Empty.Test;", constructorSource.Content);
+        constructorSource.Should().NotContain("using Empty.Test;");
 
         // Should have empty parameter constructor
-        Assert.Contains("public EmptyService()", constructorSource.Content);
+        constructorSource.Should().Contain("public EmptyService()");
     }
 
     [Fact]
@@ -970,16 +948,15 @@ namespace Secondary.Namespace
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("PartialService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("PartialService");
 
         // CRITICAL: Should NOT include self-namespace (constructor generated in Primary.Namespace)
-        Assert.DoesNotContain("using Primary.Namespace;", constructorSource.Content);
+        constructorSource.Should().NotContain("using Primary.Namespace;");
 
         // Should work with the primary service
-        Assert.Contains("IPrimaryService primary", constructorSource.Content);
+        constructorSource.Should().Contain("IPrimaryService primary");
     }
 
     /// <summary>
@@ -1014,10 +991,9 @@ namespace Test.Application
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("RobustTestService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("RobustTestService");
 
         // Use robust regex patterns instead of simple string matching
         var systemCollectionsPattern = @"^\s*using\s+System\.Collections\.Generic\s*;\s*$";
@@ -1025,22 +1001,22 @@ namespace Test.Application
         var selfNamespacePattern = @"^\s*using\s+Test\.Application\s*;\s*$";
 
         var systemCollectionsMatches =
-            Regex.Matches(constructorSource.Content, systemCollectionsPattern, RegexOptions.Multiline);
+            Regex.Matches(constructorSource, systemCollectionsPattern, RegexOptions.Multiline);
         var externalServicesMatches =
-            Regex.Matches(constructorSource.Content, externalServicesPattern, RegexOptions.Multiline);
+            Regex.Matches(constructorSource, externalServicesPattern, RegexOptions.Multiline);
         var selfNamespaceMatches =
-            Regex.Matches(constructorSource.Content, selfNamespacePattern, RegexOptions.Multiline);
+            Regex.Matches(constructorSource, selfNamespacePattern, RegexOptions.Multiline);
 
         // Positive assertions - should be present
-        Assert.Equal(1, systemCollectionsMatches.Count);
-        Assert.Equal(1, externalServicesMatches.Count);
+        systemCollectionsMatches.Count.Should().Be(1);
+        externalServicesMatches.Count.Should().Be(1);
 
         // CRITICAL negative assertion - should NOT be present
-        Assert.Equal(0, selfNamespaceMatches.Count);
+        selfNamespaceMatches.Count.Should().Be(0);
 
         // Verify no malformed using statements
-        Assert.DoesNotContain("using ;", constructorSource.Content);
-        Assert.DoesNotContain("using  ;", constructorSource.Content);
+        constructorSource.Should().NotContain("using ;");
+        constructorSource.Should().NotContain("using  ;");
     }
 
     /// <summary>
@@ -1074,19 +1050,18 @@ namespace Cønßüméer.App
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("UnicodeTestService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("UnicodeTestService");
 
         // Should handle Unicode namespaces
-        Assert.Contains("using Ünïcøde.Namespace;", constructorSource.Content);
+        constructorSource.Should().Contain("using Ünïcøde.Namespace;");
 
         // CRITICAL: Should NOT include self-namespace with Unicode characters
-        Assert.DoesNotContain("using Cønßüméer.App;", constructorSource.Content);
+        constructorSource.Should().NotContain("using Cønßüméer.App;");
 
         // Should handle Unicode interface names
-        Assert.Contains("IÜnicødeService service", constructorSource.Content);
+        constructorSource.Should().Contain("IÜnicødeService service");
     }
 
     /// <summary>
@@ -1126,30 +1101,26 @@ namespace MyProject.Services.Business
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - Print generated content for debugging if test fails
-        var constructorSource = result.GetConstructorSource("UserService");
-        if (constructorSource != null)
-        {
-            Console.WriteLine("Generated constructor content:");
-            Console.WriteLine(constructorSource.Content);
-        }
-
-        Assert.False(result.HasErrors,
+        result.HasErrors.Should().BeFalse(
             $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
 
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("UserService");
+        Console.WriteLine("Generated constructor content:");
+        Console.WriteLine(constructorContent);
 
         // CRITICAL: Should NOT generate malformed using statements with duplicated namespace segments
-        Assert.DoesNotContain("using MyProject.Services.Business.MyProject.Models.Core;", constructorSource.Content);
-        Assert.DoesNotContain("using MyProject.Services.Business.System.Collections.Generic;",
-            constructorSource.Content);
-        Assert.DoesNotContain("using MyProject.Models.Core.MyProject.Services.Business;", constructorSource.Content);
+        constructorContent.Should().NotContain("using MyProject.Services.Business.MyProject.Models.Core;");
+        constructorContent.Should().NotContain(
+            "using MyProject.Services.Business.System.Collections.Generic;");
+        constructorContent.Should().NotContain(
+            "using MyProject.Models.Core.MyProject.Services.Business;");
 
         // Should generate correct using statements
-        Assert.Contains("using MyProject.Models.Core;", constructorSource.Content);
-        Assert.Contains("using System.Collections.Generic;", constructorSource.Content);
+        constructorContent.Should().Contain("using MyProject.Models.Core;");
+        constructorContent.Should().Contain("using System.Collections.Generic;");
 
         // CRITICAL: Should NOT include self-namespace
-        Assert.DoesNotContain("using MyProject.Services.Business;", constructorSource.Content);
+        constructorContent.Should().NotContain("using MyProject.Services.Business;");
 
         // Verify no duplicate or malformed namespace patterns
         var malformedPatterns = new[]
@@ -1160,15 +1131,17 @@ namespace MyProject.Services.Business
 
         foreach (var pattern in malformedPatterns)
         {
-            var matches = Regex.Matches(constructorSource.Content, pattern,
+            var matches = Regex.Matches(constructorContent, pattern,
                 RegexOptions.Multiline | RegexOptions.IgnoreCase);
-            Assert.True(matches.Count == 0,
-                $"Found malformed namespace pattern: {pattern} in content: {constructorSource.Content}");
+            matches.Count.Should().Be(0,
+                $"Found malformed namespace pattern: {pattern} in content: {constructorContent}");
         }
 
         // Verify constructor parameters are correct
-        Assert.Contains("IEnumerable<IList<IUserRepository<UserModel>>> nestedRepositories", constructorSource.Content);
-        Assert.Contains("IDictionary<string, IEnumerable<UserModel>> complexMapping", constructorSource.Content);
+        constructorContent.Should().Contain(
+            "IEnumerable<IList<IUserRepository<UserModel>>> nestedRepositories");
+        constructorContent.Should().Contain(
+            "IDictionary<string, IEnumerable<UserModel>> complexMapping");
     }
 
     /// <summary>
@@ -1211,18 +1184,17 @@ namespace Consumer
 }";
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("CrossNamespaceService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("CrossNamespaceService");
 
         // Should generate using statements for both namespaces
-        Assert.Contains("using ServiceA;", constructorSource.Content);
-        Assert.Contains("using ServiceB;", constructorSource.Content);
+        constructorSource.Should().Contain("using ServiceA;");
+        constructorSource.Should().Contain("using ServiceB;");
 
         // Verify constructor parameters are correct
-        Assert.Contains("IServiceA serviceA", constructorSource.Content);
-        Assert.Contains("IServiceB serviceB", constructorSource.Content);
+        constructorSource.Should().Contain("IServiceA serviceA");
+        constructorSource.Should().Contain("IServiceB serviceB");
     }
 
     /// <summary>
@@ -1247,17 +1219,16 @@ namespace MyProject.Services
 }";
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("GlobalTestService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("GlobalTestService");
 
         // Should NOT generate using statements for global namespace types
-        Assert.DoesNotContain("using ;", constructorSource.Content);
-        Assert.DoesNotContain("using global;", constructorSource.Content);
+        constructorSource.Should().NotContain("using ;");
+        constructorSource.Should().NotContain("using global;");
 
         // Global types should be accessible without using statements
-        Assert.Contains("IGlobalService globalService", constructorSource.Content);
+        constructorSource.Should().Contain("IGlobalService globalService");
     }
 
     /// <summary>
@@ -1287,22 +1258,20 @@ namespace MyProject.Services.BusinessLogic.Core
 }";
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("DeepNamespaceService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("DeepNamespaceService");
 
         // Should handle very long namespaces correctly
-        Assert.Contains(
-            "using VeryLongCompanyName.BusinessUnit.Department.Team.SubTeam.Project.Module.Component.Service.Interface;",
-            constructorSource.Content);
+        constructorSource.Should().Contain(
+            "using VeryLongCompanyName.BusinessUnit.Department.Team.SubTeam.Project.Module.Component.Service.Interface;");
 
         // Should NOT include self-namespace
-        Assert.DoesNotContain("using MyProject.Services.BusinessLogic.Core;", constructorSource.Content);
+        constructorSource.Should().NotContain("using MyProject.Services.BusinessLogic.Core;");
 
         // Should NOT create malformed namespace combinations
-        Assert.DoesNotContain("using MyProject.Services.BusinessLogic.Core.VeryLongCompanyName",
-            constructorSource.Content);
+        constructorSource.Should().NotContain(
+            "using MyProject.Services.BusinessLogic.Core.VeryLongCompanyName");
     }
 
     /// <summary>
@@ -1332,18 +1301,17 @@ namespace MyProject.Services_2024
 }";
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("SpecialCharService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("SpecialCharService");
 
         // Should handle special characters in namespaces
-        Assert.Contains("using _UnderscoreNamespace._123NumberStart;", constructorSource.Content);
+        constructorSource.Should().Contain("using _UnderscoreNamespace._123NumberStart;");
 
         // Should NOT include self-namespace
-        Assert.DoesNotContain("using MyProject.Services_2024;", constructorSource.Content);
+        constructorSource.Should().NotContain("using MyProject.Services_2024;");
 
         // Parameter should handle special interface names
-        Assert.Contains("I_SpecialService specialService", constructorSource.Content);
+        constructorSource.Should().Contain("I_SpecialService specialService");
     }
 }

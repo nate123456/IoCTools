@@ -6,16 +6,16 @@
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <Version>1.0.0</Version>
-        <PackageVersion>1.0.0</PackageVersion>
-        <AssemblyVersion>1.0.0.0</AssemblyVersion>
-        <FileVersion>1.0.0.0</FileVersion>
+        <Version>1.1.0</Version>
+        <PackageVersion>1.1.0</PackageVersion>
+        <AssemblyVersion>1.1.0.0</AssemblyVersion>
+        <FileVersion>1.1.0.0</FileVersion>
         <Title>IoC Tools Abstractions Package</Title>
         <Copyright>MIT</Copyright>
         <PackageProjectUrl>https://github.com/nate123456/IoCTools</PackageProjectUrl>
         <RepositoryUrl>https://github.com/nate123456/IoCTools</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
-        <PackageReleaseNotes>v1.0.0: First stable release. Modern lifetime attributes, configuration injection, conditional registration, background services auto-detection, interface controls, and comprehensive diagnostics.</PackageReleaseNotes>
+        <PackageReleaseNotes>v1.1.0: Aligns abstractions with the new analyzer guidance—includes refreshed docs and metadata to support the IOC03x redundant registration diagnostics.</PackageReleaseNotes>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>

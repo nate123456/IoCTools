@@ -34,7 +34,7 @@ public partial class ServiceB : IB
 
         // Assert
         var ioc003Diagnostics = result.GetDiagnosticsByCode("IOC003");
-        Assert.NotEmpty(ioc003Diagnostics);
+        ioc003Diagnostics.Should().NotBeEmpty();
 
         // Inspect the actual diagnostic messages
         var diagnosticMessages = ioc003Diagnostics.Select(d => d.GetMessage()).ToList();
@@ -47,18 +47,18 @@ public partial class ServiceB : IB
         // Validate diagnostic properties
         foreach (var diagnostic in ioc003Diagnostics)
         {
-            Assert.Equal("IOC003", diagnostic.Id);
-            Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
-            Assert.Contains("Circular dependency detected", diagnostic.GetMessage());
+            diagnostic.Id.Should().Be("IOC003");
+            diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+            diagnostic.GetMessage().Should().Contain("Circular dependency detected");
 
             var message = diagnostic.GetMessage();
 
             // Should mention the services involved
-            Assert.True(message.Contains("ServiceA") || message.Contains("ServiceB"),
-                $"Expected message to contain service names. Got: {message}");
+            (message.Contains("ServiceA") || message.Contains("ServiceB")).Should()
+                .BeTrue($"Expected message to contain service names. Got: {message}");
 
             // Should be a descriptive warning message
-            Assert.True(message.Length > 20, "Diagnostic message should be descriptive");
+            (message.Length > 20).Should().BeTrue("Diagnostic message should be descriptive");
         }
     }
 
@@ -81,7 +81,7 @@ public partial class SelfService : ISelfService
 
         // Assert
         var ioc003Diagnostics = result.GetDiagnosticsByCode("IOC003");
-        Assert.NotEmpty(ioc003Diagnostics);
+        ioc003Diagnostics.Should().NotBeEmpty();
 
         // Validate self-reference diagnostic
         var diagnostic = ioc003Diagnostics.First();
@@ -89,10 +89,10 @@ public partial class SelfService : ISelfService
 
         Debug.WriteLine($"Self-Reference IOC003 Message: {message}");
 
-        Assert.Equal("IOC003", diagnostic.Id);
-        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
-        Assert.Contains("Circular dependency detected", message);
-        Assert.Contains("SelfService", message);
+        diagnostic.Id.Should().Be("IOC003");
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+        message.Should().Contain("Circular dependency detected");
+        message.Should().Contain("SelfService");
     }
 
     [Fact]
@@ -113,15 +113,14 @@ public partial class ServiceC : IC { [Inject] private readonly IA _a; }";
 
         // Assert
         var ioc003Diagnostics = result.GetDiagnosticsByCode("IOC003");
-        Assert.NotEmpty(ioc003Diagnostics);
+        ioc003Diagnostics.Should().NotBeEmpty();
 
         // Validate three-service cycle diagnostic
         var allMessages = string.Join(" | ", ioc003Diagnostics.Select(d => d.GetMessage()));
         Debug.WriteLine($"Three-Service Cycle IOC003 Messages: {allMessages}");
 
         // Should reference services involved in the cycle
-        Assert.True(
-            allMessages.Contains("ServiceA") || allMessages.Contains("ServiceB") || allMessages.Contains("ServiceC"),
-            $"Expected cycle message to reference involved services. Got: {allMessages}");
+        (allMessages.Contains("ServiceA") || allMessages.Contains("ServiceB") || allMessages.Contains("ServiceC"))
+            .Should().BeTrue($"Expected cycle message to reference involved services. Got: {allMessages}");
     }
 }

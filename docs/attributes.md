@@ -7,6 +7,7 @@ Each attribute has a single responsibility. Combine them for the behavior you wa
 - `Scoped`: Registers the concrete type (and selected interfaces) with scoped lifetime.
 - `Singleton`: Registers with singleton lifetime.
 - `Transient`: Registers with transient lifetime.
+- Mix only one lifetime attribute per class. If you accidentally stack `[Scoped]` and `[Singleton]`, diagnostic IOC036 warns that the combination is redundant/conflicting.
 
 Example
 
@@ -21,7 +22,9 @@ public partial class UserService : IUserService
 ## Dependency Injection
 
 - Recommended: `DependsOn<T...>` — declare constructor parameters without creating fields. Use this for most dependencies to keep classes minimal and avoid unnecessary state.
-- Last resort: `Inject` — only when you truly need a field (e.g., you read it across methods, you need specific field naming, or you must store the instance).
+- Fallback: `Inject` — only when you truly need a bespoke field name, different accessibility, or non-readonly behavior.
+
+> ℹ️ Diagnostic **IOC035** fires when an `[Inject]` field name matches the default `_dependency` pattern that `[DependsOn<T>]` would generate automatically. When you see this warning, delete the field and add `[DependsOn<TDependency>]` so the generator owns the backing field.
 
 Examples
 
@@ -63,10 +66,11 @@ public partial class CacheService
   - `Shared`: all listed interfaces resolve to one instance
 - `RegisterAsAll(mode, instanceSharing)`: Register concrete + all interfaces (`All`), just interfaces (`Exclusionary`), or just concrete (`DirectOnly`).
 - `SkipRegistration` / `SkipRegistration<T...>`: Opt-out globally or for specific interfaces.
+- `[SkipRegistration]` disables registration entirely—if you also add `[Scoped]`, `[RegisterAs]`, or `[RegisterAsAll]`, IOC037 reminds you those attributes no longer have any effect.
+- `[SkipRegistration<T...>]` is useful only when interfaces would otherwise register. If `[RegisterAsAll(RegistrationMode.DirectOnly)]` is set, IOC038 warns that skipping interfaces is redundant because `DirectOnly` never registers interfaces.
 
 ```csharp
-[Scoped]
-[RegisterAs<IOrderService, IOrderValidator>(InstanceSharing.Shared)]
+[RegisterAs<IOrderService, IOrderValidator>(InstanceSharing.Shared)] // Scoped by default
 public partial class OrderService : IOrderService, IOrderValidator, IInternalOnly
 {
     [Inject] private readonly IPaymentGateway _payments;

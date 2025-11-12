@@ -40,8 +40,7 @@ public interface IRegisterAsAuditService
 }
 
 // RegisterAs<T1> - Single interface registration
-[Scoped]
-[RegisterAs<IRegisterAsUserService>] // Only IRegisterAsUserService is registered
+[RegisterAs<IRegisterAsUserService>] // Only IRegisterAsUserService is registered (defaults to Scoped)
 public partial class BasicUserService : IRegisterAsUserService, IRegisterAsEmailService, IRegisterAsValidationService
 {
     [Inject] private readonly ILogger<BasicUserService> _logger;
@@ -57,8 +56,7 @@ public partial class BasicUserService : IRegisterAsUserService, IRegisterAsEmail
 }
 
 // RegisterAs<T1, T2> - Two interfaces registration
-[Scoped]
-[RegisterAs<IRegisterAsUserService, IRegisterAsEmailService>] // Only these two are registered
+[RegisterAs<IRegisterAsUserService, IRegisterAsEmailService>] // Default Scoped lifetime inferred
 public partial class UserEmailService : IRegisterAsUserService, IRegisterAsEmailService, IRegisterAsValidationService
 {
     [Inject] private readonly ILogger<UserEmailService> _logger;
@@ -330,8 +328,7 @@ public interface IValidationServiceSeparate
     bool Validate(string item);
 }
 
-// Default behavior: InstanceSharing.Separate creates separate instances
-[Scoped]
+// Default behavior: InstanceSharing.Separate creates separate instances without explicit lifetime
 [RegisterAs<IRegistrationService, IValidationServiceSeparate>] // Implicit InstanceSharing.Separate
 public partial class SeparateInstanceService : IRegistrationService, IValidationServiceSeparate
 {
@@ -473,7 +470,7 @@ public interface IConfigurationWatcher
         Action<string> callback);
 }
 
-[Scoped] // Explicit lifetime + InstanceSharing.Shared = concrete registration + factory patterns
+[Singleton] // Explicit non-default lifetime + InstanceSharing.Shared = factory patterns
 [RegisterAs<IMetricsCollector, IEventPublisher, IHealthReporter, IConfigurationWatcher>(InstanceSharing.Shared)]
 public partial class ComprehensiveSharedService : IMetricsCollector, IEventPublisher, IHealthReporter,
     IConfigurationWatcher

@@ -37,23 +37,16 @@ public partial class MemoryCacheService : ICacheService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationContent = result.GetServiceRegistrationText();
 
         // Should generate configuration-based switching (relaxed patterns)
-        var hasConfigAccess = registrationSource.Content.Contains("configuration");
-        var hasRedisRegistration = registrationSource.Content.Contains("RedisCacheService");
-        var hasMemoryRegistration = registrationSource.Content.Contains("MemoryCacheService");
-        var hasRedisCondition = registrationSource.Content.Contains("Redis");
-        var hasMemoryCondition = registrationSource.Content.Contains("Memory");
-
-        Assert.True(hasConfigAccess, "Should access configuration");
-        Assert.True(hasRedisRegistration, "Should register Redis cache service");
-        Assert.True(hasMemoryRegistration, "Should register Memory cache service");
-        Assert.True(hasRedisCondition, "Should check for Redis condition");
-        Assert.True(hasMemoryCondition, "Should check for Memory condition");
+        registrationContent.Should().Contain("configuration");
+        registrationContent.Should().Contain("RedisCacheService");
+        registrationContent.Should().Contain("MemoryCacheService");
+        registrationContent.Should().Contain("Redis");
+        registrationContent.Should().Contain("Memory");
     }
 
     #endregion
@@ -81,19 +74,18 @@ public partial class DevService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationContent = result.GetServiceRegistrationText();
 
         // Should use proper environment variable detection
-        Assert.Contains("Environment.GetEnvironmentVariable(\"ASPNETCORE_ENVIRONMENT\")", registrationSource.Content);
+        registrationContent.Should().Contain("Environment.GetEnvironmentVariable(\"ASPNETCORE_ENVIRONMENT\")");
 
         // Should handle null environment gracefully with null coalescing
-        Assert.Contains("?? \"\"", registrationSource.Content);
+        registrationContent.Should().Contain("?? \"\"");
 
         // Environment detection should be robust
-        Assert.True(registrationSource.Content.Contains("ASPNETCORE_ENVIRONMENT"));
+        registrationContent.Should().Contain("ASPNETCORE_ENVIRONMENT");
     }
 
     #endregion
@@ -121,18 +113,16 @@ public partial class MockPaymentService : IPaymentService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
+        result.HasErrors.Should().BeFalse(
             $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-
-        // Should generate conditional registration logic
-        Assert.Contains("Environment.GetEnvironmentVariable(\"ASPNETCORE_ENVIRONMENT\")", registrationSource.Content);
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<Test.IPaymentService, Test.MockPaymentService>()",
-            registrationSource.Content);
+        var registrationContent = result.GetServiceRegistrationText();
+        registrationContent.Should().Contain(
+            "Environment.GetEnvironmentVariable(\"ASPNETCORE_ENVIRONMENT\")");
+        registrationContent.Should().Contain(
+            "string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)");
+        registrationContent.Should().Contain(
+            "services.AddScoped<Test.IPaymentService, Test.MockPaymentService>()");
     }
 
     [Fact]
@@ -156,24 +146,20 @@ public partial class TestEmailService : IEmailService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-
-        // Should generate OR condition for multiple environments
-        Assert.Contains("Environment.GetEnvironmentVariable(\"ASPNETCORE_ENVIRONMENT\")", registrationSource.Content);
-        var hasTestingCondition =
-            registrationSource.Content.Contains(
-                "string.Equals(environment, \"Testing\", StringComparison.OrdinalIgnoreCase)");
-        var hasStagingCondition =
-            registrationSource.Content.Contains(
-                "string.Equals(environment, \"Staging\", StringComparison.OrdinalIgnoreCase)");
-        var hasOrCondition = registrationSource.Content.Contains("||");
-
-        Assert.True(hasTestingCondition && hasStagingCondition && hasOrCondition,
-            $"Should generate OR condition for multiple environments. Generated: {registrationSource.Content}");
-        Assert.Contains("services.AddScoped<Test.IEmailService, Test.TestEmailService>()", registrationSource.Content);
+        var registrationContent = result.GetServiceRegistrationText();
+        registrationContent.Should().Contain(
+            "Environment.GetEnvironmentVariable(\"ASPNETCORE_ENVIRONMENT\")");
+        var hasTestingCondition = registrationContent.Contains(
+            "string.Equals(environment, \"Testing\", StringComparison.OrdinalIgnoreCase)");
+        var hasStagingCondition = registrationContent.Contains(
+            "string.Equals(environment, \"Staging\", StringComparison.OrdinalIgnoreCase)");
+        registrationContent.Contains("||").Should().BeTrue();
+        (hasTestingCondition && hasStagingCondition).Should().BeTrue(
+            "both Testing and Staging checks should be emitted");
+        registrationContent.Should().Contain(
+            "services.AddScoped<Test.IEmailService, Test.TestEmailService>()");
     }
 
     [Fact]
@@ -197,17 +183,15 @@ public partial class MemoryCacheService : ICacheService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-
-        // Should generate negative condition
-        Assert.Contains("Environment.GetEnvironmentVariable(\"ASPNETCORE_ENVIRONMENT\")", registrationSource.Content);
-        Assert.Contains("!string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<Test.ICacheService, Test.MemoryCacheService>()",
-            registrationSource.Content);
+        var registrationContent = result.GetServiceRegistrationText();
+        registrationContent.Should().Contain(
+            "Environment.GetEnvironmentVariable(\"ASPNETCORE_ENVIRONMENT\")");
+        registrationContent.Should().Contain(
+            "!string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)");
+        registrationContent.Should().Contain(
+            "services.AddScoped<Test.ICacheService, Test.MemoryCacheService>()");
     }
 
     [Fact]
@@ -243,24 +227,21 @@ public partial class TestPaymentService : IPaymentService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-
-        // Should generate conditional registrations for different environments
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<Test.IPaymentService, Test.MockPaymentService>()",
-            registrationSource.Content);
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<Test.IPaymentService, Test.StripePaymentService>()",
-            registrationSource.Content);
-        Assert.Contains("string.Equals(environment, \"Testing\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<Test.IPaymentService, Test.TestPaymentService>()",
-            registrationSource.Content);
+        var registrationContent = result.GetServiceRegistrationText();
+        registrationContent.Should().Contain(
+            "string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)");
+        registrationContent.Should().Contain(
+            "services.AddScoped<Test.IPaymentService, Test.MockPaymentService>()");
+        registrationContent.Should().Contain(
+            "string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)");
+        registrationContent.Should().Contain(
+            "services.AddScoped<Test.IPaymentService, Test.StripePaymentService>()");
+        registrationContent.Should().Contain(
+            "string.Equals(environment, \"Testing\", StringComparison.OrdinalIgnoreCase)");
+        registrationContent.Should().Contain(
+            "services.AddScoped<Test.IPaymentService, Test.TestPaymentService>()");
     }
 
     #endregion
@@ -294,23 +275,14 @@ public partial class PremiumPaymentService : IPaymentService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-
-        // Should generate combined conditions with AND logic (relaxed patterns)
-        var hasDevelopmentCheck = registrationSource.Content.Contains("Development");
-        var hasProductionCheck = registrationSource.Content.Contains("Production");
-        var hasUseMocksConfig = registrationSource.Content.Contains("Features:UseMocks");
-        var hasPremiumTierConfig = registrationSource.Content.Contains("Features:PremiumTier");
-        var hasAndLogic = registrationSource.Content.Contains("&&");
-
-        Assert.True(hasDevelopmentCheck, "Should check Development environment");
-        Assert.True(hasProductionCheck, "Should check Production environment");
-        Assert.True(hasUseMocksConfig, "Should check UseMocks configuration");
-        Assert.True(hasPremiumTierConfig, "Should check PremiumTier configuration");
-        Assert.True(hasAndLogic, "Should use AND logic for combined conditions");
+        var registrationContent = result.GetServiceRegistrationText();
+        registrationContent.Should().Contain("Development");
+        registrationContent.Should().Contain("Production");
+        registrationContent.Should().Contain("Features:UseMocks");
+        registrationContent.Should().Contain("Features:PremiumTier");
+        registrationContent.Should().Contain("&&");
     }
 
     [Fact]
@@ -340,29 +312,26 @@ public partial class EmailNotificationService : INotificationService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-
-        // Should generate complex combined conditions
+        var registrationContent = result.GetServiceRegistrationText();
         var hasDevTestingCondition =
-            registrationSource.Content.Contains(
+            registrationContent.Contains(
                 "string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)") &&
-            registrationSource.Content.Contains(
+            registrationContent.Contains(
                 "string.Equals(environment, \"Testing\", StringComparison.OrdinalIgnoreCase)") &&
-            registrationSource.Content.Contains("||");
+            registrationContent.Contains("||");
 
         var hasNotDevelopmentCondition =
-            registrationSource.Content.Contains(
+            registrationContent.Contains(
                 "!string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)");
         var hasConfigConditions =
-            registrationSource.Content.Contains("Notifications:UseConsole") &&
-            registrationSource.Content.Contains("Notifications:EmailEnabled");
+            registrationContent.Contains("Notifications:UseConsole") &&
+            registrationContent.Contains("Notifications:EmailEnabled");
 
-        Assert.True(hasDevTestingCondition, "Should generate OR condition for multiple environments");
-        Assert.True(hasNotDevelopmentCondition, "Should generate NOT condition for excluded environment");
-        Assert.True(hasConfigConditions, "Should generate configuration value checks");
+        hasDevTestingCondition.Should().BeTrue();
+        hasNotDevelopmentCondition.Should().BeTrue();
+        hasConfigConditions.Should().BeTrue();
     }
 
     #endregion
@@ -392,20 +361,17 @@ public partial class DevEmailService : IEmailService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        // Should generate constructor for conditional service
-        var constructorSource = result.GetConstructorSource("DevEmailService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("public DevEmailService(ILoggerService logger)", constructorSource.Content);
-        Assert.Contains("this._logger = logger;", constructorSource.Content);
+        var constructorSource = result.GetConstructorSourceText("DevEmailService");
+        constructorSource.Should().Contain("public DevEmailService(ILoggerService logger)");
+        constructorSource.Should().Contain("this._logger = logger;");
 
-        // Should generate conditional registration
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<Test.IEmailService, Test.DevEmailService>()", registrationSource.Content);
+        var registrationContent = result.GetServiceRegistrationText();
+        registrationContent.Should().Contain(
+            "string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)");
+        registrationContent.Should().Contain(
+            "services.AddScoped<Test.IEmailService, Test.DevEmailService>()");
     }
 
     [Fact]
@@ -436,16 +402,13 @@ public partial class DevCacheService : ICacheService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-
-        // Should respect custom lifetimes in conditional registration
-        Assert.Contains("services.AddSingleton<Test.ICacheService, Test.ProductionCacheService>()",
-            registrationSource.Content);
-        Assert.Contains("services.AddTransient<Test.ICacheService, Test.DevCacheService>()",
-            registrationSource.Content);
+        var registrationContent = result.GetServiceRegistrationText();
+        registrationContent.Should().Contain(
+            "services.AddSingleton<Test.ICacheService, Test.ProductionCacheService>()");
+        registrationContent.Should().Contain(
+            "services.AddTransient<Test.ICacheService, Test.DevCacheService>()");
     }
 
     [Fact]
@@ -474,34 +437,22 @@ public partial class RegularService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationContent = result.GetServiceRegistrationText();
+        registrationContent.Should().Contain("public static IServiceCollection");
+        registrationContent.Should().Contain("AddTestAssemblyRegisteredServices");
+        registrationContent.Should().Contain("this IServiceCollection services");
+        registrationContent.Should().Contain(
+            "var environment = Environment.GetEnvironmentVariable(\"ASPNETCORE_ENVIRONMENT\")");
+        registrationContent.Should().Contain(
+            "string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)");
 
-        // Should have proper method structure
-        Assert.Contains("public static IServiceCollection", registrationSource.Content);
-        Assert.Contains("AddTestAssemblyRegisteredServices", registrationSource.Content);
-        Assert.Contains("this IServiceCollection services", registrationSource.Content);
-
-        // Should get environment at the start (no configuration needed for environment-only conditions)
-        Assert.Contains("var environment = Environment.GetEnvironmentVariable(\"ASPNETCORE_ENVIRONMENT\")",
-            registrationSource.Content);
-        // Environment-only services may still get IConfiguration parameter if any conditional services need it
-        // This is acceptable behavior - the presence of IConfiguration parameter is not an error
-
-        // Should register both conditional and regular services
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-
-        // Check for regular service registration (flexible pattern matching)
-        var hasRegularServiceRegistration = registrationSource.Content.Contains("RegularService") &&
-                                            (registrationSource.Content.Contains("AddScoped") ||
-                                             registrationSource.Content.Contains("services.Add"));
-        Assert.True(hasRegularServiceRegistration, "Should register RegularService");
-
-        // Should return services
-        Assert.Contains("return services;", registrationSource.Content);
+        var hasRegularServiceRegistration = registrationContent.Contains("RegularService") &&
+                                            (registrationContent.Contains("AddScoped") ||
+                                             registrationContent.Contains("services.Add"));
+        hasRegularServiceRegistration.Should().BeTrue("regular services should still register");
+        registrationContent.Should().Contain("return services;");
     }
 
     #endregion
@@ -529,14 +480,13 @@ public partial class ConflictingService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        // Should either produce diagnostic or handle gracefully without generating impossible conditions
-        var registrationSource = result.GetServiceRegistrationSource();
-        if (registrationSource != null)
-            // Should not generate obviously impossible condition logic
-            Assert.False(registrationSource.Content.Contains("Development") &&
-                         registrationSource.Content.Contains("&& !") &&
-                         registrationSource.Content.Contains("Development"),
-                "Should not generate impossible logical conditions");
+        if (result.GetServiceRegistrationSource() is { Content: var registrationContent })
+        {
+            var impossible = registrationContent.Contains("Development") &&
+                             registrationContent.Contains("&& !") &&
+                             registrationContent.Contains("Development");
+            impossible.Should().BeFalse("generator should avoid impossible logical conditions");
+        }
     }
 
     [Fact]
@@ -560,19 +510,13 @@ public partial class ConditionalLifetimeInferenceService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        // Should no longer produce IOC021 diagnostic - ConditionalService is itself a service indicator
         var diagnostics = result.GetDiagnosticsByCode("IOC021");
-        Assert.False(diagnostics.Any(),
-            "ConditionalService should work without [Scoped] attribute after intelligent inference refactor");
+        diagnostics.Should().BeEmpty();
 
-        // Should register the ConditionalService class since ConditionalService is a service indicator
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("ConditionalLifetimeInferenceService", registrationSource.Content);
-
-        // Should generate conditional logic
-        Assert.Contains("Development", registrationSource.Content);
-        Assert.Contains("Environment.GetEnvironmentVariable", registrationSource.Content);
+        var registrationContent = result.GetServiceRegistrationText();
+        registrationContent.Should().Contain("ConditionalLifetimeInferenceService");
+        registrationContent.Should().Contain("Development");
+        registrationContent.Should().Contain("Environment.GetEnvironmentVariable");
     }
 
     [Fact]
@@ -596,17 +540,11 @@ public partial class EmptyConditionalService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        // Should produce diagnostic for empty conditional service
-        var diagnostics = result.GetDiagnosticsByCode("IOC022"); // Assuming IOC022 for empty conditions
+        var diagnostics = result.GetDiagnosticsByCode("IOC022");
         if (!diagnostics.Any())
-        {
-            // If no specific diagnostic, should treat as regular service
-            var registrationSource = result.GetServiceRegistrationSource();
-            if (registrationSource != null)
-                // Should register without conditions or produce warning
-                Assert.Contains("services.AddScoped<Test.ITestService, Test.EmptyConditionalService>()",
-                    registrationSource.Content);
-        }
+            result.GetServiceRegistrationText()
+                .Should().Contain(
+                    "services.AddScoped<Test.ITestService, Test.EmptyConditionalService>()");
     }
 
     #endregion
@@ -633,27 +571,13 @@ public partial class DevPaymentService : IPaymentService
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
-        // Assert
-        if (result.HasErrors)
-        {
-            var errors = string.Join("\n",
-                result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
-                    .Select(d => d.ToString()));
-            // Compilation errors will be shown in the Assert below
-        }
-
-        Assert.False(result.HasErrors,
+        result.HasErrors.Should().BeFalse(
             $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
 
-        // Test passed - the simple case works, let's expand
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-
-        // Should contain environment-based conditional logic for Development environment
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        // Should contain DevPaymentService registration
-        Assert.Contains("DevPaymentService", registrationSource.Content);
+        var registrationContent = result.GetServiceRegistrationText();
+        registrationContent.Should().Contain(
+            "string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)");
+        registrationContent.Should().Contain("DevPaymentService");
     }
 
     [Fact]
@@ -687,39 +611,20 @@ public partial class RedisCacheService : ICacheService { }";
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-
-        // Should generate environment detection
-        Assert.Contains("var environment = Environment.GetEnvironmentVariable(\"ASPNETCORE_ENVIRONMENT\")",
-            registrationSource.Content);
-
-        // Should use IConfiguration parameter for configuration-based conditional services
-        Assert.Contains("IConfiguration configuration", registrationSource.Content);
-
-        // Should generate environment-based conditional registrations
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-
-        // Should generate configuration-based conditional registration (relaxed patterns)
-        var hasConfigCheck = registrationSource.Content.Contains("Cache:UseRedis");
-        var hasTrueCondition = registrationSource.Content.Contains("true");
-
-        Assert.True(hasConfigCheck, "Should check Cache:UseRedis configuration");
-        Assert.True(hasTrueCondition, "Should check for true condition");
-
-        // Should respect custom lifetimes
-        var hasSingletonRegistration =
-            registrationSource.Content.Contains("services.AddSingleton<Test.ICacheService, Test.RedisCacheService>();");
-        Assert.True(hasSingletonRegistration,
-            $"Expected singleton registration for RedisCacheService not found in: {registrationSource.Content}");
-
-        // Generated code should be well-structured and compile
-        Assert.False(result.HasErrors);
+        var registrationContent = result.GetServiceRegistrationText();
+        registrationContent.Should().Contain(
+            "var environment = Environment.GetEnvironmentVariable(\"ASPNETCORE_ENVIRONMENT\")");
+        registrationContent.Should().Contain("IConfiguration configuration");
+        registrationContent.Should().Contain(
+            "string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)");
+        registrationContent.Should().Contain(
+            "string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)");
+        registrationContent.Should().Contain("Cache:UseRedis");
+        registrationContent.Should().Contain("true");
+        registrationContent.Should().Contain(
+            "services.AddSingleton<Test.ICacheService, Test.RedisCacheService>();");
     }
 
     #endregion

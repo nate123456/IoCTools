@@ -33,22 +33,20 @@ public partial class TestRepository : ITestRepository
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
+        result.HasErrors.Should()
+            .BeFalse($"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Verify the service is registered (not just constructor generated)
-        Assert.Contains("AddScoped<global::Test.TestRepository, global::Test.TestRepository>",
-            registrationSource.Content);
-        Assert.Contains("AddScoped<global::Test.ITestRepository, global::Test.TestRepository>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("AddScoped<global::Test.TestRepository, global::Test.TestRepository>");
+        registrationSource.Content.Should()
+            .Contain("AddScoped<global::Test.ITestRepository, global::Test.TestRepository>");
 
         // Verify constructor is still generated
-        var constructorSource = result.GetConstructorSource("TestRepository");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("private readonly ILogger<TestRepository> _logger;", constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("TestRepository");
+        constructorSource.Content.Should().Contain("private readonly ILogger<TestRepository> _logger;");
     }
 
     [Fact]
@@ -77,24 +75,22 @@ public partial class MultiDependencyService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
+        result.HasErrors.Should()
+            .BeFalse($"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Verify the service is registered with default Scoped lifetime
-        Assert.Contains("AddScoped<global::Test.MultiDependencyService, global::Test.MultiDependencyService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("AddScoped<global::Test.MultiDependencyService, global::Test.MultiDependencyService>");
 
         // Verify constructor generation for both dependencies
-        var constructorSource = result.GetConstructorSource("MultiDependencyService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("private readonly ILogger<MultiDependencyService> _logger;", constructorSource.Content);
-        Assert.Contains("private readonly IConfiguration _configuration;", constructorSource.Content);
-        Assert.Contains(
-            "public MultiDependencyService(ILogger<MultiDependencyService> logger, IConfiguration configuration)",
-            constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("MultiDependencyService");
+        constructorSource.Content.Should().Contain("private readonly ILogger<MultiDependencyService> _logger;");
+        constructorSource.Content.Should().Contain("private readonly IConfiguration _configuration;");
+        constructorSource.Content.Should()
+            .Contain(
+                "public MultiDependencyService(ILogger<MultiDependencyService> logger, IConfiguration configuration)");
     }
 
     [Fact]
@@ -123,21 +119,19 @@ public partial class ExternalDemoService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
+        result.HasErrors.Should()
+            .BeFalse($"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Verify the service is registered even with external dependencies
-        Assert.Contains("AddScoped<global::Test.ExternalDemoService, global::Test.ExternalDemoService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("AddScoped<global::Test.ExternalDemoService, global::Test.ExternalDemoService>");
 
         // Verify constructor generation with proper naming
-        var constructorSource = result.GetConstructorSource("ExternalDemoService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("private readonly IConfiguration _configuration;", constructorSource.Content);
-        Assert.Contains("private readonly ILogger<ExternalDemoService> ext_logger;", constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("ExternalDemoService");
+        constructorSource.Content.Should().Contain("private readonly IConfiguration _configuration;");
+        constructorSource.Content.Should().Contain("private readonly ILogger<ExternalDemoService> ext_logger;");
     }
 
     [Fact]
@@ -175,17 +169,16 @@ public partial class UserRepository : IUserRepository
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
+        result.HasErrors.Should()
+            .BeFalse($"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // This is the key test - repository should be auto-registered
-        Assert.Contains("AddScoped<global::Test.UserRepository, global::Test.UserRepository>",
-            registrationSource.Content);
-        Assert.Contains("AddScoped<global::Test.IUserRepository, global::Test.UserRepository>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("AddScoped<global::Test.UserRepository, global::Test.UserRepository>");
+        registrationSource.Content.Should()
+            .Contain("AddScoped<global::Test.IUserRepository, global::Test.UserRepository>");
     }
 
     [Fact]
@@ -212,17 +205,15 @@ public partial class SingletonRepositoryService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
+        result.HasErrors.Should()
+            .BeFalse($"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should respect the explicit [Singleton] lifetime, not default to Scoped
-        Assert.Contains(
-            "AddSingleton<global::Test.SingletonRepositoryService, global::Test.SingletonRepositoryService>",
-            registrationSource.Content);
-        Assert.DoesNotContain("AddScoped<global::Test.SingletonRepositoryService", registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("AddSingleton<global::Test.SingletonRepositoryService, global::Test.SingletonRepositoryService>");
+        registrationSource.Content.Should().NotContain("AddScoped<global::Test.SingletonRepositoryService");
     }
 
     [Fact]
@@ -250,17 +241,15 @@ public partial class GenericRepository<T> : IGenericRepository<T> where T : clas
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
+        result.HasErrors.Should()
+            .BeFalse($"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should register generic services properly
-        Assert.Contains("AddScoped(typeof(global::Test.GenericRepository<>), typeof(global::Test.GenericRepository<>))",
-            registrationSource.Content);
-        Assert.Contains(
-            "AddScoped(typeof(global::Test.IGenericRepository<>), typeof(global::Test.GenericRepository<>))",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("AddScoped(typeof(global::Test.GenericRepository<>), typeof(global::Test.GenericRepository<>))");
+        registrationSource.Content.Should()
+            .Contain("AddScoped(typeof(global::Test.IGenericRepository<>), typeof(global::Test.GenericRepository<>))");
     }
 }

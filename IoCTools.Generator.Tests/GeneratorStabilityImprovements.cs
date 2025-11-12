@@ -45,26 +45,28 @@ public partial class SpecialDep : ISpecialDep { }
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert - No compilation errors
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+        result.HasErrors.Should().BeFalse("Compilation errors: {0}", errorMessages);
 
         // Assert - All file names are valid and unique
         var constructorHints = result.GeneratedSources.Where(s => s.Hint.Contains("Constructor")).Select(s => s.Hint)
             .ToList();
         var uniqueHints = constructorHints.Distinct().ToList();
-        Assert.Equal(constructorHints.Count, uniqueHints.Count); // No duplicate file names
+        constructorHints.Count.Should().Be(uniqueHints.Count); // No duplicate file names
 
         // Assert - File names contain only safe characters
         foreach (var hint in constructorHints)
         {
-            Assert.DoesNotContain("<", hint);
-            Assert.DoesNotContain(">", hint);
-            Assert.DoesNotContain("$", hint);
-            Assert.DoesNotContain(" ", hint);
-            Assert.DoesNotContain(",", hint);
-            Assert.Contains("_Constructor.g.cs", hint);
+            hint.Should().NotContain("<", "constructor hint should avoid invalid characters");
+            hint.Should().NotContain(">", "constructor hint should avoid invalid characters");
+            hint.Should().NotContain("$", "constructor hint should avoid invalid characters");
+            hint.Should().NotContain(" ", "constructor hint should avoid invalid characters");
+            hint.Should().NotContain(",", "constructor hint should avoid invalid characters");
+            hint.Should().Contain("_Constructor.g.cs", "constructor hints should end with the expected suffix");
         }
     }
 
@@ -80,20 +82,23 @@ public partial class SpecialDep : ISpecialDep { }
         stopwatch.Stop();
 
         // Assert - Completes within reasonable time
-        Assert.True(stopwatch.Elapsed.TotalSeconds < 5,
-            $"Generator took too long: {stopwatch.Elapsed.TotalSeconds:F2} seconds");
+        stopwatch.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(5),
+            "the generator should finish moderate workloads quickly but took {0:F2} seconds",
+            stopwatch.Elapsed.TotalSeconds);
 
         // Assert - No errors
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
+        result.HasErrors.Should().BeFalse("Compilation errors: {0}", errorMessages);
 
         // Assert - Generated expected files
         var constructorCount = result.GeneratedSources.Count(s => s.Hint.Contains("Constructor"));
-        Assert.True(constructorCount > 0, "Should generate constructor files");
+        constructorCount.Should().BeGreaterThan(0, "the generator should emit constructor files");
 
         var serviceRegCount = result.GeneratedSources.Count(s =>
             s.Content.Contains("ServiceCollectionExtensions"));
-        Assert.Equal(1, serviceRegCount); // Exactly one service registration file
+        serviceRegCount.Should().Be(1); // Exactly one service registration file
     }
 
     [Fact]
@@ -149,27 +154,26 @@ namespace Gamma
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert - No compilation errors
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+        result.HasErrors.Should().BeFalse("Compilation errors: {0}", errorMessages);
 
         // Assert - Services are registered correctly
-        var serviceRegistration = result.GetServiceRegistrationSource();
-        Assert.NotNull(serviceRegistration);
-
-        var content = serviceRegistration.Content;
-        Assert.Contains("Alpha.MyService", content);
-        Assert.Contains("Beta.MyService", content);
-        Assert.Contains("Gamma.ServiceC", content);
+        var registrationContent = result.GetServiceRegistrationText();
+        registrationContent.Should().Contain("Alpha.MyService");
+        registrationContent.Should().Contain("Beta.MyService");
+        registrationContent.Should().Contain("Gamma.ServiceC");
 
         // Assert - All services get constructor files with unique names
         var constructorSources = result.GeneratedSources.Where(s => s.Hint.Contains("Constructor")).ToList();
-        Assert.True(constructorSources.Count >= 6); // At least 6 services
+        constructorSources.Count.Should().BeGreaterOrEqualTo(6); // At least 6 services
 
         // Assert - No duplicate file names
         var hints = constructorSources.Select(c => c.Hint).ToList();
-        Assert.Equal(hints.Count, hints.Distinct().Count());
+        hints.Count.Should().Be(hints.Distinct().Count());
     }
 
     [Fact]
@@ -200,7 +204,7 @@ public partial class DepB : IDepB { }
         for (var i = 0; i < 5; i++) results.Add(SourceGeneratorTestHelper.CompileWithGenerator(sourceCode));
 
         // Assert - All results are successful
-        foreach (var result in results) Assert.False(result.HasErrors);
+        foreach (var result in results) result.HasErrors.Should().BeFalse();
 
         // Assert - All results are identical
         var firstResult = results[0];
@@ -209,12 +213,12 @@ public partial class DepB : IDepB { }
             var currentResult = results[i];
 
             // Same number of generated sources
-            Assert.Equal(firstResult.GeneratedSources.Count, currentResult.GeneratedSources.Count);
+            currentResult.GeneratedSources.Count.Should().Be(firstResult.GeneratedSources.Count);
 
             // Service registration is identical
-            var firstServiceReg = firstResult.GetServiceRegistrationSource()?.Content;
-            var currentServiceReg = currentResult.GetServiceRegistrationSource()?.Content;
-            Assert.Equal(firstServiceReg, currentServiceReg);
+            var firstServiceReg = firstResult.GetServiceRegistrationText();
+            var currentServiceReg = currentResult.GetServiceRegistrationText();
+            currentServiceReg.Should().Be(firstServiceReg);
 
             // Constructor files are identical
             var firstConstructors = firstResult.GeneratedSources.Where(s => s.Hint.Contains("Constructor"))
@@ -222,12 +226,12 @@ public partial class DepB : IDepB { }
             var currentConstructors = currentResult.GeneratedSources.Where(s => s.Hint.Contains("Constructor"))
                 .OrderBy(s => s.Hint).ToList();
 
-            Assert.Equal(firstConstructors.Count, currentConstructors.Count);
+            currentConstructors.Count.Should().Be(firstConstructors.Count);
 
             for (var j = 0; j < firstConstructors.Count; j++)
             {
-                Assert.Equal(firstConstructors[j].Hint, currentConstructors[j].Hint);
-                Assert.Equal(firstConstructors[j].Content, currentConstructors[j].Content);
+                currentConstructors[j].Hint.Should().Be(firstConstructors[j].Hint);
+                currentConstructors[j].Content.Should().Be(firstConstructors[j].Content);
             }
         }
     }
@@ -272,28 +276,23 @@ public partial class Dep2 : IDep2 { }
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert - May have warnings but generator still produces output
-        Assert.True(result.CompilationDiagnostics.Count >= 0); // Always true, just checking for no exceptions
+        result.CompilationDiagnostics.Count.Should().BeGreaterOrEqualTo(0);
 
-        // Debug: Check what's in the generated sources
-        if (result.GeneratedSources.Count == 0)
-        {
-            var allDiagnostics =
-                string.Join(", ", result.CompilationDiagnostics.Select(d => $"{d.Id}: {d.GetMessage()}"));
-            Assert.True(false, $"No sources generated. Diagnostics: {allDiagnostics}");
-        }
-
-        Assert.True(result.GeneratedSources.Count > 0);
+        var generatedSources = result.GeneratedSources.ToList();
+        var allDiagnostics = string.Join(", ", result.CompilationDiagnostics.Select(d => $"{d.Id}: {d.GetMessage()}"));
+        generatedSources.Should().NotBeEmpty("No sources generated. Diagnostics: {0}", allDiagnostics);
 
         // Assert - Valid services still get processed
-        var serviceRegistration = result.GetServiceRegistrationSource();
-        Assert.NotNull(serviceRegistration);
-        Assert.Contains("ValidService1", serviceRegistration.Content);
-        Assert.Contains("ValidService2", serviceRegistration.Content);
+        var registrationContent = result.GetServiceRegistrationText();
+        registrationContent.Should().Contain("ValidService1");
+        registrationContent.Should().Contain("ValidService2");
 
         // Assert - Constructor files generated for valid services
-        var constructorSources = result.GeneratedSources.Where(s => s.Hint.Contains("Constructor")).ToList();
-        Assert.True(constructorSources.Any(s => s.Hint.Contains("ValidService1")));
-        Assert.True(constructorSources.Any(s => s.Hint.Contains("ValidService2")));
+        var constructorSources = generatedSources.Where(s => s.Hint.Contains("Constructor")).ToList();
+        constructorSources.Any(s => s.Hint.Contains("ValidService1"))
+            .Should().BeTrue("ValidService1 should still generate constructors");
+        constructorSources.Any(s => s.Hint.Contains("ValidService2"))
+            .Should().BeTrue("ValidService2 should still generate constructors");
     }
 
     [Fact]
@@ -322,7 +321,7 @@ public partial class Dependency : IDependency { }
             var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
             stopwatch.Stop();
 
-            Assert.False(result.HasErrors);
+            result.HasErrors.Should().BeFalse();
             executionTimes.Add(stopwatch.Elapsed);
         }
 
@@ -332,11 +331,15 @@ public partial class Dependency : IDependency { }
 
         // Max time shouldn't be more than 3x average (allowing for variance)
         var performanceThreshold = TimeSpan.FromTicks(averageTime.Ticks * 3);
-        Assert.True(maxTime <= performanceThreshold,
-            $"Performance degraded: Max time {maxTime.TotalMilliseconds}ms, Average {averageTime.TotalMilliseconds}ms");
+        maxTime.Should().BeLessOrEqualTo(performanceThreshold,
+            "Performance degraded: Max time {0}ms, Average {1}ms",
+            maxTime.TotalMilliseconds,
+            averageTime.TotalMilliseconds);
 
         // All compilations should complete in reasonable time
-        Assert.True(maxTime.TotalSeconds < 2, $"Compilation took too long: {maxTime.TotalSeconds}s");
+        maxTime.Should().BeLessThan(TimeSpan.FromSeconds(2),
+            "Compilation took too long: {0}s",
+            maxTime.TotalSeconds);
     }
 
     /// <summary>

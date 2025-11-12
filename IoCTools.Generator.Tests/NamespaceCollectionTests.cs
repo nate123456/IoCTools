@@ -27,11 +27,10 @@ public partial class TestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("TestClass");
-        Assert.NotNull(constructorSource.Content);
-        Assert.Contains("using System.Collections.Generic;", constructorSource.Content);
+        var constructorSource = result.GetConstructorSourceText("TestClass");
+        constructorSource.Should().Contain("using System.Collections.Generic;");
     }
 
     [Fact]
@@ -54,13 +53,12 @@ public partial class TestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("TestClass");
-        Assert.NotNull(constructorSource.Content);
-        Assert.Contains("using System.Collections.Generic;", constructorSource.Content);
+        var constructorSource = result.GetConstructorSourceText("TestClass");
+        constructorSource.Should().Contain("using System.Collections.Generic;");
         // Should NOT contain self-namespace (constructor is generated in TestProject namespace)
-        Assert.DoesNotContain("using TestProject;", constructorSource.Content);
+        constructorSource.Should().NotContain("using TestProject;");
     }
 
     [Fact]
@@ -88,13 +86,12 @@ public partial class TestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("TestClass");
-        Assert.NotNull(constructorSource.Content);
-        Assert.Contains("using System.Collections.Generic;", constructorSource.Content);
+        var constructorSource = result.GetConstructorSourceText("TestClass");
+        constructorSource.Should().Contain("using System.Collections.Generic;");
         // Should NOT contain self-namespace (constructor is generated in TestProject namespace)
-        Assert.DoesNotContain("using TestProject;", constructorSource.Content);
+        constructorSource.Should().NotContain("using TestProject;");
     }
 
     [Fact]
@@ -116,12 +113,11 @@ public partial class TestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("TestClass");
-        Assert.NotNull(constructorSource.Content);
+        var constructorSource = result.GetConstructorSourceText("TestClass");
         // Should NOT contain self-namespace (constructor is generated in TestProject namespace)
-        Assert.DoesNotContain("using TestProject;", constructorSource.Content);
+        constructorSource.Should().NotContain("using TestProject;");
     }
 
     [Fact]
@@ -160,13 +156,12 @@ namespace TestProject
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("TestClass");
-        Assert.NotNull(constructorSource.Content);
-        Assert.Contains("using System.Collections.Generic;", constructorSource.Content);
-        Assert.Contains("using ProjectA;", constructorSource.Content);
-        Assert.Contains("using ProjectB;", constructorSource.Content);
+        var constructorSource = result.GetConstructorSourceText("TestClass");
+        constructorSource.Should().Contain("using System.Collections.Generic;");
+        constructorSource.Should().Contain("using ProjectA;");
+        constructorSource.Should().Contain("using ProjectB;");
     }
 
     [Fact]
@@ -194,20 +189,19 @@ public partial class TestComplexCollectionGeneration
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("TestComplexCollectionGeneration");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("TestComplexCollectionGeneration");
 
         // Verify the generated code contains proper using statements
-        Assert.Contains("using System.Collections.Generic;", constructorSource.Content);
+        constructorSource.Should().Contain("using System.Collections.Generic;");
         // Should NOT contain self-namespace (constructor is generated in TestProject namespace)
-        Assert.DoesNotContain("using TestProject;", constructorSource.Content);
+        constructorSource.Should().NotContain("using TestProject;");
 
         // Verify constructor parameters are correctly typed
-        Assert.Contains("IEnumerable<ITestType1> collection1", constructorSource.Content);
-        Assert.Contains("IList<ITestType2> collection2", constructorSource.Content);
-        Assert.Contains("IEnumerable<IEnumerable<ITestType1>> nestedCollection", constructorSource.Content);
+        constructorSource.Should().Contain("IEnumerable<ITestType1> collection1");
+        constructorSource.Should().Contain("IList<ITestType2> collection2");
+        constructorSource.Should().Contain("IEnumerable<IEnumerable<ITestType1>> nestedCollection");
     }
 
     #region Error Condition Testing
@@ -233,7 +227,7 @@ public partial class TestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert - Should have compilation errors but not crash the generator
-        Assert.True(result.HasErrors);
+        result.HasErrors.Should().BeTrue();
         // Generator should still attempt to produce output even with malformed input
         var constructorSource = result.GetConstructorSource("TestClass");
         // Constructor may or may not be generated depending on error handling
@@ -258,7 +252,7 @@ public partial class TestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert - Should handle compilation errors gracefully
-        Assert.True(result.HasErrors);
+        result.HasErrors.Should().BeTrue();
     }
 
     [Fact]
@@ -282,12 +276,11 @@ public partial class TestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("TestClass");
-        Assert.NotNull(constructorSource.Content);
-        Assert.Contains("using System.Collections.Generic;", constructorSource.Content);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetConstructorSourceText("TestClass");
+        constructorSource.Should().Contain("using System.Collections.Generic;");
         // Should NOT contain self-namespace (constructor is generated in TestProject namespace)
-        Assert.DoesNotContain("using TestProject;", constructorSource.Content);
+        constructorSource.Should().NotContain("using TestProject;");
     }
 
     [Fact]
@@ -312,7 +305,7 @@ public partial class TestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert - Should have errors but generator should attempt to work
-        Assert.True(result.HasErrors);
+        result.HasErrors.Should().BeTrue();
     }
 
     #endregion
@@ -338,13 +331,12 @@ public partial class GlobalTestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("GlobalTestClass");
-        Assert.NotNull(constructorSource.Content);
-        Assert.Contains("using System.Collections.Generic;", constructorSource.Content);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetConstructorSourceText("GlobalTestClass");
+        constructorSource.Should().Contain("using System.Collections.Generic;");
         // Should NOT contain "using ;" or empty using statement
-        Assert.DoesNotContain("using ;", constructorSource.Content);
-        Assert.DoesNotContain("using global;", constructorSource.Content);
+        constructorSource.Should().NotContain("using ;");
+        constructorSource.Should().NotContain("using global;");
     }
 
     [Fact]
@@ -373,15 +365,14 @@ namespace TestProject
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("MixedTestClass");
-        Assert.NotNull(constructorSource.Content);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetConstructorSourceText("MixedTestClass");
 
-        Assert.Contains("using System.Collections.Generic;", constructorSource.Content);
+        constructorSource.Should().Contain("using System.Collections.Generic;");
         // Should NOT contain self-namespace (constructor is generated in TestProject namespace)
-        Assert.DoesNotContain("using TestProject;", constructorSource.Content);
+        constructorSource.Should().NotContain("using TestProject;");
         // Verify NO global using statements
-        Assert.DoesNotContain("using ;", constructorSource.Content);
+        constructorSource.Should().NotContain("using ;");
     }
 
     [Fact]
@@ -405,18 +396,17 @@ public partial class GlobalOnlyTestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("GlobalOnlyTestClass");
-        Assert.NotNull(constructorSource.Content);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetConstructorSourceText("GlobalOnlyTestClass");
 
         // Count exact using statements
-        var usingLines = constructorSource.Content.Split('\n')
+        var usingLines = constructorSource.Split('\n')
             .Where(line => line.Trim().StartsWith("using ") && line.Trim().EndsWith(";"))
             .ToArray();
 
         // Should only have System.Collections.Generic, no global namespace usings
-        Assert.Contains("using System.Collections.Generic;", constructorSource.Content);
-        Assert.All(usingLines, line => Assert.DoesNotMatch(@"using\s*;", line));
+        constructorSource.Should().Contain("using System.Collections.Generic;");
+        usingLines.Should().OnlyContain(line => !line.Contains("using ;"));
     }
 
     #endregion
@@ -444,12 +434,11 @@ public partial class ConstrainedTestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("ConstrainedTestClass");
-        Assert.NotNull(constructorSource.Content);
-        Assert.Contains("using System.Collections.Generic;", constructorSource.Content);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetConstructorSourceText("ConstrainedTestClass");
+        constructorSource.Should().Contain("using System.Collections.Generic;");
         // Should NOT contain self-namespace (constructor is generated in TestProject namespace)
-        Assert.DoesNotContain("using TestProject;", constructorSource.Content);
+        constructorSource.Should().NotContain("using TestProject;");
     }
 
     [Fact]
@@ -474,12 +463,11 @@ public partial class NullableTestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("NullableTestClass");
-        Assert.NotNull(constructorSource.Content);
-        Assert.Contains("using System.Collections.Generic;", constructorSource.Content);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetConstructorSourceText("NullableTestClass");
+        constructorSource.Should().Contain("using System.Collections.Generic;");
         // Should NOT contain self-namespace (constructor is generated in TestProject namespace)
-        Assert.DoesNotContain("using TestProject;", constructorSource.Content);
+        constructorSource.Should().NotContain("using TestProject;");
     }
 
     [Fact]
@@ -507,14 +495,13 @@ public partial class SystemVariationsTestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("SystemVariationsTestClass");
-        Assert.NotNull(constructorSource.Content);
-        Assert.Contains("using System.Collections.Concurrent;", constructorSource.Content);
-        Assert.Contains("using System.Collections.Specialized;", constructorSource.Content);
-        Assert.Contains("using System.Collections.Immutable;", constructorSource.Content);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetConstructorSourceText("SystemVariationsTestClass");
+        constructorSource.Should().Contain("using System.Collections.Concurrent;");
+        constructorSource.Should().Contain("using System.Collections.Specialized;");
+        constructorSource.Should().Contain("using System.Collections.Immutable;");
         // Should NOT contain self-namespace (constructor is generated in TestProject namespace)
-        Assert.DoesNotContain("using TestProject;", constructorSource.Content);
+        constructorSource.Should().NotContain("using TestProject;");
     }
 
     [Fact]
@@ -541,11 +528,11 @@ public unsafe partial class UnsafeTestClass
 
         // Assert - May have compilation issues due to unsafe context but should handle gracefully
         var constructorSource = result.GetConstructorSource("UnsafeTestClass");
-        if (constructorSource?.Content != null)
+        if (constructorSource is not null)
         {
-            Assert.Contains("using System.Collections.Generic;", constructorSource.Content);
+            constructorSource.Content.Should().Contain("using System.Collections.Generic;");
             // Should NOT contain self-namespace (constructor is generated in TestProject namespace)
-            Assert.DoesNotContain("using TestProject;", constructorSource.Content);
+            constructorSource.Content.Should().NotContain("using TestProject;");
         }
     }
 
@@ -573,12 +560,11 @@ public partial class FileScopedTestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("FileScopedTestClass");
-        Assert.NotNull(constructorSource.Content);
-        Assert.Contains("using System.Collections.Generic;", constructorSource.Content);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetConstructorSourceText("FileScopedTestClass");
+        constructorSource.Should().Contain("using System.Collections.Generic;");
         // Should NOT contain self-namespace (constructor is generated in TestProject.Services namespace)
-        Assert.DoesNotContain("using TestProject.Services;", constructorSource.Content);
+        constructorSource.Should().NotContain("using TestProject.Services;");
     }
 
     [Fact]
@@ -602,13 +588,12 @@ public partial class AliasTestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("AliasTestClass");
-        Assert.NotNull(constructorSource.Content);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetConstructorSourceText("AliasTestClass");
         // Should collect the actual namespace, not the alias
-        Assert.Contains("using System.Collections.Generic;", constructorSource.Content);
+        constructorSource.Should().Contain("using System.Collections.Generic;");
         // Should NOT contain self-namespace (constructor is generated in TestProject namespace)
-        Assert.DoesNotContain("using TestProject;", constructorSource.Content);
+        constructorSource.Should().NotContain("using TestProject;");
     }
 
     [Fact]
@@ -631,13 +616,12 @@ public partial class DeeplyNestedTestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("DeeplyNestedTestClass");
-        Assert.NotNull(constructorSource.Content);
-        Assert.Contains("using System.Collections.Generic;", constructorSource.Content);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetConstructorSourceText("DeeplyNestedTestClass");
+        constructorSource.Should().Contain("using System.Collections.Generic;");
         // Should NOT contain self-namespace (constructor is generated in the same namespace as the interface)
-        Assert.DoesNotContain("using MyCompany.MyProduct.Services.Implementations.Data.Repositories;",
-            constructorSource.Content);
+        constructorSource.Should().NotContain(
+            "using MyCompany.MyProduct.Services.Implementations.Data.Repositories;");
     }
 
     [Fact]
@@ -671,15 +655,14 @@ namespace TestProject
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("MultiFileTestClass");
-        Assert.NotNull(constructorSource?.Content);
-        Assert.Contains("using System.Collections.Generic;", constructorSource!.Content);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetConstructorSourceText("MultiFileTestClass");
+        constructorSource.Should().Contain("using System.Collections.Generic;");
         // Should NOT contain self-namespace (constructor is generated in TestProject namespace)
-        Assert.DoesNotContain("using TestProject;", constructorSource!.Content);
+        constructorSource.Should().NotContain("using TestProject;");
         // Should handle both fields from different partial definitions
-        Assert.Contains("IEnumerable<IService1> field1", constructorSource.Content);
-        Assert.Contains("IList<IService2> field2", constructorSource.Content);
+        constructorSource.Should().Contain("IEnumerable<IService1> field1");
+        constructorSource.Should().Contain("IList<IService2> field2");
     }
 
     #endregion
@@ -718,12 +701,11 @@ namespace TestProject
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("ExactCountTestClass");
-        Assert.NotNull(constructorSource.Content);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetConstructorSourceText("ExactCountTestClass");
 
         // Count exact using statements
-        var usingStatements = constructorSource.Content.Split('\n')
+        var usingStatements = constructorSource.Split('\n')
             .Where(line => line.Trim().StartsWith("using ") && line.Trim().EndsWith(";"))
             .Select(line => line.Trim())
             .ToHashSet();
@@ -734,8 +716,8 @@ namespace TestProject
             "using System.Collections.Generic;", "using ProjectA;", "using ProjectB;"
         };
 
-        Assert.Equal(expectedUsings.Count, usingStatements.Count);
-        Assert.True(expectedUsings.SetEquals(usingStatements));
+        usingStatements.Count.Should().Be(expectedUsings.Count);
+        usingStatements.Should().BeEquivalentTo(expectedUsings);
     }
 
     [Fact]
@@ -763,20 +745,19 @@ public partial class DeduplicationTestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("DeduplicationTestClass");
-        Assert.NotNull(constructorSource.Content);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetConstructorSourceText("DeduplicationTestClass");
 
         // Count occurrences of each using statement
-        var testProjectUsingCount = constructorSource.Content.Split('\n')
+        var testProjectUsingCount = constructorSource.Split('\n')
             .Count(line => line.Trim() == "using TestProject;");
-        var collectionsUsingCount = constructorSource.Content.Split('\n')
+        var collectionsUsingCount = constructorSource.Split('\n')
             .Count(line => line.Trim() == "using System.Collections.Generic;");
 
         // Self-namespace should NOT appear (all types are in same namespace as the class)
-        Assert.Equal(0, testProjectUsingCount);
+        testProjectUsingCount.Should().Be(0);
         // Collections namespace should appear exactly once
-        Assert.Equal(1, collectionsUsingCount);
+        collectionsUsingCount.Should().Be(1);
     }
 
     [Fact]
@@ -800,19 +781,18 @@ public partial class NegativeTestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("NegativeTestClass");
-        Assert.NotNull(constructorSource.Content);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetConstructorSourceText("NegativeTestClass");
 
         // Positive assertions
-        Assert.Contains("using System.Collections.Generic;", constructorSource.Content);
+        constructorSource.Should().Contain("using System.Collections.Generic;");
 
         // Negative assertions - unwanted namespaces should NOT be included
-        Assert.DoesNotContain("using System.IO;", constructorSource.Content);
-        Assert.DoesNotContain("using IoCTools.Abstractions.Annotations;", constructorSource.Content);
-        Assert.DoesNotContain("using System.Linq;", constructorSource.Content);
+        constructorSource.Should().NotContain("using System.IO;");
+        constructorSource.Should().NotContain("using IoCTools.Abstractions.Annotations;");
+        constructorSource.Should().NotContain("using System.Linq;");
         // Self-namespace should NOT be included (constructor is generated in TestProject namespace)
-        Assert.DoesNotContain("using TestProject;", constructorSource.Content);
+        constructorSource.Should().NotContain("using TestProject;");
     }
 
     [Fact]
@@ -839,9 +819,8 @@ public partial class StrongValidationTestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("StrongValidationTestClass");
-        Assert.NotNull(constructorSource.Content);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetConstructorSourceText("StrongValidationTestClass");
 
         // Strong parameter validation - exact parameter names and types
         var expectedParameters = new[]
@@ -850,11 +829,12 @@ public partial class StrongValidationTestClass
             "IList<IEnumerable<IService1>> nestedGeneric"
         };
 
-        foreach (var expectedParam in expectedParameters) Assert.Contains(expectedParam, constructorSource.Content);
+        foreach (var expectedParam in expectedParameters)
+            constructorSource.Should().Contain(expectedParam);
 
         // Validate constructor signature structure
-        Assert.Contains("public StrongValidationTestClass(", constructorSource.Content);
-        Assert.Contains(")\n    {", constructorSource.Content);
+        constructorSource.Should().Contain("public StrongValidationTestClass(");
+        constructorSource.Should().Contain(")\n    {");
     }
 
     #endregion
@@ -881,7 +861,7 @@ public partial class EmptyGenericsTestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert - Should have compilation errors but generator should handle gracefully
-        Assert.True(result.HasErrors);
+        result.HasErrors.Should().BeTrue();
     }
 
     [Fact]
@@ -904,14 +884,13 @@ public partial class DeepNestingTestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("DeepNestingTestClass");
-        Assert.NotNull(constructorSource.Content);
-        Assert.Contains("using System.Collections.Generic;", constructorSource.Content);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetConstructorSourceText("DeepNestingTestClass");
+        constructorSource.Should().Contain("using System.Collections.Generic;");
         // Should NOT contain self-namespace (constructor is generated in TestProject namespace)
-        Assert.DoesNotContain("using TestProject;", constructorSource.Content);
-        Assert.Contains("IEnumerable<IEnumerable<IEnumerable<IEnumerable<IEnumerable<ITestService>>>>> deeplyNested",
-            constructorSource.Content);
+        constructorSource.Should().NotContain("using TestProject;");
+        constructorSource.Should().Contain(
+            "IEnumerable<IEnumerable<IEnumerable<IEnumerable<IEnumerable<ITestService>>>>> deeplyNested");
     }
 
     [Fact]
@@ -934,15 +913,13 @@ public partial class VeryLongClassNameForTestingExtremelyLongIdentifierHandlingI
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource =
-            result.GetConstructorSource(
-                "VeryLongClassNameForTestingExtremelyLongIdentifierHandlingInSourceGeneratorNamespaceCollection");
-        Assert.NotNull(constructorSource.Content);
-        Assert.Contains("using System.Collections.Generic;", constructorSource.Content);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetConstructorSourceText(
+            "VeryLongClassNameForTestingExtremelyLongIdentifierHandlingInSourceGeneratorNamespaceCollection");
+        constructorSource.Should().Contain("using System.Collections.Generic;");
         // Should NOT contain self-namespace (class and interface are in same namespace)
-        Assert.DoesNotContain("using VeryLongNamespaceNameThatExceedsNormalLengthExpectationsForTestingPurposes;",
-            constructorSource.Content);
+        constructorSource.Should().NotContain(
+            "using VeryLongNamespaceNameThatExceedsNormalLengthExpectationsForTestingPurposes;");
     }
 
     [Fact]
@@ -966,12 +943,11 @@ public partial class SpecialCharsTestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("SpecialCharsTestClass");
-        Assert.NotNull(constructorSource.Content);
-        Assert.Contains("using System.Collections.Generic;", constructorSource.Content);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetConstructorSourceText("SpecialCharsTestClass");
+        constructorSource.Should().Contain("using System.Collections.Generic;");
         // Should NOT contain self-namespace (constructor is generated in TestProject.Services_V2 namespace)
-        Assert.DoesNotContain("using TestProject.Services_V2;", constructorSource.Content);
+        constructorSource.Should().NotContain("using TestProject.Services_V2;");
     }
 
     #endregion
@@ -1016,12 +992,11 @@ namespace MyApp.Controllers
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("UserController");
-        Assert.NotNull(constructorSource.Content);
-        Assert.Contains("using System.Collections.Generic;", constructorSource.Content);
-        Assert.Contains("using MyApp.Services;", constructorSource.Content);
-        Assert.Contains("using MyApp.Repositories;", constructorSource.Content);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetConstructorSourceText("UserController");
+        constructorSource.Should().Contain("using System.Collections.Generic;");
+        constructorSource.Should().Contain("using MyApp.Services;");
+        constructorSource.Should().Contain("using MyApp.Repositories;");
     }
 
     [Fact]
@@ -1052,12 +1027,11 @@ public partial class ConditionalTestClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("ConditionalTestClass");
-        Assert.NotNull(constructorSource.Content);
-        Assert.Contains("using System.Collections.Generic;", constructorSource.Content);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetConstructorSourceText("ConditionalTestClass");
+        constructorSource.Should().Contain("using System.Collections.Generic;");
         // Should NOT contain self-namespace (constructor is generated in TestProject namespace)
-        Assert.DoesNotContain("using TestProject;", constructorSource.Content);
+        constructorSource.Should().NotContain("using TestProject;");
     }
 
     [Fact]
@@ -1086,11 +1060,11 @@ public partial class FrameworkIntegrationTestClass
 
         // Assert - May have compilation issues due to missing references but should handle gracefully
         var constructorSource = result.GetConstructorSource("FrameworkIntegrationTestClass");
-        if (constructorSource?.Content != null)
+        if (constructorSource is not null)
         {
-            Assert.Contains("using System.Collections.Generic;", constructorSource.Content);
+            constructorSource.Content.Should().Contain("using System.Collections.Generic;");
             // Should NOT contain self-namespace (constructor is generated in TestProject namespace)
-            Assert.DoesNotContain("using TestProject;", constructorSource.Content);
+            constructorSource.Content.Should().NotContain("using TestProject;");
             // Framework types may or may not be included depending on compilation context
         }
     }

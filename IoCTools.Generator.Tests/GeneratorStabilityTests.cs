@@ -51,30 +51,32 @@ public class GeneratorStabilityTests
         for (var i = 0; i < 5; i++) results.Add(SourceGeneratorTestHelper.CompileWithGenerator(sourceCode));
 
         // Assert - All results should be identical
+        var firstResult = results[0];
+        var firstServiceRegContent = firstResult.GetServiceRegistrationText();
+        var firstConstructors = firstResult.GeneratedSources.Where(s => s.Hint.Contains("Constructor"))
+            .OrderBy(s => s.Hint).ToList();
+
         for (var i = 1; i < results.Count; i++)
         {
+            var currentResult = results[i];
+
             // Check same number of generated sources
-            Assert.Equal(results[0].GeneratedSources.Count, results[i].GeneratedSources.Count);
+            currentResult.GeneratedSources.Count.Should().Be(firstResult.GeneratedSources.Count);
 
             // Check ServiceRegistrations content is identical
-            var firstServiceReg = results[0].GetServiceRegistrationSource();
-            var currentServiceReg = results[i].GetServiceRegistrationSource();
-
-            Assert.NotNull(firstServiceReg);
-            Assert.NotNull(currentServiceReg);
-            Assert.Equal(firstServiceReg.Content, currentServiceReg.Content);
+            var currentServiceRegContent = currentResult.GetServiceRegistrationText();
+            currentServiceRegContent.Should().Be(firstServiceRegContent);
 
             // Check constructor generation is identical
-            var firstConstructors = results[0].GeneratedSources.Where(s => s.Hint.Contains("Constructor")).ToList();
-            var currentConstructors = results[i].GeneratedSources.Where(s => s.Hint.Contains("Constructor")).ToList();
+            var currentConstructors = currentResult.GeneratedSources.Where(s => s.Hint.Contains("Constructor"))
+                .OrderBy(s => s.Hint).ToList();
 
-            Assert.Equal(firstConstructors.Count, currentConstructors.Count);
+            currentConstructors.Count.Should().Be(firstConstructors.Count);
 
-            foreach (var constructor in firstConstructors)
+            for (var constructorIndex = 0; constructorIndex < firstConstructors.Count; constructorIndex++)
             {
-                var matchingConstructor = currentConstructors.FirstOrDefault(c => c.Hint == constructor.Hint);
-                Assert.NotNull(matchingConstructor);
-                Assert.Equal(constructor.Content, matchingConstructor.Content);
+                currentConstructors[constructorIndex].Hint.Should().Be(firstConstructors[constructorIndex].Hint);
+                currentConstructors[constructorIndex].Content.Should().Be(firstConstructors[constructorIndex].Content);
             }
         }
     }
@@ -124,10 +126,12 @@ public class GeneratorStabilityTests
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert - No compilation errors
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+        result.HasErrors.Should().BeFalse("Compilation errors: {0}", errorMessages);
 
         // Assert - Each service gets exactly one constructor file
         var constructorSources = result.GeneratedSources.Where(s => s.Hint.Contains("Constructor")).ToList();
@@ -136,18 +140,19 @@ public class GeneratorStabilityTests
         foreach (var serviceName in expectedServiceNames)
         {
             var constructorForService = constructorSources.Where(s => s.Hint.Contains(serviceName)).ToList();
-            Assert.Single(constructorForService); // Exactly one constructor per service
+            constructorForService.Should()
+                .ContainSingle("Exactly one constructor should be generated for {0}", serviceName);
         }
 
         // Assert - Exactly one service registration file
         var serviceRegSources = result.GeneratedSources.Where(s =>
             s.Content.Contains("ServiceCollectionExtensions") ||
             s.Hint.Contains("ServiceRegistrations")).ToList();
-        Assert.Single(serviceRegSources);
+        serviceRegSources.Should().ContainSingle();
 
         // Assert - Service registration contains all expected services
-        var serviceRegContent = serviceRegSources[0].Content;
-        foreach (var serviceName in expectedServiceNames) Assert.Contains(serviceName, serviceRegContent);
+        var serviceRegContent = result.GetServiceRegistrationText();
+        foreach (var serviceName in expectedServiceNames) serviceRegContent.Should().Contain(serviceName);
     }
 
     [Fact]
@@ -180,21 +185,26 @@ public class GeneratorStabilityTests
         stopwatch.Stop();
 
         // Assert - Completes within reasonable time (5 seconds for 20 simple services)
-        Assert.True(stopwatch.Elapsed.TotalSeconds < 5,
-            $"Generator took too long: {stopwatch.Elapsed.TotalSeconds:F2} seconds for {serviceCount} services");
+        stopwatch.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(5),
+            "Generator took too long: {0:F2} seconds for {1} services",
+            stopwatch.Elapsed.TotalSeconds,
+            serviceCount);
 
         // Assert - No errors
-        Assert.False(result.HasErrors,
-            $"Compilation errors with {serviceCount} services: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
+        result.HasErrors.Should().BeFalse("Compilation errors with {0} services: {1}", serviceCount, errorMessages);
 
         // Assert - Generated expected number of files
         var constructorCount = result.GeneratedSources.Count(s => s.Hint.Contains("Constructor"));
-        Assert.True(constructorCount >= serviceCount, "Should generate constructor files for each service");
+        constructorCount.Should().BeGreaterOrEqualTo(serviceCount,
+            "Should generate constructor files for each service");
 
         var serviceRegCount = result.GeneratedSources.Count(s =>
             s.Content.Contains("ServiceCollectionExtensions") ||
             s.Hint.Contains("ServiceRegistrations"));
-        Assert.Equal(1, serviceRegCount); // Exactly one service registration file
+        serviceRegCount.Should().Be(1); // Exactly one service registration file
     }
 
     [Fact]
@@ -244,33 +254,34 @@ public class GeneratorStabilityTests
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert - No compilation errors
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+        result.HasErrors.Should().BeFalse("Compilation errors: {0}", errorMessages);
 
         // Assert - All file names are unique and valid
         var constructorHints = result.GeneratedSources.Where(s => s.Hint.Contains("Constructor")).Select(s => s.Hint)
             .ToList();
         var uniqueHints = constructorHints.Distinct().ToList();
-        Assert.Equal(constructorHints.Count, uniqueHints.Count); // No duplicate file names
+        constructorHints.Count.Should().Be(uniqueHints.Count); // No duplicate file names
 
         // Assert - File names don't contain problematic characters
         foreach (var hint in constructorHints)
         {
-            Assert.DoesNotContain("<", hint);
-            Assert.DoesNotContain(">", hint);
-            Assert.DoesNotContain(" ", hint);
-            Assert.DoesNotContain("$", hint);
-            Assert.Contains("_Constructor.g.cs", hint);
+            hint.Should().NotContain("<");
+            hint.Should().NotContain(">");
+            hint.Should().NotContain(" ");
+            hint.Should().NotContain("$");
+            hint.Should().Contain("_Constructor.g.cs");
         }
 
         // Assert - Service registration works correctly
-        var serviceRegSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(serviceRegSource);
-        Assert.Contains("SimpleService", serviceRegSource.Content);
-        Assert.Contains("AnotherService", serviceRegSource.Content);
-        Assert.Contains("ServiceWithSpecialChars_AndSymbols", serviceRegSource.Content);
+        var serviceRegContent = result.GetServiceRegistrationText();
+        serviceRegContent.Should().Contain("SimpleService");
+        serviceRegContent.Should().Contain("AnotherService");
+        serviceRegContent.Should().Contain("ServiceWithSpecialChars_AndSymbols");
     }
 
     [Fact]
@@ -331,21 +342,21 @@ public class GeneratorStabilityTests
         var updatedResult = SourceGeneratorTestHelper.CompileWithGenerator(updatedSource);
 
         // Assert - Both compilations succeed
-        Assert.False(initialResult.HasErrors);
-        Assert.False(updatedResult.HasErrors);
+        initialResult.HasErrors.Should().BeFalse();
+        updatedResult.HasErrors.Should().BeFalse();
 
         // Assert - Updated result has more constructor files
         var initialConstructorCount = initialResult.GeneratedSources.Count(s => s.Hint.Contains("Constructor"));
         var updatedConstructorCount = updatedResult.GeneratedSources.Count(s => s.Hint.Contains("Constructor"));
-        Assert.True(updatedConstructorCount > initialConstructorCount);
+        updatedConstructorCount.Should().BeGreaterThan(initialConstructorCount);
 
         // Assert - Both have exactly one service registration file
         var initialServiceRegCount = initialResult.GeneratedSources.Count(s =>
             s.Content.Contains("ServiceCollectionExtensions"));
         var updatedServiceRegCount = updatedResult.GeneratedSources.Count(s =>
             s.Content.Contains("ServiceCollectionExtensions"));
-        Assert.Equal(1, initialServiceRegCount);
-        Assert.Equal(1, updatedServiceRegCount);
+        initialServiceRegCount.Should().Be(1);
+        updatedServiceRegCount.Should().Be(1);
     }
 
     [Fact]
@@ -385,20 +396,22 @@ public class GeneratorStabilityTests
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert - No compilation errors
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+        result.HasErrors.Should().BeFalse("Compilation errors: {0}", errorMessages);
 
         // Assert - Generates exactly one constructor for SplitService
         var splitServiceConstructors = result.GeneratedSources.Where(s =>
             s.Hint.Contains("SplitService") && s.Hint.Contains("Constructor")).ToList();
-        Assert.Single(splitServiceConstructors);
+        splitServiceConstructors.Should().ContainSingle();
 
         // Assert - Constructor includes both dependencies
         var constructorContent = splitServiceConstructors[0].Content;
-        Assert.Contains("IDep1", constructorContent);
-        Assert.Contains("IDep2", constructorContent);
+        constructorContent.Should().Contain("IDep1");
+        constructorContent.Should().Contain("IDep2");
     }
 
     [Fact]
@@ -433,20 +446,18 @@ public class GeneratorStabilityTests
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert - Has expected compilation errors but generator still runs
-        Assert.True(result.CompilationDiagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
+        result.CompilationDiagnostics.Should().Contain(d => d.Severity == DiagnosticSeverity.Error);
 
         // Assert - Generator still produces output for valid parts
-        Assert.True(result.GeneratedSources.Count > 0, "Generator should produce output even with compilation errors");
+        result.GeneratedSources.Should().NotBeEmpty("Generator should produce output even with compilation errors");
 
         // Assert - Service registration is generated
-        var serviceRegistration = result.GetServiceRegistrationSource();
-        Assert.NotNull(serviceRegistration);
-        Assert.Contains("ValidService", serviceRegistration.Content);
+        var registrationContent = result.GetServiceRegistrationText();
+        registrationContent.Should().Contain("ValidService");
 
         // Assert - Constructor is generated for valid service
-        var constructorSource = result.GetConstructorSource("ValidService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("ValidService(", constructorSource.Content);
+        var constructorContent = result.GetConstructorSourceText("ValidService");
+        constructorContent.Should().Contain("ValidService(");
     }
 
     [Fact]
@@ -488,22 +499,23 @@ public class GeneratorStabilityTests
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert - No compilation errors
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+        result.HasErrors.Should().BeFalse("Compilation errors: {0}", errorMessages);
 
         // Assert - All services get constructors
         var constructorSources = result.GeneratedSources.Where(s => s.Hint.Contains("Constructor")).ToList();
-        Assert.True(constructorSources.Count >= 4); // Should have constructors for all 4 services
+        constructorSources.Count.Should().BeGreaterOrEqualTo(4); // Should have constructors for all 4 services
 
         // Assert - Service registration contains all services
-        var serviceRegSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(serviceRegSource);
-        Assert.Contains("Service1", serviceRegSource.Content);
-        Assert.Contains("Service2", serviceRegSource.Content);
-        Assert.Contains("Dep1", serviceRegSource.Content);
-        Assert.Contains("Dep2", serviceRegSource.Content);
+        var serviceRegContent = result.GetServiceRegistrationText();
+        serviceRegContent.Should().Contain("Service1");
+        serviceRegContent.Should().Contain("Service2");
+        serviceRegContent.Should().Contain("Dep1");
+        serviceRegContent.Should().Contain("Dep2");
     }
 
     [Fact]
@@ -536,25 +548,25 @@ public class GeneratorStabilityTests
 
         // Assert - All results are consistent
         var firstResult = results[0];
-        Assert.False(firstResult.HasErrors);
+        firstResult.HasErrors.Should().BeFalse();
+        var firstServiceRegistration = firstResult.GetServiceRegistrationText();
+        var firstConstructor = firstResult.GetConstructorSourceText("RebuildTestService");
 
         for (var i = 1; i < results.Count; i++)
         {
             var currentResult = results[i];
-            Assert.False(currentResult.HasErrors);
+            currentResult.HasErrors.Should().BeFalse();
 
             // Same number of generated files
-            Assert.Equal(firstResult.GeneratedSources.Count, currentResult.GeneratedSources.Count);
+            currentResult.GeneratedSources.Count.Should().Be(firstResult.GeneratedSources.Count);
 
             // Same service registration content
-            var firstServiceReg = firstResult.GetServiceRegistrationSource()?.Content;
-            var currentServiceReg = currentResult.GetServiceRegistrationSource()?.Content;
-            Assert.Equal(firstServiceReg, currentServiceReg);
+            var currentServiceReg = currentResult.GetServiceRegistrationText();
+            currentServiceReg.Should().Be(firstServiceRegistration);
 
             // Same constructor content  
-            var firstConstructor = firstResult.GetConstructorSource("RebuildTestService")?.Content;
-            var currentConstructor = currentResult.GetConstructorSource("RebuildTestService")?.Content;
-            Assert.Equal(firstConstructor, currentConstructor);
+            var currentConstructor = currentResult.GetConstructorSourceText("RebuildTestService");
+            currentConstructor.Should().Be(firstConstructor);
         }
     }
 }

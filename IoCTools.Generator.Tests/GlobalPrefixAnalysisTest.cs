@@ -26,6 +26,6 @@ public class GlobalPrefixAnalysisTest
         // Environment-based conditionals use simplified naming
         // Configuration-based conditionals use global:: prefixes
         // Both patterns are functionally correct and this inconsistency is acceptable
-        Assert.True(true, "Naming pattern inconsistency documented and resolved in test expectations");
+        true.Should().BeTrue("Naming pattern inconsistency documented and resolved in test expectations");
     }
 }

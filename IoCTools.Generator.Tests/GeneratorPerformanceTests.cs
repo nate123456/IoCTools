@@ -38,7 +38,7 @@ public class GeneratorPerformanceTests
         var sourceCode = GenerateRealisticServiceCode(10, 3);
         var result = MeasureGenerationPerformance(sourceCode, "10 Services");
 
-        Assert.True(result.AverageTime.TotalMilliseconds < SmallProjectThreshold,
+        (result.AverageTime.TotalMilliseconds < SmallProjectThreshold).Should().BeTrue(
             $"Small project (10 services) took {result.AverageTime.TotalMilliseconds}ms, expected < {SmallProjectThreshold}ms");
 
         ValidateGenerationSuccess(sourceCode);
@@ -51,7 +51,7 @@ public class GeneratorPerformanceTests
         var sourceCode = GenerateRealisticServiceCode(50, 4);
         var result = MeasureGenerationPerformance(sourceCode, "50 Services");
 
-        Assert.True(result.AverageTime.TotalMilliseconds < MediumProjectThreshold,
+        (result.AverageTime.TotalMilliseconds < MediumProjectThreshold).Should().BeTrue(
             $"Medium project (50 services) took {result.AverageTime.TotalMilliseconds}ms, expected < {MediumProjectThreshold}ms");
 
         ValidateGenerationSuccess(sourceCode);
@@ -64,7 +64,7 @@ public class GeneratorPerformanceTests
         var sourceCode = GenerateRealisticServiceCode(100, 5);
         var result = MeasureGenerationPerformance(sourceCode, "100 Services");
 
-        Assert.True(result.AverageTime.TotalMilliseconds < LargeProjectThreshold,
+        (result.AverageTime.TotalMilliseconds < LargeProjectThreshold).Should().BeTrue(
             $"Large project (100 services) took {result.AverageTime.TotalMilliseconds}ms, expected < {LargeProjectThreshold}ms");
 
         ValidateGenerationSuccess(sourceCode);
@@ -98,8 +98,8 @@ public class GeneratorPerformanceTests
 
         // Verify memory usage is reasonable
         var maxMemoryMB = memoryResults.Max(r => r.Memory) / 1024.0 / 1024.0;
-        Assert.True(maxMemoryMB < MemoryThreshold,
-            $"Maximum memory usage {maxMemoryMB:F2} MB exceeded threshold {MemoryThreshold} MB");
+        (maxMemoryMB < MemoryThreshold).Should()
+            .BeTrue($"Maximum memory usage {maxMemoryMB:F2} MB exceeded threshold {MemoryThreshold} MB");
     }
 
     [Fact]
@@ -110,7 +110,7 @@ public class GeneratorPerformanceTests
         var result = MeasureGenerationPerformance(circularDependencyCode, "Circular Dependency Detection");
 
         // Circular dependency detection should not significantly impact performance
-        Assert.True(result.AverageTime.TotalMilliseconds < MediumProjectThreshold,
+        (result.AverageTime.TotalMilliseconds < MediumProjectThreshold).Should().BeTrue(
             $"Circular dependency detection took {result.AverageTime.TotalMilliseconds}ms, expected < {MediumProjectThreshold}ms");
 
         // Verify that generation completed (even if circular dependencies detected)
@@ -156,7 +156,7 @@ public class GeneratorPerformanceTests
             _ => 1500.0 // Stricter for very large projects
         };
 
-        Assert.True(overheadPercentage < maxOverheadPercentage,
+        (overheadPercentage < maxOverheadPercentage).Should().BeTrue(
             $"Generator overhead {overheadPercentage:F1}% is too high for {serviceCount} services (max allowed: {maxOverheadPercentage}%)");
     }
 
@@ -263,7 +263,7 @@ public class GeneratorPerformanceTests
             throw new InvalidOperationException($"Performance test code failed to compile: {errors}");
         }
 
-        Assert.True(result.GeneratedSources.Any(), "No sources were generated");
+        result.GeneratedSources.Any().Should().BeTrue("No sources were generated");
     }
 
     #endregion

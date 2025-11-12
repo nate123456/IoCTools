@@ -34,13 +34,13 @@ public partial class ServiceB : IServiceB
 
         // Assert - Should detect circular dependency and generate IOC003 diagnostics
         var ioc003Diagnostics = result.GetDiagnosticsByCode("IOC003");
-        Assert.NotEmpty(ioc003Diagnostics);
+        ioc003Diagnostics.Should().NotBeEmpty();
 
         // Validate diagnostic severity
-        Assert.All(ioc003Diagnostics, diagnostic =>
+        ioc003Diagnostics.Should().AllSatisfy(diagnostic =>
         {
-            Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
-            Assert.Contains("Circular dependency detected", diagnostic.GetMessage());
+            diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+            diagnostic.GetMessage().Should().Contain("Circular dependency detected");
         });
 
         // Verify cycle path contains both services
@@ -50,12 +50,13 @@ public partial class ServiceB : IServiceB
             return message.Contains("ServiceA") && message.Contains("ServiceB");
         });
 
-        Assert.True(hasExpectedCycle,
-            $"Expected cycle containing ServiceA and ServiceB. Got diagnostics: {string.Join("; ", ioc003Diagnostics.Select(d => d.GetMessage()))}");
+        hasExpectedCycle.Should()
+            .BeTrue(
+                $"Expected cycle containing ServiceA and ServiceB. Got diagnostics: {string.Join("; ", ioc003Diagnostics.Select(d => d.GetMessage()))}");
 
         // Ensure no compilation errors
         var compilationErrors = result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error);
-        Assert.Empty(compilationErrors);
+        compilationErrors.Should().BeEmpty();
     }
 
     [Fact]
@@ -91,24 +92,23 @@ public partial class ServiceC : IServiceC
 
         // Assert - Should detect three-service cycle
         var ioc003Diagnostics = result.GetDiagnosticsByCode("IOC003");
-        Assert.NotEmpty(ioc003Diagnostics);
+        ioc003Diagnostics.Should().NotBeEmpty();
 
         // Validate diagnostic properties
-        Assert.All(ioc003Diagnostics, diagnostic =>
+        ioc003Diagnostics.Should().AllSatisfy(diagnostic =>
         {
-            Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
-            Assert.Equal("IOC003", diagnostic.Id);
-            Assert.Contains("Circular dependency detected", diagnostic.GetMessage());
+            diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+            diagnostic.Id.Should().Be("IOC003");
+            diagnostic.GetMessage().Should().Contain("Circular dependency detected");
         });
 
         // Should detect the full cycle involving all three services
         var allMessages = string.Join(" ", ioc003Diagnostics.Select(d => d.GetMessage()));
-        Assert.True(
-            allMessages.Contains("ServiceA") && allMessages.Contains("ServiceB") && allMessages.Contains("ServiceC"),
-            $"Expected cycle containing all three services. Got: {allMessages}");
+        (allMessages.Contains("ServiceA") && allMessages.Contains("ServiceB") && allMessages.Contains("ServiceC"))
+            .Should().BeTrue($"Expected cycle containing all three services. Got: {allMessages}");
 
         // No compilation errors should be present
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
     }
 
     [Fact]
@@ -132,20 +132,21 @@ public partial class SelfService : ISelfService
 
         // Assert - Should detect self-reference cycle
         var ioc003Diagnostics = result.GetDiagnosticsByCode("IOC003");
-        Assert.NotEmpty(ioc003Diagnostics);
+        ioc003Diagnostics.Should().NotBeEmpty();
 
-        Assert.All(ioc003Diagnostics, diagnostic =>
+        ioc003Diagnostics.Should().AllSatisfy(diagnostic =>
         {
-            Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
-            Assert.Contains("Circular dependency detected", diagnostic.GetMessage());
+            diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+            diagnostic.GetMessage().Should().Contain("Circular dependency detected");
         });
 
         // Should mention self-reference
         var hasExpectedMessage = ioc003Diagnostics.Any(d =>
             d.GetMessage().Contains("SelfService"));
 
-        Assert.True(hasExpectedMessage,
-            $"Expected self-reference diagnostic containing SelfService. Got: {string.Join("; ", ioc003Diagnostics.Select(d => d.GetMessage()))}");
+        hasExpectedMessage.Should()
+            .BeTrue(
+                $"Expected self-reference diagnostic containing SelfService. Got: {string.Join("; ", ioc003Diagnostics.Select(d => d.GetMessage()))}");
     }
 
     [Fact]
@@ -170,12 +171,12 @@ public partial class ServiceY : IServiceY { }";
 
         // Assert - Should detect DependsOn circular dependency
         var ioc003Diagnostics = result.GetDiagnosticsByCode("IOC003");
-        Assert.NotEmpty(ioc003Diagnostics);
+        ioc003Diagnostics.Should().NotBeEmpty();
 
-        Assert.All(ioc003Diagnostics, diagnostic =>
+        ioc003Diagnostics.Should().AllSatisfy(diagnostic =>
         {
-            Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
-            Assert.Contains("Circular dependency detected", diagnostic.GetMessage());
+            diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+            diagnostic.GetMessage().Should().Contain("Circular dependency detected");
         });
 
         var hasExpectedCycle = ioc003Diagnostics.Any(d =>
@@ -184,8 +185,9 @@ public partial class ServiceY : IServiceY { }";
             return message.Contains("ServiceX") && message.Contains("ServiceY");
         });
 
-        Assert.True(hasExpectedCycle,
-            $"Expected DependsOn cycle containing ServiceX and ServiceY. Got: {string.Join("; ", ioc003Diagnostics.Select(d => d.GetMessage()))}");
+        hasExpectedCycle.Should()
+            .BeTrue(
+                $"Expected DependsOn cycle containing ServiceX and ServiceY. Got: {string.Join("; ", ioc003Diagnostics.Select(d => d.GetMessage()))}");
     }
 
     [Fact]
@@ -212,12 +214,12 @@ public partial class ServiceN : IServiceN { }";
 
         // Assert - Should detect mixed attribute circular dependency
         var ioc003Diagnostics = result.GetDiagnosticsByCode("IOC003");
-        Assert.NotEmpty(ioc003Diagnostics);
+        ioc003Diagnostics.Should().NotBeEmpty();
 
-        Assert.All(ioc003Diagnostics, diagnostic =>
+        ioc003Diagnostics.Should().AllSatisfy(diagnostic =>
         {
-            Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
-            Assert.Contains("Circular dependency detected", diagnostic.GetMessage());
+            diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+            diagnostic.GetMessage().Should().Contain("Circular dependency detected");
         });
 
         var hasExpectedCycle = ioc003Diagnostics.Any(d =>
@@ -226,8 +228,9 @@ public partial class ServiceN : IServiceN { }";
             return message.Contains("ServiceM") && message.Contains("ServiceN");
         });
 
-        Assert.True(hasExpectedCycle,
-            $"Expected mixed attribute cycle containing ServiceM and ServiceN. Got: {string.Join("; ", ioc003Diagnostics.Select(d => d.GetMessage()))}");
+        hasExpectedCycle.Should()
+            .BeTrue(
+                $"Expected mixed attribute cycle containing ServiceM and ServiceN. Got: {string.Join("; ", ioc003Diagnostics.Select(d => d.GetMessage()))}");
     }
 
     [Fact]
@@ -257,10 +260,10 @@ public partial class ServiceB : IServiceB
 
         // Assert - External services should skip circular dependency checks
         var ioc003Diagnostics = result.GetDiagnosticsByCode("IOC003");
-        Assert.Empty(ioc003Diagnostics);
+        ioc003Diagnostics.Should().BeEmpty();
 
         // Should not have compilation errors
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
     }
 
     [Fact]
@@ -291,17 +294,16 @@ public partial class ServiceC : IServiceC { }";
 
         // Assert - Should have NO circular dependencies
         var ioc003Diagnostics = result.GetDiagnosticsByCode("IOC003");
-        Assert.Empty(ioc003Diagnostics);
+        ioc003Diagnostics.Should().BeEmpty();
 
         // Should generate valid code without errors
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should generate valid service registrations
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("ServiceA", registrationSource.Content);
-        Assert.Contains("ServiceB", registrationSource.Content);
-        Assert.Contains("ServiceC", registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should().Contain("ServiceA");
+        registrationSource.Content.Should().Contain("ServiceB");
+        registrationSource.Content.Should().Contain("ServiceC");
     }
 
     [Fact]
@@ -331,15 +333,14 @@ public partial class ItemService : IItemService
 
         // Assert - IEnumerable should NOT create circular dependencies
         var ioc003Diagnostics = result.GetDiagnosticsByCode("IOC003");
-        Assert.Empty(ioc003Diagnostics);
+        ioc003Diagnostics.Should().BeEmpty();
 
-        Assert.False(result.HasErrors, "IEnumerable dependencies should not create circular dependency errors");
+        result.HasErrors.Should().BeFalse("IEnumerable dependencies should not create circular dependency errors");
 
         // Should generate valid service registrations
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("CollectionService", registrationSource.Content);
-        Assert.Contains("ItemService", registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should().Contain("CollectionService");
+        registrationSource.Content.Should().Contain("ItemService");
     }
 
     [Fact]
@@ -368,12 +369,12 @@ public partial class StringService : IService<string>
 
         // Assert - Should detect generic circular dependency
         var ioc003Diagnostics = result.GetDiagnosticsByCode("IOC003");
-        Assert.NotEmpty(ioc003Diagnostics);
+        ioc003Diagnostics.Should().NotBeEmpty();
 
-        Assert.All(ioc003Diagnostics, diagnostic =>
+        ioc003Diagnostics.Should().AllSatisfy(diagnostic =>
         {
-            Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
-            Assert.Contains("Circular dependency detected", diagnostic.GetMessage());
+            diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+            diagnostic.GetMessage().Should().Contain("Circular dependency detected");
         });
 
         var hasExpectedCycle = ioc003Diagnostics.Any(d =>
@@ -382,8 +383,9 @@ public partial class StringService : IService<string>
             return message.Contains("StringRepository") && message.Contains("StringService");
         });
 
-        Assert.True(hasExpectedCycle,
-            $"Expected generic cycle containing StringRepository and StringService. Got: {string.Join("; ", ioc003Diagnostics.Select(d => d.GetMessage()))}");
+        hasExpectedCycle.Should()
+            .BeTrue(
+                $"Expected generic cycle containing StringRepository and StringService. Got: {string.Join("; ", ioc003Diagnostics.Select(d => d.GetMessage()))}");
     }
 
     [Fact]
@@ -418,12 +420,12 @@ public partial class D : ID
 
         // Assert - Should detect four-service circular dependency
         var ioc003Diagnostics = result.GetDiagnosticsByCode("IOC003");
-        Assert.NotEmpty(ioc003Diagnostics);
+        ioc003Diagnostics.Should().NotBeEmpty();
 
-        Assert.All(ioc003Diagnostics, diagnostic =>
+        ioc003Diagnostics.Should().AllSatisfy(diagnostic =>
         {
-            Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
-            Assert.Contains("Circular dependency detected", diagnostic.GetMessage());
+            diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+            diagnostic.GetMessage().Should().Contain("Circular dependency detected");
         });
 
         // Should detect cycle involving all four services
@@ -431,8 +433,7 @@ public partial class D : ID
         var containsAllServices = allMessages.Contains("A") && allMessages.Contains("B") &&
                                   allMessages.Contains("C") && allMessages.Contains("D");
 
-        Assert.True(containsAllServices,
-            $"Expected cycle containing A, B, C, and D. Got: {allMessages}");
+        containsAllServices.Should().BeTrue($"Expected cycle containing A, B, C, and D. Got: {allMessages}");
     }
 
     [Fact]
@@ -468,12 +469,12 @@ public interface IService10 { } public interface IService11 { } public interface
 
         // Assert - Should detect deep circular dependency without performance issues
         var ioc003Diagnostics = result.GetDiagnosticsByCode("IOC003");
-        Assert.NotEmpty(ioc003Diagnostics);
+        ioc003Diagnostics.Should().NotBeEmpty();
 
-        Assert.All(ioc003Diagnostics, diagnostic =>
+        ioc003Diagnostics.Should().AllSatisfy(diagnostic =>
         {
-            Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
-            Assert.Contains("Circular dependency detected", diagnostic.GetMessage());
+            diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+            diagnostic.GetMessage().Should().Contain("Circular dependency detected");
         });
 
         // Should handle the deep cycle (at least detect Service1 and Service12 as cycle endpoints)
@@ -483,8 +484,9 @@ public interface IService10 { } public interface IService11 { } public interface
             return message.Contains("Service1") && message.Contains("Service12");
         });
 
-        Assert.True(hasDeepCycle,
-            $"Expected deep cycle detection containing Service1 and Service12. Got: {string.Join("; ", ioc003Diagnostics.Select(d => d.GetMessage()))}");
+        hasDeepCycle.Should()
+            .BeTrue(
+                $"Expected deep cycle detection containing Service1 and Service12. Got: {string.Join("; ", ioc003Diagnostics.Select(d => d.GetMessage()))}");
     }
 
     [Fact]
@@ -522,12 +524,12 @@ namespace ServiceB.Namespace
 
         // Assert - Should detect cross-namespace circular dependency
         var ioc003Diagnostics = result.GetDiagnosticsByCode("IOC003");
-        Assert.NotEmpty(ioc003Diagnostics);
+        ioc003Diagnostics.Should().NotBeEmpty();
 
-        Assert.All(ioc003Diagnostics, diagnostic =>
+        ioc003Diagnostics.Should().AllSatisfy(diagnostic =>
         {
-            Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
-            Assert.Contains("Circular dependency detected", diagnostic.GetMessage());
+            diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+            diagnostic.GetMessage().Should().Contain("Circular dependency detected");
         });
 
         var hasExpectedCycle = ioc003Diagnostics.Any(d =>
@@ -536,8 +538,9 @@ namespace ServiceB.Namespace
             return message.Contains("ServiceFromA") && message.Contains("ServiceFromB");
         });
 
-        Assert.True(hasExpectedCycle,
-            $"Expected cross-namespace cycle containing ServiceFromA and ServiceFromB. Got: {string.Join("; ", ioc003Diagnostics.Select(d => d.GetMessage()))}");
+        hasExpectedCycle.Should()
+            .BeTrue(
+                $"Expected cross-namespace cycle containing ServiceFromA and ServiceFromB. Got: {string.Join("; ", ioc003Diagnostics.Select(d => d.GetMessage()))}");
     }
 
     [Fact]
@@ -567,12 +570,12 @@ public partial class Gamma : IGamma { }";
 
         // Assert - Should detect circular dependency through multi-parameter DependsOn
         var ioc003Diagnostics = result.GetDiagnosticsByCode("IOC003");
-        Assert.NotEmpty(ioc003Diagnostics);
+        ioc003Diagnostics.Should().NotBeEmpty();
 
-        Assert.All(ioc003Diagnostics, diagnostic =>
+        ioc003Diagnostics.Should().AllSatisfy(diagnostic =>
         {
-            Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
-            Assert.Contains("Circular dependency detected", diagnostic.GetMessage());
+            diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+            diagnostic.GetMessage().Should().Contain("Circular dependency detected");
         });
 
         // Should detect cycle: Alpha → Gamma → Alpha
@@ -582,8 +585,9 @@ public partial class Gamma : IGamma { }";
             return message.Contains("Alpha") && message.Contains("Gamma");
         });
 
-        Assert.True(hasExpectedCycle,
-            $"Expected multi-parameter DependsOn cycle containing Alpha and Gamma. Got: {string.Join("; ", ioc003Diagnostics.Select(d => d.GetMessage()))}");
+        hasExpectedCycle.Should()
+            .BeTrue(
+                $"Expected multi-parameter DependsOn cycle containing Alpha and Gamma. Got: {string.Join("; ", ioc003Diagnostics.Select(d => d.GetMessage()))}");
     }
 
     [Fact]
@@ -612,13 +616,13 @@ public interface IServiceX { } public interface IServiceY { } public interface I
 
         // Assert - Should detect both independent cycles
         var ioc003Diagnostics = result.GetDiagnosticsByCode("IOC003");
-        Assert.NotEmpty(ioc003Diagnostics);
-        Assert.True(ioc003Diagnostics.Count >= 1, "Should detect at least one cycle");
+        ioc003Diagnostics.Should().NotBeEmpty();
+        (ioc003Diagnostics.Count >= 1).Should().BeTrue("Should detect at least one cycle");
 
-        Assert.All(ioc003Diagnostics, diagnostic =>
+        ioc003Diagnostics.Should().AllSatisfy(diagnostic =>
         {
-            Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
-            Assert.Contains("Circular dependency detected", diagnostic.GetMessage());
+            diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+            diagnostic.GetMessage().Should().Contain("Circular dependency detected");
         });
 
         var allMessages = string.Join(" | ", ioc003Diagnostics.Select(d => d.GetMessage()));
@@ -628,8 +632,8 @@ public interface IServiceX { } public interface IServiceY { } public interface I
         var detectsSecondGroup = allMessages.Contains("ServiceX") || allMessages.Contains("ServiceY") ||
                                  allMessages.Contains("ServiceZ");
 
-        Assert.True(detectsFirstGroup || detectsSecondGroup,
-            $"Expected cycle detection for multiple independent cycles. Got: {allMessages}");
+        (detectsFirstGroup || detectsSecondGroup).Should()
+            .BeTrue($"Expected cycle detection for multiple independent cycles. Got: {allMessages}");
     }
 
     [Fact]
@@ -654,16 +658,16 @@ public partial class ComplexService : IComplexService, IComplexServiceProxy
 
         // Assert - Should detect self-reference through different interface
         var ioc003Diagnostics = result.GetDiagnosticsByCode("IOC003");
-        Assert.NotEmpty(ioc003Diagnostics);
+        ioc003Diagnostics.Should().NotBeEmpty();
 
-        Assert.All(ioc003Diagnostics, diagnostic =>
+        ioc003Diagnostics.Should().AllSatisfy(diagnostic =>
         {
-            Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
-            Assert.Contains("Circular dependency detected", diagnostic.GetMessage());
+            diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
+            diagnostic.GetMessage().Should().Contain("Circular dependency detected");
         });
 
         var messages = ioc003Diagnostics.Select(d => d.GetMessage()).ToList();
-        Assert.True(messages.Any(m => m.Contains("ComplexService")),
+        messages.Any(m => m.Contains("ComplexService")).Should().BeTrue(
             $"Expected self-reference detection involving ComplexService. Got: {string.Join(" | ", messages)}");
     }
 }

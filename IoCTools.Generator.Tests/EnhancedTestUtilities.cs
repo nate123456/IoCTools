@@ -478,61 +478,57 @@ public static class EnhancedTestUtilities
 
         public TestResultValidator ShouldCompile()
         {
-            Assert.False(_result.HasErrors,
-                $"Compilation errors: {string.Join(", ", _result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+            _result.HasErrors.Should()
+                .BeFalse(
+                    $"Compilation errors: {string.Join(", ", _result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
             return this;
         }
 
         public TestResultValidator ShouldHaveConstructorFor(string className)
         {
-            var constructor = _result.GetConstructorSource(className);
-            Assert.NotNull(constructor);
+            var constructor = _result.GetRequiredConstructorSource(className);
             return this;
         }
 
         public TestResultValidator ShouldHaveServiceRegistration()
         {
-            var registration = _result.GetServiceRegistrationSource();
-            Assert.NotNull(registration);
+            _ = _result.GetRequiredServiceRegistrationSource();
             return this;
         }
 
         public TestResultValidator ShouldHaveDiagnostic(string code)
         {
             var diagnostics = _result.GetDiagnosticsByCode(code);
-            Assert.NotEmpty(diagnostics);
+            diagnostics.Should().NotBeEmpty();
             return this;
         }
 
         public TestResultValidator ShouldNotHaveDiagnostic(string code)
         {
             var diagnostics = _result.GetDiagnosticsByCode(code);
-            Assert.Empty(diagnostics);
+            diagnostics.Should().BeEmpty();
             return this;
         }
 
         public TestResultValidator ShouldContainInConstructor(string className,
             string pattern)
         {
-            var constructor = _result.GetConstructorSource(className);
-            Assert.NotNull(constructor);
-            Assert.Contains(pattern, constructor.Content);
+            var constructor = _result.GetRequiredConstructorSource(className);
+            constructor.Content.Should().Contain(pattern);
             return this;
         }
 
         public TestResultValidator ShouldContainInRegistration(string pattern)
         {
-            var registration = _result.GetServiceRegistrationSource();
-            Assert.NotNull(registration);
-            Assert.Contains(pattern, registration.Content);
+            var registration = _result.GetRequiredServiceRegistrationSource();
+            registration.Content.Should().Contain(pattern);
             return this;
         }
 
         public TestResultValidator ShouldHaveUniqueRegistrations()
         {
-            var registration = _result.GetServiceRegistrationSource();
-            Assert.NotNull(registration);
-            Assert.False(HasDuplicateRegistrations(registration.Content));
+            var registration = _result.GetRequiredServiceRegistrationSource();
+            HasDuplicateRegistrations(registration.Content).Should().BeFalse();
             return this;
         }
     }

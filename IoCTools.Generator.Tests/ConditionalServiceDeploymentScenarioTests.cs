@@ -59,20 +59,19 @@ public partial class RegularPaymentService : IPaymentService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - Should compile successfully with working ConditionalService logic
-        Assert.NotNull(result);
-        Assert.Empty(result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+        result.HasErrors.Should().BeFalse();
+        result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Should().BeEmpty();
 
         // Verify that regular services are registered unconditionally
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("AddScoped<Test.IPaymentService, Test.RegularPaymentService>", registrationSource.Content);
+        var registrationContent = result.GetServiceRegistrationText();
+        registrationContent.Should().Contain("AddScoped<Test.IPaymentService, Test.RegularPaymentService>");
 
         // ConditionalService generates proper environment-based conditional logic
-        Assert.Contains("Environment.GetEnvironmentVariable", registrationSource.Content);
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("if (", registrationSource.Content);
-        Assert.Contains("MockPaymentService", registrationSource.Content);
+        registrationContent.Should().Contain("Environment.GetEnvironmentVariable");
+        registrationContent.Should().Contain(
+            "string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)");
+        registrationContent.Should().Contain("if (");
+        registrationContent.Should().Contain("MockPaymentService");
     }
 
     [Fact]
@@ -132,22 +131,21 @@ public partial class FallbackEmailService : IEmailService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - Should compile and generate if-else chain for conditional services
-        Assert.NotNull(result);
-        Assert.Empty(result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+        result.HasErrors.Should().BeFalse();
+        result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Should().BeEmpty();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationContent = result.GetServiceRegistrationText();
 
         // Fallback service should be registered unconditionally
-        Assert.Contains("AddScoped<Test.IEmailService, Test.FallbackEmailService>", registrationSource.Content);
+        registrationContent.Should().Contain("AddScoped<Test.IEmailService, Test.FallbackEmailService>");
 
         // ConditionalService generates if-else chain for mutually exclusive conditions
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("else if (string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase))",
-            registrationSource.Content);
-        Assert.Contains("ConsoleEmailService", registrationSource.Content);
-        Assert.Contains("SmtpEmailService", registrationSource.Content);
+        registrationContent.Should().Contain(
+            "string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)");
+        registrationContent.Should().Contain(
+            "else if (string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase))");
+        registrationContent.Should().Contain("ConsoleEmailService");
+        registrationContent.Should().Contain("SmtpEmailService");
     }
 
     [Fact]
@@ -207,28 +205,25 @@ public partial class MemoryCacheService : ICacheService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - Should generate configuration-based conditional logic
-        Assert.NotNull(result);
-        Assert.Empty(result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+        result.HasErrors.Should().BeFalse();
+        result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Should().BeEmpty();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationContent = result.GetServiceRegistrationText();
 
         // Memory cache should be registered unconditionally
-        Assert.Contains("AddScoped<global::Test.ICacheService, global::Test.MemoryCacheService>",
-            registrationSource.Content);
+        registrationContent.Should().Contain(
+            "AddScoped<global::Test.ICacheService, global::Test.MemoryCacheService>");
 
         // ConditionalService generates configuration-based conditional logic
-        Assert.Contains("configuration[\"Features:UseRedisCache\"]", registrationSource.Content);
-        Assert.Contains(
-            "string.Equals(configuration[\"Features:UseRedisCache\"], \"true\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("RedisCacheService", registrationSource.Content);
+        registrationContent.Should().Contain("configuration[\"Features:UseRedisCache\"]");
+        registrationContent.Should().Contain(
+            "string.Equals(configuration[\"Features:UseRedisCache\"], \"true\", StringComparison.OrdinalIgnoreCase)");
+        registrationContent.Should().Contain("RedisCacheService");
 
         // Constructor generation should work for conditional service with configuration injection
-        var constructorSource = result.GetConstructorSource("RedisCacheService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("IConfiguration configuration", constructorSource.Content);
-        Assert.Contains("ILogger<RedisCacheService> logger", constructorSource.Content);
+        var constructorSource = result.GetConstructorSourceText("RedisCacheService");
+        constructorSource.Should().Contain("IConfiguration configuration");
+        constructorSource.Should().Contain("ILogger<RedisCacheService> logger");
     }
 
     #endregion
@@ -297,28 +292,25 @@ public partial class StripePaymentService : IPaymentService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - ConditionalService generates proper environment-based registration
-        Assert.NotNull(result);
-        Assert.Empty(result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+        result.HasErrors.Should().BeFalse();
+        result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Should().BeEmpty();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationContent = result.GetServiceRegistrationText();
 
         // ConditionalService generates environment-based if-else chain
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("MockPaymentService", registrationSource.Content);
-        Assert.Contains("StripePaymentService", registrationSource.Content);
+        registrationContent.Should().Contain(
+            "string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)");
+        registrationContent.Should().Contain(
+            "string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)");
+        registrationContent.Should().Contain("MockPaymentService");
+        registrationContent.Should().Contain("StripePaymentService");
 
         // Verify constructor generation for both conditional services
-        var mockConstructorSource = result.GetConstructorSource("MockPaymentService");
-        Assert.NotNull(mockConstructorSource);
+        result.GetConstructorSourceText("MockPaymentService").Should().NotBeNullOrWhiteSpace();
 
-        var stripeConstructorSource = result.GetConstructorSource("StripePaymentService");
-        Assert.NotNull(stripeConstructorSource);
-        Assert.Contains("IConfiguration configuration", stripeConstructorSource.Content);
-        Assert.Contains("IHttpClientFactory httpClientFactory", stripeConstructorSource.Content);
+        var stripeConstructorSource = result.GetConstructorSourceText("StripePaymentService");
+        stripeConstructorSource.Should().Contain("IConfiguration configuration");
+        stripeConstructorSource.Should().Contain("IHttpClientFactory httpClientFactory");
     }
 
     [Fact]
@@ -397,35 +389,30 @@ public partial class DefaultDatabaseService : IDatabaseService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - ConditionalService generates proper configuration-based registration
-        Assert.NotNull(result);
-        Assert.Empty(result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+        result.HasErrors.Should().BeFalse();
+        result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Should().BeEmpty();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationContent = result.GetServiceRegistrationText();
 
         // Default service should be registered unconditionally  
-        Assert.Contains("AddScoped<Test.Database.IDatabaseService, Test.Database.DefaultDatabaseService>",
-            registrationSource.Content);
+        registrationContent.Should().Contain(
+            "AddScoped<Test.Database.IDatabaseService, Test.Database.DefaultDatabaseService>");
 
         // ConditionalService generates configuration-based conditional registration
-        Assert.Contains("configuration[\"Database:Type\"]", registrationSource.Content);
-        Assert.Contains(
-            "string.Equals(configuration[\"Database:Type\"], \"SqlServer\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains(
-            "string.Equals(configuration[\"Database:Type\"], \"InMemory\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("SqlServerDatabaseService", registrationSource.Content);
-        Assert.Contains("InMemoryDatabaseService", registrationSource.Content);
+        registrationContent.Should().Contain("configuration[\"Database:Type\"]");
+        registrationContent.Should().Contain(
+            "string.Equals(configuration[\"Database:Type\"], \"SqlServer\", StringComparison.OrdinalIgnoreCase)");
+        registrationContent.Should().Contain(
+            "string.Equals(configuration[\"Database:Type\"], \"InMemory\", StringComparison.OrdinalIgnoreCase)");
+        registrationContent.Should().Contain("SqlServerDatabaseService");
+        registrationContent.Should().Contain("InMemoryDatabaseService");
 
         // Verify constructor generation works for all services
-        var defaultConstructorSource = result.GetConstructorSource("DefaultDatabaseService");
-        Assert.NotNull(defaultConstructorSource);
-        Assert.Contains("ILogger<DefaultDatabaseService> logger", defaultConstructorSource.Content);
+        var defaultConstructorSource = result.GetConstructorSourceText("DefaultDatabaseService");
+        defaultConstructorSource.Should().Contain("ILogger<DefaultDatabaseService> logger");
 
-        var sqlConstructorSource = result.GetConstructorSource("SqlServerDatabaseService");
-        Assert.NotNull(sqlConstructorSource);
-        Assert.Contains("IConfiguration configuration", sqlConstructorSource.Content);
+        var sqlConstructorSource = result.GetConstructorSourceText("SqlServerDatabaseService");
+        sqlConstructorSource.Should().Contain("IConfiguration configuration");
     }
 
     #endregion
@@ -502,27 +489,25 @@ public partial class LogNotificationService : INotificationService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - ConditionalService generates combined condition logic
-        Assert.NotNull(result);
-        Assert.Empty(result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+        result.HasErrors.Should().BeFalse();
+        result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Should().BeEmpty();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationContent = result.GetServiceRegistrationText();
 
         // Log service should be registered unconditionally
-        Assert.Contains("AddScoped<Test.Future.INotificationService, Test.Future.LogNotificationService>",
-            registrationSource.Content);
+        registrationContent.Should().Contain(
+            "AddScoped<Test.Future.INotificationService, Test.Future.LogNotificationService>");
 
         // ConditionalService generates combined conditions (Environment AND ConfigValue)
-        Assert.Contains(
-            "(string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)) && string.Equals(configuration[\"Features:Notifications\"], \"console\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
+        registrationContent.Should().Contain(
+            "(string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)) && string.Equals(configuration[\"Features:Notifications\"], \"console\", StringComparison.OrdinalIgnoreCase)");
 
         // ConditionalService generates NotEnvironment condition
-        Assert.Contains("!string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
+        registrationContent.Should().Contain(
+            "!string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)");
 
-        Assert.Contains("ConsoleNotificationService", registrationSource.Content);
-        Assert.Contains("EmailNotificationService", registrationSource.Content);
+        registrationContent.Should().Contain("ConsoleNotificationService");
+        registrationContent.Should().Contain("EmailNotificationService");
     }
 
     [Fact]
@@ -554,18 +539,17 @@ public partial class RegularTestService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - ConditionalService generates proper NotEquals logic with null handling
-        Assert.NotNull(result);
-        Assert.Empty(result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+        result.HasErrors.Should().BeFalse();
+        result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Should().BeEmpty();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationContent = result.GetServiceRegistrationText();
 
-        Assert.Contains("AddScoped<Test.ITestService, Test.RegularTestService>", registrationSource.Content);
+        registrationContent.Should().Contain("AddScoped<Test.ITestService, Test.RegularTestService>");
 
         // ConditionalService generates NotEquals with proper null handling
-        Assert.Contains("(configuration.GetValue<string>(\"Features:DisableService\") ?? \"\") != \"true\"",
-            registrationSource.Content);
-        Assert.Contains("EnabledService", registrationSource.Content);
+        registrationContent.Should().Contain(
+            "(configuration.GetValue<string>(\"Features:DisableService\") ?? \"\") != \"true\"");
+        registrationContent.Should().Contain("EnabledService");
     }
 
     [Fact]
@@ -597,24 +581,23 @@ public partial class RegularTestService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - Should no longer generate IOC021 diagnostic after intelligent inference
-        Assert.NotNull(result);
+        result.HasErrors.Should().BeFalse();
 
         // Should NOT have IOC021 diagnostic since ConditionalService is now a service indicator
         var conditionalServiceDiagnostics = result.Diagnostics.Where(d => d.Id == "IOC021").ToList();
-        Assert.True(conditionalServiceDiagnostics.Count == 0,
+        conditionalServiceDiagnostics.Should().BeEmpty(
             $"Expected no IOC021 diagnostics, got {conditionalServiceDiagnostics.Count}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationContent = result.GetServiceRegistrationText();
 
-        Assert.Contains("RegularTestService", registrationSource.Content);
+        registrationContent.Should().Contain("RegularTestService");
 
         // ConditionalService WITHOUT [Scoped] attribute should now be processed due to intelligent inference
-        Assert.Contains("ConditionalLifetimeInferenceDeploymentService", registrationSource.Content);
+        registrationContent.Should().Contain("ConditionalLifetimeInferenceDeploymentService");
 
         // Should generate conditional logic
-        Assert.Contains("Development", registrationSource.Content);
-        Assert.Contains("Environment.GetEnvironmentVariable", registrationSource.Content);
+        registrationContent.Should().Contain("Development");
+        registrationContent.Should().Contain("Environment.GetEnvironmentVariable");
     }
 
     #endregion

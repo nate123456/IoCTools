@@ -9,6 +9,8 @@ using Microsoft.CodeAnalysis;
 
 using Models;
 
+using Utilities;
+
 internal static partial class ServiceRegistrationGenerator
 {
     internal static IEnumerable<ServiceRegistration> GetMultiInterfaceRegistrations(INamedTypeSymbol classSymbol,
@@ -200,23 +202,7 @@ internal static partial class ServiceRegistrationGenerator
     }
 
     private static string ExtractRegistrationMode(AttributeData registerAsAllAttribute)
-    {
-        if (registerAsAllAttribute.ConstructorArguments.Length > 0)
-        {
-            var firstArg = registerAsAllAttribute.ConstructorArguments[0].Value;
-            if (firstArg is int intValue)
-                return intValue switch { 0 => "DirectOnly", 1 => "All", 2 => "Exclusionary", _ => "All" };
-            if (int.TryParse(firstArg?.ToString(), out var parsed))
-                return parsed switch { 0 => "DirectOnly", 1 => "All", 2 => "Exclusionary", _ => "All" };
-        }
-
-        var modeArg = registerAsAllAttribute.NamedArguments.FirstOrDefault(a => a.Key == "Mode");
-        if (modeArg.Key != null && modeArg.Value.Value is int mInt)
-            return mInt switch { 0 => "DirectOnly", 1 => "All", 2 => "Exclusionary", _ => "All" };
-        var modeString = modeArg.Value.Value?.ToString();
-        if (modeString is "DirectOnly" or "All" or "Exclusionary") return modeString;
-        return "All";
-    }
+        => AttributeParser.GetRegistrationMode(registerAsAllAttribute);
 
     private static string ExtractInstanceSharing(AttributeData registerAsAllAttribute,
         string lifetime)

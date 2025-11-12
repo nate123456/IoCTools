@@ -36,12 +36,12 @@ public partial class MixedService : ISomeService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - should compile without errors
-        Assert.False(result.HasErrors,
-            $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
+        result.HasErrors.Should()
+            .BeFalse(
+                $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
 
         // Get the generated constructor
-        var constructorSource = result.GetConstructorSource("MixedService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("MixedService");
 
         // Verify the exact constructor signature matches README claim
         var expectedSignature =
@@ -51,9 +51,10 @@ public partial class MixedService : ISomeService
         var constructorMatch = Regex.Match(
             constructorSource.Content,
             @"public MixedService\(\s*([^)]+)\s*\)");
-        Assert.True(constructorMatch.Success, $"Constructor signature not found in: {constructorSource.Content}");
+        constructorMatch.Success.Should().BeTrue($"Constructor signature not found in: {constructorSource.Content}");
 
         var actualSignature = $"public MixedService({constructorMatch.Groups[1].Value.Trim()})";
+        actualSignature.Should().Be(expectedSignature);
 
         // Verify DependsOn parameters come before Inject parameters
         var parameters = constructorMatch.Groups[1].Value
@@ -61,18 +62,18 @@ public partial class MixedService : ISomeService
             .Select(p => p.Trim())
             .ToArray();
 
-        Assert.Equal(3, parameters.Length);
+        parameters.Length.Should().Be(3);
 
         // CRITICAL: Verify parameter ordering - DependsOn before Inject
-        Assert.Contains("IMediator", parameters[0]); // DependsOn parameter first
-        Assert.Contains("IOtherService", parameters[1]); // Inject parameter second  
-        Assert.Contains("IAnotherService", parameters[2]); // Inject parameter third
+        parameters[0].Should().Contain("IMediator"); // DependsOn parameter first
+        parameters[1].Should().Contain("IOtherService"); // Inject parameter second  
+        parameters[2].Should().Contain("IAnotherService"); // Inject parameter third
 
         // Verify field assignments in constructor body
         var content = constructorSource.Content;
-        Assert.Contains("this._mediator = mediator;", content);
-        Assert.Contains("this._otherService = otherService;", content);
-        Assert.Contains("this._anotherService = anotherService;", content);
+        content.Should().Contain("this._mediator = mediator;");
+        content.Should().Contain("this._otherService = otherService;");
+        content.Should().Contain("this._anotherService = anotherService;");
     }
 
     [Fact]
@@ -101,21 +102,20 @@ public partial class DerivedService : BaseService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var derivedConstructor = result.GetConstructorSource("DerivedService");
-        Assert.NotNull(derivedConstructor);
+        var derivedConstructor = result.GetRequiredConstructorSource("DerivedService");
 
         // Verify inheritance mixing - base DependsOn + derived DependsOn + derived Inject
         var content = derivedConstructor.Content;
 
         // Should have all three dependencies: base DependsOn, derived DependsOn, derived Inject
-        Assert.Contains("IBaseService", content);
-        Assert.Contains("IDerivedService", content);
-        Assert.Contains("IInjectService", content);
+        content.Should().Contain("IBaseService");
+        content.Should().Contain("IDerivedService");
+        content.Should().Contain("IInjectService");
 
         // Verify proper base constructor call
-        Assert.Contains("base(", content);
+        content.Should().Contain("base(");
     }
 
     [Fact]
@@ -142,29 +142,28 @@ public partial class OrderingTestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("OrderingTestService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("OrderingTestService");
 
         // Extract parameters
         var constructorMatch = Regex.Match(
             constructorSource.Content,
             @"public OrderingTestService\(\s*([^)]+)\s*\)");
-        Assert.True(constructorMatch.Success);
+        constructorMatch.Success.Should().BeTrue();
 
         var parameters = constructorMatch.Groups[1].Value
             .Split(',')
             .Select(p => p.Trim())
             .ToArray();
 
-        Assert.Equal(4, parameters.Length);
+        parameters.Length.Should().Be(4);
 
         // Verify DependsOn parameters come first, then Inject parameters
-        Assert.Contains("IFirst", parameters[0]); // DependsOn parameter 1
-        Assert.Contains("ISecond", parameters[1]); // DependsOn parameter 2
-        Assert.Contains("IThird", parameters[2]); // Inject parameter 1
-        Assert.Contains("IFourth", parameters[3]); // Inject parameter 2
+        parameters[0].Should().Contain("IFirst"); // DependsOn parameter 1
+        parameters[1].Should().Contain("ISecond"); // DependsOn parameter 2
+        parameters[2].Should().Contain("IThird"); // Inject parameter 1
+        parameters[3].Should().Contain("IFourth"); // Inject parameter 2
     }
 
     [Fact]
@@ -188,10 +187,10 @@ public partial class ConflictService
 
         // Assert - should generate IOC007 diagnostic
         var ioc007Diagnostics = result.GetDiagnosticsByCode("IOC007");
-        Assert.Single(ioc007Diagnostics);
+        ioc007Diagnostics.Should().ContainSingle();
 
         var diagnostic = ioc007Diagnostics[0];
-        Assert.Contains("IConflictService", diagnostic.GetMessage());
-        Assert.Contains("declared in [DependsOn] attribute", diagnostic.GetMessage());
+        diagnostic.GetMessage().Should().Contain("IConflictService");
+        diagnostic.GetMessage().Should().Contain("declared in [DependsOn] attribute");
     }
 }

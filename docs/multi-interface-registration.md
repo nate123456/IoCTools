@@ -7,8 +7,7 @@ Control which interfaces a class is registered as, and whether they share the sa
 Register only the listed interfaces. Use `InstanceSharing.Shared` to map all listed interfaces to the same instance (the concrete type is also registered).
 
 ```csharp
-[Scoped]
-[RegisterAs<IOrderService, IOrderValidator>(InstanceSharing.Shared)]
+[RegisterAs<IOrderService, IOrderValidator>(InstanceSharing.Shared)] // Scoped by default
 public partial class OrderService : IOrderService, IOrderValidator, IInternalOnly { }
 ```
 
@@ -40,5 +39,9 @@ public partial class Worker : IProcessor, IHandler { }
 
 Notes
 
+- `[SkipRegistration]` without `[RegisterAsAll]` triggers IOC005 because there are no generated registrations to skip. Either add `[RegisterAsAll]` or remove the skip attribute.
+- `[SkipRegistration<I…>]` only matters when interfaces would be registered. If `[RegisterAsAll(RegistrationMode.DirectOnly)]` is used, IOC038 reminds you the skip list is ignored because DirectOnly registers only the concrete type.
+- `[SkipRegistration]` suppresses all registrations—including lifetimes, `RegisterAs`, `RegisterAsAll`, and `ConditionalService`. IOC037 warns when you combine those attributes since SkipRegistration wins.
+- `[RegisterAs]` and `[RegisterAsAll]` already imply a scoped lifetime. Adding `[Scoped]` just to “be safe” triggers IOC033.
 - Collections (`IEnumerable<T>`) include all matching interface registrations automatically.
 - Instance sharing works for `RegisterAs` and `RegisterAsAll`.

@@ -31,17 +31,16 @@ public partial class MemoryCacheProvider : ICacheProvider { }
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        result.HasErrors.Should().BeFalse();
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should generate mutually exclusive configuration conditions
-        Assert.Contains(
-            "if (string.Equals(configuration[\"Cache:Provider\"], \"Redis\", StringComparison.OrdinalIgnoreCase))",
-            registrationSource.Content);
-        Assert.Contains(
-            "else if (string.Equals(configuration[\"Cache:Provider\"], \"Memory\", StringComparison.OrdinalIgnoreCase))",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain(
+                "if (string.Equals(configuration[\"Cache:Provider\"], \"Redis\", StringComparison.OrdinalIgnoreCase))");
+        registrationSource.Content.Should()
+            .Contain(
+                "else if (string.Equals(configuration[\"Cache:Provider\"], \"Memory\", StringComparison.OrdinalIgnoreCase))");
     }
 
     [Fact]
@@ -64,13 +63,12 @@ public partial class EnabledService : IService { }
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        result.HasErrors.Should().BeFalse();
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should generate NOT equals condition with proper null handling
-        Assert.Contains("(configuration.GetValue<string>(\"Features:Disabled\") ?? \"\") != \"true\"",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("(configuration.GetValue<string>(\"Features:Disabled\") ?? \"\") != \"true\"");
     }
 
     [Fact]
@@ -93,13 +91,12 @@ public partial class QuotedService : IService { }
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        result.HasErrors.Should().BeFalse();
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should properly escape special characters in config key and value
-        Assert.Contains("App:Config\\\"WithQuotes", registrationSource.Content);
-        Assert.Contains("Value\\\"WithQuotes", registrationSource.Content);
+        registrationSource.Content.Should().Contain("App:Config\\\"WithQuotes");
+        registrationSource.Content.Should().Contain("Value\\\"WithQuotes");
     }
 
     [Fact]
@@ -122,13 +119,12 @@ public partial class EnabledService : IService { }
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        result.HasErrors.Should().BeFalse();
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should generate multiple NOT equals with AND logic and proper null handling
         var configAccess = "(configuration.GetValue<string>(\"Features:Provider\") ?? \"\")";
-        Assert.Contains($"{configAccess} != \"None\" && {configAccess} != \"Disabled\"", registrationSource.Content);
+        registrationSource.Content.Should().Contain($"{configAccess} != \"None\" && {configAccess} != \"Disabled\"");
     }
 
     #endregion
@@ -155,17 +151,16 @@ public partial class ProductionAdvancedService : IAdvancedService { }
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        result.HasErrors.Should().BeFalse();
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should generate combined environment and configuration check with AND logic
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains(
-            "string.Equals(configuration[\"Features:Advanced\"], \"enabled\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("&&", registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should()
+            .Contain(
+                "string.Equals(configuration[\"Features:Advanced\"], \"enabled\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should().Contain("&&");
     }
 
     [Fact]
@@ -188,18 +183,17 @@ public partial class TestModeService : ITestService { }
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        result.HasErrors.Should().BeFalse();
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should generate OR condition for environments AND configuration condition
-        Assert.Contains(
-            "string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase) || string.Equals(environment, \"Testing\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains(
-            "string.Equals(configuration[\"Features:TestMode\"], \"true\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("&&", registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain(
+                "string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase) || string.Equals(environment, \"Testing\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should()
+            .Contain(
+                "string.Equals(configuration[\"Features:TestMode\"], \"true\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should().Contain("&&");
     }
 
     #endregion
@@ -230,17 +224,16 @@ public partial class FalseService : IBooleanService { }
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        result.HasErrors.Should().BeFalse();
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should treat boolean values as strings in comparison
-        Assert.Contains(
-            "string.Equals(configuration[\"Features:BooleanFeature\"], \"true\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains(
-            "string.Equals(configuration[\"Features:BooleanFeature\"], \"false\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain(
+                "string.Equals(configuration[\"Features:BooleanFeature\"], \"true\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should()
+            .Contain(
+                "string.Equals(configuration[\"Features:BooleanFeature\"], \"false\", StringComparison.OrdinalIgnoreCase)");
     }
 
     [Fact]
@@ -263,13 +256,12 @@ public partial class V2Service : INumericService { }
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        result.HasErrors.Should().BeFalse();
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should treat numeric values as strings
-        Assert.Contains("string.Equals(configuration[\"App:Version\"], \"2\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("string.Equals(configuration[\"App:Version\"], \"2\", StringComparison.OrdinalIgnoreCase)");
     }
 
     [Fact]
@@ -292,13 +284,12 @@ public partial class EmptyValueService : IEmptyService { }
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        result.HasErrors.Should().BeFalse();
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should handle empty string comparison properly
-        Assert.Contains("string.Equals(configuration[\"App:EmptyConfig\"], \"\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("string.Equals(configuration[\"App:EmptyConfig\"], \"\", StringComparison.OrdinalIgnoreCase)");
     }
 
     #endregion
@@ -325,14 +316,13 @@ public partial class SqlServerService : INestedService { }
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        result.HasErrors.Should().BeFalse();
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should handle nested configuration keys properly
-        Assert.Contains(
-            "string.Equals(configuration[\"App:Features:Database:Provider\"], \"SqlServer\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain(
+                "string.Equals(configuration[\"App:Features:Database:Provider\"], \"SqlServer\", StringComparison.OrdinalIgnoreCase)");
     }
 
     [Fact]
@@ -359,17 +349,16 @@ public partial class LowercaseService : ICaseSensitiveService { }
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        result.HasErrors.Should().BeFalse();
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should be case-insensitive comparison (using StringComparison.OrdinalIgnoreCase)
-        Assert.Contains(
-            "string.Equals(configuration[\"App:CaseTest\"], \"UPPERCASE\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains(
-            "string.Equals(configuration[\"App:CaseTest\"], \"lowercase\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain(
+                "string.Equals(configuration[\"App:CaseTest\"], \"UPPERCASE\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should()
+            .Contain(
+                "string.Equals(configuration[\"App:CaseTest\"], \"lowercase\", StringComparison.OrdinalIgnoreCase)");
     }
 
     #endregion

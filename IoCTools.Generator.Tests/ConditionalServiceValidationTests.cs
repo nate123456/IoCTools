@@ -30,27 +30,21 @@ public partial class MultipleConditionalService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        // Should either combine conditions or produce diagnostic for multiple attributes
         var diagnostics = result.GetDiagnosticsByCode("IOC026");
         if (diagnostics.Any())
         {
-            var message = diagnostics.First().GetMessage().ToLower();
-            Assert.Contains("multiple", message);
-            Assert.Contains("conditional", message);
+            var message = diagnostics.First().GetMessage().ToLowerInvariant();
+            message.Should().Contain("multiple");
+            message.Should().Contain("conditional");
         }
-        else
+        else if (result.GetServiceRegistrationSource() is { Content: var content })
         {
-            // Should handle multiple attributes appropriately
-            var registrationSource = result.GetServiceRegistrationSource();
-            if (registrationSource != null)
-            {
-                // Should either combine with OR logic or use only the first/last attribute
-                var hasDevelopment = registrationSource.Content.Contains("== \"Development\"");
-                var hasTesting = registrationSource.Content.Contains("== \"Testing\"");
+            var hasDevelopment = content.Contains("== \"Development\"");
+            var hasTesting = content.Contains("== \"Testing\"");
 
-                if (registrationSource.Content.Contains("MultipleConditionalService"))
-                    Assert.True(hasDevelopment || hasTesting, "Should handle at least one of the conditions");
-            }
+            if (content.Contains("MultipleConditionalService"))
+                (hasDevelopment || hasTesting).Should().BeTrue(
+                    "at least one condition should be honored when diagnostics are absent");
         }
     }
 
@@ -79,15 +73,14 @@ public partial class UnicodeService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        if (registrationSource != null && registrationSource.Content.Contains("UnicodeService"))
+        if (result.GetServiceRegistrationSource() is { Content: var registrationContent } &&
+            registrationContent.Contains("UnicodeService"))
         {
-            // Should handle Unicode characters correctly
-            Assert.Contains("开发环境", registrationSource.Content);
-            Assert.Contains("Función:Configuración", registrationSource.Content);
-            Assert.Contains("activé", registrationSource.Content);
+            registrationContent.Should().Contain("开发环境");
+            registrationContent.Should().Contain("Función:Configuración");
+            registrationContent.Should().Contain("activé");
         }
     }
 
@@ -116,25 +109,18 @@ public partial class ConflictingService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        // Should detect logical conflict: Environment = X AND NotEnvironment = X
         var diagnostics = result.GetDiagnosticsByCode("IOC020");
         if (diagnostics.Any())
         {
-            var message = diagnostics.First().GetMessage().ToLower();
-            Assert.Contains("conflict", message);
-            Assert.Contains("development", message);
+            var message = diagnostics.First().GetMessage().ToLowerInvariant();
+            message.Should().Contain("conflict");
+            message.Should().Contain("development");
         }
-        else
+        else if (result.GetServiceRegistrationSource() is { Content: var registrationContent })
         {
-            // If no diagnostic, should not generate impossible condition
-            var registrationSource = result.GetServiceRegistrationSource();
-            if (registrationSource != null)
-            {
-                var hasConflict =
-                    registrationSource.Content.Contains(
-                        "string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase) && !string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)");
-                Assert.False(hasConflict, "Should not generate logically impossible conditions");
-            }
+            var hasConflict = registrationContent.Contains(
+                "string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase) && !string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)");
+            hasConflict.Should().BeFalse("generated code should not create impossible conditions");
         }
     }
 
@@ -159,28 +145,20 @@ public partial class OverlappingService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        // Should detect overlap: Testing appears in both Environment and NotEnvironment
         var diagnostics = result.GetDiagnosticsByCode("IOC020");
         if (diagnostics.Any())
         {
-            var message = diagnostics.First().GetMessage().ToLower();
-            Assert.Contains("overlap", message.ToLower());
-            Assert.Contains("testing", message.ToLower());
+            var message = diagnostics.First().GetMessage().ToLowerInvariant();
+            message.Should().Contain("overlap");
+            message.Should().Contain("testing");
         }
-        else
+        else if (result.GetServiceRegistrationSource() is { Content: var registrationContent })
         {
-            // Should handle overlap gracefully in generated code
-            var registrationSource = result.GetServiceRegistrationSource();
-            if (registrationSource != null)
-            {
-                // Should not generate contradictory conditions
-                var hasTestingInBoth =
-                    registrationSource.Content.Contains(
-                        "string.Equals(environment, \"Testing\", StringComparison.OrdinalIgnoreCase)") &&
-                    registrationSource.Content.Contains(
-                        "!string.Equals(environment, \"Testing\", StringComparison.OrdinalIgnoreCase)");
-                Assert.False(hasTestingInBoth, "Should resolve overlapping conditions");
-            }
+            var hasTestingInBoth = registrationContent.Contains(
+                                       "string.Equals(environment, \"Testing\", StringComparison.OrdinalIgnoreCase)") &&
+                                   registrationContent.Contains(
+                                       "!string.Equals(environment, \"Testing\", StringComparison.OrdinalIgnoreCase)");
+            hasTestingInBoth.Should().BeFalse("overlapping conditions should not emit contradictory code");
         }
     }
 
@@ -205,24 +183,18 @@ public partial class ConfigConflictService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        // Should detect config value conflict
         var diagnostics = result.GetDiagnosticsByCode("IOC020");
         if (diagnostics.Any())
         {
-            var message = diagnostics.First().GetMessage().ToLower();
-            Assert.Contains("conflict", message);
-            Assert.Contains("feature:enabled", message.ToLower());
+            var message = diagnostics.First().GetMessage().ToLowerInvariant();
+            message.Should().Contain("conflict");
+            message.Should().Contain("feature:enabled");
         }
-        else
+        else if (result.GetServiceRegistrationSource() is { Content: var registrationContent })
         {
-            // Should not generate impossible config condition
-            var registrationSource = result.GetServiceRegistrationSource();
-            if (registrationSource != null)
-            {
-                var hasConflict = registrationSource.Content.Contains("== \"true\" && ") &&
-                                  registrationSource.Content.Contains("!= \"true\"");
-                Assert.False(hasConflict, "Should not generate contradictory config conditions");
-            }
+            var hasConflict = registrationContent.Contains("== \"true\" && ") &&
+                              registrationContent.Contains("!= \"true\"");
+            hasConflict.Should().BeFalse("config conditions should not contradict themselves");
         }
     }
 
@@ -251,19 +223,14 @@ public partial class ConditionalLifetimeInferenceValidationService : ITestServic
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        // Should no longer produce IOC021 diagnostic - ConditionalService is itself a service indicator
         var diagnostics = result.GetDiagnosticsByCode("IOC021");
-        Assert.False(diagnostics.Any(),
+        diagnostics.Should().BeEmpty(
             "ConditionalService should work without [Scoped] attribute after intelligent inference refactor");
 
-        // Should register the ConditionalService class since ConditionalService is a service indicator
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("ConditionalLifetimeInferenceValidationService", registrationSource.Content);
-
-        // Should generate conditional logic
-        Assert.Contains("Development", registrationSource.Content);
-        Assert.Contains("Environment.GetEnvironmentVariable", registrationSource.Content);
+        var registrationContent = result.GetServiceRegistrationText();
+        registrationContent.Should().Contain("ConditionalLifetimeInferenceValidationService");
+        registrationContent.Should().Contain("Development");
+        registrationContent.Should().Contain("Environment.GetEnvironmentVariable");
     }
 
     [Fact]
@@ -287,26 +254,20 @@ public partial class EmptyConditionalService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        // Should require at least one condition
         var diagnostics = result.GetDiagnosticsByCode("IOC022");
         if (diagnostics.Any())
         {
-            var message = diagnostics.First().GetMessage().ToLower();
-            Assert.Contains("condition", message);
-            Assert.Contains("required", message);
+            var message = diagnostics.First().GetMessage().ToLowerInvariant();
+            message.Should().Contain("condition");
+            message.Should().Contain("required");
         }
         else
         {
-            // Should treat as regular service or skip registration
-            var registrationSource = result.GetServiceRegistrationSource();
-            if (registrationSource != null)
-            {
-                // Either register unconditionally or not at all
-                var hasConditionalRegistration = registrationSource.Content.Contains("if (") &&
-                                                 registrationSource.Content.Contains("EmptyConditionalService");
-                Assert.False(hasConditionalRegistration,
-                    "Should not generate conditional registration without conditions");
-            }
+            var registrationContent = result.GetServiceRegistrationText();
+            var hasConditionalRegistration = registrationContent.Contains("if (") &&
+                                             registrationContent.Contains("EmptyConditionalService");
+            hasConditionalRegistration.Should().BeFalse(
+                "services without conditions should not generate conditional code");
         }
     }
 
@@ -335,21 +296,19 @@ public partial class IncompleteConfigService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        // Should require Equals or NotEquals when ConfigValue is specified
         var diagnostics = result.GetDiagnosticsByCode("IOC023");
         if (diagnostics.Any())
         {
-            var message = diagnostics.First().GetMessage().ToLower();
-            Assert.Contains("equals", message);
-            Assert.Contains("required", message);
+            var message = diagnostics.First().GetMessage().ToLowerInvariant();
+            message.Should().Contain("equals");
+            message.Should().Contain("required");
         }
         else
         {
-            // Should not generate incomplete config check
-            var registrationSource = result.GetServiceRegistrationSource();
-            if (registrationSource != null)
-                Assert.DoesNotContain("configuration.GetValue<string>(\"Feature:Enabled\")",
-                    registrationSource.Content);
+            var registrationContent = result.GetServiceRegistrationText();
+            registrationContent.Should().NotContain(
+                "configuration.GetValue<string>(\"Feature:Enabled\")",
+                "config comparisons require Equals/NotEquals");
         }
     }
 
@@ -374,19 +333,17 @@ public partial class OrphanedEqualsService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        // Should require ConfigValue when Equals is specified
         var diagnostics = result.GetDiagnosticsByCode("IOC024");
         if (diagnostics.Any())
         {
-            var message = diagnostics.First().GetMessage().ToLower();
-            Assert.Contains("configvalue", message);
-            Assert.Contains("required", message);
+            var message = diagnostics.First().GetMessage().ToLowerInvariant();
+            message.Should().Contain("configvalue");
+            message.Should().Contain("required");
         }
         else
         {
-            // Should not generate orphaned equals check
-            var registrationSource = result.GetServiceRegistrationSource();
-            if (registrationSource != null) Assert.DoesNotContain("== \"true\"", registrationSource.Content);
+            var registrationContent = result.GetServiceRegistrationText();
+            registrationContent.Should().NotContain("== \"true\"");
         }
     }
 
@@ -411,19 +368,17 @@ public partial class OrphanedNotEqualsService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        // Should require ConfigValue when NotEquals is specified
         var diagnostics = result.GetDiagnosticsByCode("IOC024");
         if (diagnostics.Any())
         {
-            var message = diagnostics.First().GetMessage().ToLower();
-            Assert.Contains("configvalue", message);
-            Assert.Contains("required", message);
+            var message = diagnostics.First().GetMessage().ToLowerInvariant();
+            message.Should().Contain("configvalue");
+            message.Should().Contain("required");
         }
         else
         {
-            // Should not generate orphaned not equals check
-            var registrationSource = result.GetServiceRegistrationSource();
-            if (registrationSource != null) Assert.DoesNotContain("!= \"false\"", registrationSource.Content);
+            var registrationContent = result.GetServiceRegistrationText();
+            registrationContent.Should().NotContain("!= \"false\"");
         }
     }
 
@@ -452,13 +407,10 @@ public partial class EmptyEnvironmentService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        // Should either produce diagnostic or handle empty environment
-        var registrationSource = result.GetServiceRegistrationSource();
-        if (registrationSource != null)
-            if (registrationSource.Content.Contains("EmptyEnvironmentService"))
-                // If registered, should handle empty string safely
-                Assert.Contains("string.Equals(environment, \"\", StringComparison.OrdinalIgnoreCase)",
-                    registrationSource.Content);
+        if (result.GetServiceRegistrationSource() is { Content: var registrationContent } &&
+            registrationContent.Contains("EmptyEnvironmentService"))
+            registrationContent.Should().Contain(
+                "string.Equals(environment, \"\", StringComparison.OrdinalIgnoreCase)");
     }
 
     [Fact]
@@ -482,20 +434,12 @@ public partial class EmptyConfigKeyService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        // Should either produce diagnostic or handle empty config key
-        var diagnostics = result.GetDiagnosticsByCode("IOC025");
-        if (!diagnostics.Any())
-        {
-            var registrationSource = result.GetServiceRegistrationSource();
-            if (registrationSource != null && registrationSource.Content.Contains("EmptyConfigKeyService"))
-            {
-                // Should handle empty config key safely - accept various null-safe patterns
-                var hasNullSafePattern =
-                    registrationSource.Content.Contains(
-                        "string.Equals(configuration[\"\"], \"value\", StringComparison.OrdinalIgnoreCase)");
-                Assert.True(hasNullSafePattern, "Generator should produce null-safe code for empty config keys");
-            }
-        }
+        var diagnosticsIOC025 = result.GetDiagnosticsByCode("IOC025");
+        if (!diagnosticsIOC025.Any() &&
+            result.GetServiceRegistrationSource() is { Content: var registrationContent } &&
+            registrationContent.Contains("EmptyConfigKeyService"))
+            registrationContent.Should().Contain(
+                "string.Equals(configuration[\"\"], \"value\", StringComparison.OrdinalIgnoreCase)");
     }
 
     [Fact]
@@ -519,20 +463,16 @@ public partial class WhitespaceService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        // Should handle whitespace values appropriately
-        var registrationSource = result.GetServiceRegistrationSource();
-        if (registrationSource != null)
+        if (result.GetServiceRegistrationSource() is { Content: var registrationContent })
         {
-            // Should either trim whitespace or preserve it consistently
             var environmentCheck =
-                registrationSource.Content.Contains(
+                registrationContent.Contains(
                     "string.Equals(environment, \"   \", StringComparison.OrdinalIgnoreCase)") ||
-                registrationSource.Content.Contains(
+                registrationContent.Contains(
                     "string.Equals(environment, \"\", StringComparison.OrdinalIgnoreCase)");
+            environmentCheck.Should().BeTrue("Whitespace should be normalized in environment checks");
 
-            if (registrationSource.Content.Contains("WhitespaceService"))
-                // Should generate some form of valid condition
-                Assert.True(registrationSource.Content.Contains("if ("));
+            if (registrationContent.Contains("WhitespaceService")) registrationContent.Should().Contain("if (");
         }
     }
 
@@ -557,17 +497,13 @@ public partial class SpecialCharService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-
-        // Should handle special characters in environment and config values
-        Assert.Contains("string.Equals(environment, \"Dev-Test.Local\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains(
-            "string.Equals(configuration[\"App:Feature.Name\"], \"enabled/true\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
+        var registrationContent = result.GetServiceRegistrationText();
+        registrationContent.Should().Contain(
+            "string.Equals(environment, \"Dev-Test.Local\", StringComparison.OrdinalIgnoreCase)");
+        registrationContent.Should().Contain(
+            "string.Equals(configuration[\"App:Feature.Name\"], \"enabled/true\", StringComparison.OrdinalIgnoreCase)");
     }
 
     [Fact]
@@ -595,17 +531,13 @@ public partial class LongValueService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-
-        // Should handle very long values without issues
-        Assert.Contains($"string.Equals(environment, \"{longEnvironment}\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains(
-            $"string.Equals(configuration[\"{longConfigKey}\"], \"{longConfigValue}\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
+        var registrationContent = result.GetServiceRegistrationText();
+        registrationContent.Should().Contain(
+            $"string.Equals(environment, \"{longEnvironment}\", StringComparison.OrdinalIgnoreCase)");
+        registrationContent.Should().Contain(
+            $"string.Equals(configuration[\"{longConfigKey}\"], \"{longConfigValue}\", StringComparison.OrdinalIgnoreCase)");
     }
 
     #endregion
@@ -633,14 +565,12 @@ public partial class InvalidEnvService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        // Should handle invalid environment names (they might be valid in some contexts)
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        if (registrationSource != null && registrationSource.Content.Contains("InvalidEnvService"))
-            // Should generate condition even for unusual environment names
-            Assert.Contains("string.Equals(environment, \"Invalid-Env@123\", StringComparison.OrdinalIgnoreCase)",
-                registrationSource.Content);
+        if (result.GetServiceRegistrationSource() is { Content: var invalidEnvContent } &&
+            invalidEnvContent.Contains("InvalidEnvService"))
+            invalidEnvContent.Should().Contain(
+                "string.Equals(environment, \"Invalid-Env@123\", StringComparison.OrdinalIgnoreCase)");
     }
 
     [Fact]
@@ -664,18 +594,17 @@ public partial class ReservedNameService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        if (registrationSource != null && registrationSource.Content.Contains("ReservedNameService"))
+        if (result.GetServiceRegistrationSource() is { Content: var reservedContent } &&
+            reservedContent.Contains("ReservedNameService"))
         {
-            // Should handle reserved keywords as environment names
-            Assert.Contains("string.Equals(environment, \"null\", StringComparison.OrdinalIgnoreCase)",
-                registrationSource.Content);
-            Assert.Contains("string.Equals(environment, \"true\", StringComparison.OrdinalIgnoreCase)",
-                registrationSource.Content);
-            Assert.Contains("string.Equals(environment, \"false\", StringComparison.OrdinalIgnoreCase)",
-                registrationSource.Content);
+            reservedContent.Should().Contain(
+                "string.Equals(environment, \"null\", StringComparison.OrdinalIgnoreCase)");
+            reservedContent.Should().Contain(
+                "string.Equals(environment, \"true\", StringComparison.OrdinalIgnoreCase)");
+            reservedContent.Should().Contain(
+                "string.Equals(environment, \"false\", StringComparison.OrdinalIgnoreCase)");
         }
     }
 

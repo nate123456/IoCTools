@@ -31,19 +31,16 @@ public partial class DefaultValueService
 
         // Assert - This tests potential future DefaultValue support
         // For now, test standard behavior without defaults
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("DefaultValueService");
-
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("DefaultValueService");
 
         // Configuration calls should include default values when specified
-        Assert.Contains("configuration.GetValue<int>(\"Database:Timeout\", 30)", constructorSource.Content);
-        Assert.Contains(
-            "configuration.GetValue<global::System.TimeSpan>(\"Cache:TTL\", global::System.TimeSpan.Parse(\"00:05:00\"))",
-            constructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"App:Name\", \"MyApp\")", constructorSource.Content);
-        Assert.Contains("configuration.GetValue<bool>(\"Features:EnableDebug\", false)", constructorSource.Content);
+        constructorContent.Should().Contain("configuration.GetValue<int>(\"Database:Timeout\", 30)");
+        constructorContent.Should().Contain(
+            "configuration.GetValue<global::System.TimeSpan>(\"Cache:TTL\", global::System.TimeSpan.Parse(\"00:05:00\"))");
+        constructorContent.Should().Contain("configuration.GetValue<string>(\"App:Name\", \"MyApp\")");
+        constructorContent.Should().Contain("configuration.GetValue<bool>(\"Features:EnableDebug\", false)");
     }
 
     #endregion
@@ -71,16 +68,15 @@ public partial class NestedKeyService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("NestedKeyService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("NestedKeyService");
 
-        Assert.Contains("configuration.GetValue<string>(\"Database:Connection:Primary\")", constructorSource.Content);
-        Assert.Contains("configuration.GetValue<int>(\"App:Features:Search:MaxResults\")", constructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"Azure:Storage:Account:ConnectionString\")",
-            constructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"Logging:LogLevel:Default\")", constructorSource.Content);
+        constructorContent.Should().Contain("configuration.GetValue<string>(\"Database:Connection:Primary\")");
+        constructorContent.Should().Contain("configuration.GetValue<int>(\"App:Features:Search:MaxResults\")");
+        constructorContent.Should().Contain(
+            "configuration.GetValue<string>(\"Azure:Storage:Account:ConnectionString\")");
+        constructorContent.Should().Contain("configuration.GetValue<string>(\"Logging:LogLevel:Default\")");
     }
 
     #endregion
@@ -119,19 +115,18 @@ public partial class ReloadingConfigService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("ReloadingConfigService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("ReloadingConfigService");
 
         // Should inject all three options types correctly
-        Assert.Contains("IOptionsSnapshot<ReloadableSettings> reloadableSettings", constructorSource.Content);
-        Assert.Contains("IOptions<StaticSettings> staticSettings", constructorSource.Content);
-        Assert.Contains("IOptionsMonitor<ReloadableSettings> monitoredSettings", constructorSource.Content);
+        constructorContent.Should().Contain("IOptionsSnapshot<ReloadableSettings> reloadableSettings");
+        constructorContent.Should().Contain("IOptions<StaticSettings> staticSettings");
+        constructorContent.Should().Contain("IOptionsMonitor<ReloadableSettings> monitoredSettings");
 
-        Assert.Contains("this._reloadableSettings = reloadableSettings;", constructorSource.Content);
-        Assert.Contains("this._staticSettings = staticSettings;", constructorSource.Content);
-        Assert.Contains("this._monitoredSettings = monitoredSettings;", constructorSource.Content);
+        constructorContent.Should().Contain("this._reloadableSettings = reloadableSettings;");
+        constructorContent.Should().Contain("this._staticSettings = staticSettings;");
+        constructorContent.Should().Contain("this._monitoredSettings = monitoredSettings;");
     }
 
     #endregion
@@ -168,14 +163,13 @@ public partial class ConfigurationService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationContent = result.GetServiceRegistrationText();
 
         // Should register the service itself with direct registration (not factory pattern to avoid infinite recursion)
-        Assert.Contains("AddScoped<global::Test.ConfigurationService, global::Test.ConfigurationService>()",
-            registrationSource.Content);
+        registrationContent.Should().Contain(
+            "AddScoped<global::Test.ConfigurationService, global::Test.ConfigurationService>()");
 
         // Should include configuration setup for options if needed
         // This would be implementation-specific behavior
@@ -211,34 +205,30 @@ public partial class DerivedConfigService : BaseConfigService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var baseConstructorSource = result.GetConstructorSource("BaseConfigService");
-        var derivedConstructorSource = result.GetConstructorSource("DerivedConfigService");
+        var baseConstructorSource = result.GetRequiredConstructorSource("BaseConfigService");
+        var derivedConstructorSource = result.GetRequiredConstructorSource("DerivedConfigService");
 
-        if (baseConstructorSource != null)
-        {
-            Assert.Contains("IConfiguration configuration", baseConstructorSource.Content);
-            Assert.Contains("IBaseService baseService", baseConstructorSource.Content);
-            Assert.Contains("configuration.GetValue<string>(\"Base:Setting\")", baseConstructorSource.Content);
-        }
+        baseConstructorSource.Content.Should().Contain("IConfiguration configuration");
+        baseConstructorSource.Content.Should().Contain("IBaseService baseService");
+        baseConstructorSource.Content.Should().Contain("configuration.GetValue<string>(\"Base:Setting\")");
 
-        if (derivedConstructorSource != null)
-        {
-            // Should include base dependencies
-            Assert.Contains("IBaseService baseService", derivedConstructorSource.Content);
-            Assert.Contains("IConfiguration configuration", derivedConstructorSource.Content);
+        // Should include base dependencies
+        derivedConstructorSource.Content.Should().Contain("IBaseService baseService");
+        derivedConstructorSource.Content.Should().Contain("IConfiguration configuration");
 
-            // Should include derived configuration
-            Assert.Contains("configuration.GetValue<string>(\"Derived:Setting\")", derivedConstructorSource.Content);
-            Assert.Contains("configuration.GetValue<int>(\"Derived:Count\")", derivedConstructorSource.Content);
+        // Should include derived configuration
+        derivedConstructorSource.Content.Should().Contain(
+            "configuration.GetValue<string>(\"Derived:Setting\")");
+        derivedConstructorSource.Content.Should().Contain(
+            "configuration.GetValue<int>(\"Derived:Count\")");
 
-            // Should call base constructor appropriately
-            var hasBaseCall = derivedConstructorSource.Content.Contains("base(") ||
-                              derivedConstructorSource.Content.Contains(": base");
+        // Should call base constructor appropriately
+        var hasBaseCall = derivedConstructorSource.Content.Contains("base(") ||
+                          derivedConstructorSource.Content.Contains(": base");
 
-            // Base call handling depends on implementation
-        }
+        hasBaseCall.Should().BeTrue();
     }
 
     #endregion
@@ -320,7 +310,7 @@ public partial class CompleteIntegrationService
         // Basic compilation validation
         var emailConstructorSource = result.GetConstructorSource("EmailService");
         var mainConstructorSource = result.GetConstructorSource("CompleteIntegrationService");
-        var registrationSource = result.GetServiceRegistrationSource();
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Test validates that complex scenarios compile successfully
         // TODO: When [InjectConfiguration] is implemented, this test should verify:
@@ -381,9 +371,9 @@ public partial class BasicStringConfigService
 
         // Test passes if compilation succeeds and constructor is generated
         // TODO: When InjectConfiguration is implemented, uncomment and update these assertions:
-        // Assert.Contains("IConfiguration configuration", constructorSource.Content);
-        // Assert.Contains("configuration.GetValue<string>(""Database:ConnectionString"")", constructorSource.Content);
-        // Assert.Contains("configuration.GetValue<string>(""App:Name"")", constructorSource.Content);
+        // constructorSource.Content.Should().Contain("IConfiguration configuration");
+        // constructorSource.Content.Should().Contain("configuration.GetValue<string>(""Database:ConnectionString"")");
+        // constructorSource.Content.Should().Contain("configuration.GetValue<string>(""App:Name"")");
     }
 
     [Fact]
@@ -654,27 +644,26 @@ public partial class MixedInjectionService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("MixedInjectionService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("MixedInjectionService");
 
         // Should include all dependency types
-        Assert.Contains("IEmailService emailService", constructorSource.Content);
-        Assert.Contains("ILogger<MixedInjectionService> logger", constructorSource.Content);
-        Assert.Contains("IConfiguration configuration", constructorSource.Content);
-        Assert.Contains("IOptions<EmailSettings> emailOptions", constructorSource.Content);
+        constructorContent.Should().Contain("IEmailService emailService");
+        constructorContent.Should().Contain("ILogger<MixedInjectionService> logger");
+        constructorContent.Should().Contain("IConfiguration configuration");
+        constructorContent.Should().Contain("IOptions<EmailSettings> emailOptions");
 
         // Should handle regular DI assignments
-        Assert.Contains("this._emailService = emailService;", constructorSource.Content);
-        Assert.Contains("this._logger = logger;", constructorSource.Content);
+        constructorContent.Should().Contain("this._emailService = emailService;");
+        constructorContent.Should().Contain("this._logger = logger;");
 
         // Should handle configuration bindings
-        Assert.Contains("configuration.GetValue<string>(\"Database:ConnectionString\")", constructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Email\").Get<EmailSettings>()", constructorSource.Content);
+        constructorContent.Should().Contain("configuration.GetValue<string>(\"Database:ConnectionString\")");
+        constructorContent.Should().Contain("configuration.GetSection(\"Email\").Get<EmailSettings>()");
 
         // Should handle options assignments
-        Assert.Contains("this._emailOptions = emailOptions;", constructorSource.Content);
+        constructorContent.Should().Contain("this._emailOptions = emailOptions;");
     }
 
     [Fact]
@@ -701,27 +690,26 @@ public partial class CombinedAttributeService
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("CombinedAttributeService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("CombinedAttributeService");
 
         // Should include DependsOn dependencies
-        Assert.Contains("IEmailService emailService", constructorSource.Content);
-        Assert.Contains("IUserService userService", constructorSource.Content);
+        constructorContent.Should().Contain("IEmailService emailService");
+        constructorContent.Should().Contain("IUserService userService");
 
         // Should include Inject dependencies
-        Assert.Contains("ILogger<CombinedAttributeService> logger", constructorSource.Content);
+        constructorContent.Should().Contain("ILogger<CombinedAttributeService> logger");
 
         // Should include Configuration
-        Assert.Contains("IConfiguration configuration", constructorSource.Content);
+        constructorContent.Should().Contain("IConfiguration configuration");
 
         // Should handle all assignments
-        Assert.Contains("this._emailService = emailService;", constructorSource.Content);
-        Assert.Contains("this._userService = userService;", constructorSource.Content);
-        Assert.Contains("this._logger = logger;", constructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"Database:ConnectionString\")", constructorSource.Content);
-        Assert.Contains("configuration.GetValue<int>(\"Cache:TTL\")", constructorSource.Content);
+        constructorContent.Should().Contain("this._emailService = emailService;");
+        constructorContent.Should().Contain("this._userService = userService;");
+        constructorContent.Should().Contain("this._logger = logger;");
+        constructorContent.Should().Contain("configuration.GetValue<string>(\"Database:ConnectionString\")");
+        constructorContent.Should().Contain("configuration.GetValue<int>(\"Cache:TTL\")");
     }
 
     #endregion
@@ -752,8 +740,10 @@ public partial class ValidationTestService
 
         // Test documents expected behavior - implementation will determine exact diagnostics
         if (configDiagnostics.Any())
-            Assert.Contains(configDiagnostics,
-                d => d.GetMessage().Contains("empty") || d.GetMessage().Contains("invalid"));
+        {
+            var diagnosticMessages = configDiagnostics.Select(d => d.GetMessage()).ToList();
+            diagnosticMessages.Should().Contain(message => message.Contains("empty") || message.Contains("invalid"));
+        }
     }
 
     [Fact]
@@ -783,17 +773,16 @@ public partial class TypeConversionService
 
         // Assert
         // Should compile - runtime errors are handled by .NET configuration system
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("TypeConversionService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("TypeConversionService");
 
         // Should generate standard configuration calls - runtime conversion handled by framework
-        Assert.Contains("configuration.GetValue<int>(\"InvalidNumber\")", constructorSource.Content);
-        Assert.Contains("configuration.GetValue<global::System.TimeSpan>(\"InvalidTimeSpan\")",
-            constructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"InvalidComplexType\").Get<ComplexType>()",
-            constructorSource.Content);
+        constructorContent.Should().Contain("configuration.GetValue<int>(\"InvalidNumber\")");
+        constructorContent.Should().Contain(
+            "configuration.GetValue<global::System.TimeSpan>(\"InvalidTimeSpan\")");
+        constructorContent.Should().Contain(
+            "configuration.GetSection(\"InvalidComplexType\").Get<ComplexType>()");
     }
 
     #endregion
@@ -821,17 +810,16 @@ public partial class ArrayConfigService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("ArrayConfigService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("ArrayConfigService");
 
         // Arrays and collections should use GetSection().Get<T>()
-        Assert.Contains("configuration.GetSection(\"AllowedHosts\").Get<string[]>()", constructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Database:ConnectionStrings\").Get<List<string>>()",
-            constructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Features:EnabledFeatures\").Get<IEnumerable<string>>()",
-            constructorSource.Content);
+        constructorContent.Should().Contain("configuration.GetSection(\"AllowedHosts\").Get<string[]>()");
+        constructorContent.Should().Contain(
+            "configuration.GetSection(\"Database:ConnectionStrings\").Get<List<string>>()");
+        constructorContent.Should().Contain(
+            "configuration.GetSection(\"Features:EnabledFeatures\").Get<IEnumerable<string>>()");
     }
 
     [Fact]
@@ -860,14 +848,13 @@ public partial class ComplexCollectionService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("ComplexCollectionService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("ComplexCollectionService");
 
-        Assert.Contains("configuration.GetSection(\"Servers\").Get<List<ServerConfig>>()", constructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Cache:Providers\").Get<Dictionary<string, string>>()",
-            constructorSource.Content);
+        constructorContent.Should().Contain("configuration.GetSection(\"Servers\").Get<List<ServerConfig>>()");
+        constructorContent.Should().Contain(
+            "configuration.GetSection(\"Cache:Providers\").Get<Dictionary<string, string>>()");
     }
 
     #endregion
@@ -930,31 +917,30 @@ public class NotificationSettings
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("NotificationService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("NotificationService");
 
         // Should include IEnumerable<T> dependency injection
-        Assert.Contains("IEnumerable<INotificationHandler> handlers", constructorSource.Content);
+        constructorContent.Should().Contain("IEnumerable<INotificationHandler> handlers");
 
         // Should include configuration injection
-        Assert.Contains("IConfiguration configuration", constructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Notifications:AllowedTypes\").Get<List<string>>()",
-            constructorSource.Content);
-        Assert.Contains("configuration.GetValue<int>(\"Notifications:MaxRetries\")", constructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Notification\").Get<NotificationSettings>()",
-            constructorSource.Content);
+        constructorContent.Should().Contain("IConfiguration configuration");
+        constructorContent.Should().Contain(
+            "configuration.GetSection(\"Notifications:AllowedTypes\").Get<List<string>>()");
+        constructorContent.Should().Contain("configuration.GetValue<int>(\"Notifications:MaxRetries\")");
+        constructorContent.Should().Contain(
+            "configuration.GetSection(\"Notification\").Get<NotificationSettings>()");
 
         // Should have proper field assignments
-        Assert.Contains("_handlers = handlers", constructorSource.Content);
-        Assert.Contains("_allowedTypes = ", constructorSource.Content);
-        Assert.Contains("_maxRetries = ", constructorSource.Content);
-        Assert.Contains("_settings = ", constructorSource.Content);
+        constructorContent.Should().Contain("_handlers = handlers");
+        constructorContent.Should().Contain("_allowedTypes = ");
+        constructorContent.Should().Contain("_maxRetries = ");
+        constructorContent.Should().Contain("_settings = ");
 
         // Verify that service registration source was generated (actual registration testing done elsewhere)
-        var serviceRegistrations = result.GetServiceRegistrationSource();
-        Assert.NotNull(serviceRegistrations);
+        var registrationContent = result.GetServiceRegistrationText();
+        registrationContent.Should().NotBeNull();
     }
 
     [Fact]
@@ -996,32 +982,31 @@ public class ProcessingSettings
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("DataProcessingService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("DataProcessingService");
 
         // Should include both IEnumerable dependencies
-        Assert.Contains("IEnumerable<IDataProcessor> processors", constructorSource.Content);
-        Assert.Contains("IEnumerable<IValidator> validators", constructorSource.Content);
+        constructorContent.Should().Contain("IEnumerable<IDataProcessor> processors");
+        constructorContent.Should().Contain("IEnumerable<IValidator> validators");
 
         // Should include configuration parameters
-        Assert.Contains("IConfiguration configuration", constructorSource.Content);
+        constructorContent.Should().Contain("IConfiguration configuration");
 
         // Should have proper field assignments for all dependencies
-        Assert.Contains("_processors = processors", constructorSource.Content);
-        Assert.Contains("_validators = validators", constructorSource.Content);
-        Assert.Contains("_allowedFormats = ", constructorSource.Content);
-        Assert.Contains("_validationRules = ", constructorSource.Content);
-        Assert.Contains("_settings = ", constructorSource.Content);
+        constructorContent.Should().Contain("_processors = processors");
+        constructorContent.Should().Contain("_validators = validators");
+        constructorContent.Should().Contain("_allowedFormats = ");
+        constructorContent.Should().Contain("_validationRules = ");
+        constructorContent.Should().Contain("_settings = ");
 
         // Configuration binding patterns
-        Assert.Contains("configuration.GetSection(\"Processing:AllowedFormats\").Get<string[]>()",
-            constructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Validation:Rules\").Get<Dictionary<string, string>>()",
-            constructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Processing\").Get<ProcessingSettings>()",
-            constructorSource.Content);
+        constructorContent.Should().Contain(
+            "configuration.GetSection(\"Processing:AllowedFormats\").Get<string[]>()");
+        constructorContent.Should().Contain(
+            "configuration.GetSection(\"Validation:Rules\").Get<Dictionary<string, string>>()");
+        constructorContent.Should().Contain(
+            "configuration.GetSection(\"Processing\").Get<ProcessingSettings>()");
     }
 
     [Fact]
@@ -1083,35 +1068,32 @@ public class ServiceSettings
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Test empty IEnumerable scenario
-        var emptyConstructorSource = result.GetConstructorSource("EmptyIEnumerableService");
-        Assert.NotNull(emptyConstructorSource);
-        Assert.Contains("IEnumerable<IEmptyService> emptyServices", emptyConstructorSource.Content);
-        Assert.Contains("IConfiguration configuration", emptyConstructorSource.Content);
-        Assert.Contains("_emptyServices = emptyServices", emptyConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"Empty:Config\")", emptyConstructorSource.Content);
+        var emptyConstructorContent = result.GetConstructorSourceText("EmptyIEnumerableService");
+        emptyConstructorContent.Should().Contain("IEnumerable<IEmptyService> emptyServices");
+        emptyConstructorContent.Should().Contain("IConfiguration configuration");
+        emptyConstructorContent.Should().Contain("_emptyServices = emptyServices");
+        emptyConstructorContent.Should().Contain("configuration.GetValue<string>(\"Empty:Config\")");
 
         // Test single IEnumerable scenario
-        var singleConstructorSource = result.GetConstructorSource("SingleIEnumerableService");
-        Assert.NotNull(singleConstructorSource);
-        Assert.Contains("IEnumerable<ISingleService> singleServices", singleConstructorSource.Content);
-        Assert.Contains("_singleServices = singleServices", singleConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Single:Settings\").Get<List<string>>()",
-            singleConstructorSource.Content);
+        var singleConstructorContent = result.GetConstructorSourceText("SingleIEnumerableService");
+        singleConstructorContent.Should().Contain("IEnumerable<ISingleService> singleServices");
+        singleConstructorContent.Should().Contain("_singleServices = singleServices");
+        singleConstructorContent.Should().Contain(
+            "configuration.GetSection(\"Single:Settings\").Get<List<string>>()");
 
         // Test multiple IEnumerable scenario
-        var multipleConstructorSource = result.GetConstructorSource("MultipleIEnumerableService");
-        Assert.NotNull(multipleConstructorSource);
-        Assert.Contains("IEnumerable<IMultipleService> multipleServices", multipleConstructorSource.Content);
-        Assert.Contains("_multipleServices = multipleServices", multipleConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Multiple:Config\").Get<Dictionary<string, int>>()",
-            multipleConstructorSource.Content);
+        var multipleConstructorContent = result.GetConstructorSourceText("MultipleIEnumerableService");
+        multipleConstructorContent.Should().Contain("IEnumerable<IMultipleService> multipleServices");
+        multipleConstructorContent.Should().Contain("_multipleServices = multipleServices");
+        multipleConstructorContent.Should().Contain(
+            "configuration.GetSection(\"Multiple:Config\").Get<Dictionary<string, int>>()");
 
         // Verify that service registration source was generated
-        var serviceRegistrations = result.GetServiceRegistrationSource();
-        Assert.NotNull(serviceRegistrations);
+        var registrationContent = result.GetServiceRegistrationText();
+        registrationContent.Should().NotBeNull();
     }
 
     // REMOVED: ConfigurationInjection_MixedLifetimeIEnumerables_HandlesCorrectly
@@ -1185,144 +1167,35 @@ public class GenericConfiguration
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("GenericIEnumerableService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("GenericIEnumerableService");
 
         // Should handle generic IEnumerable dependencies
-        Assert.Contains("IEnumerable<IRepository<User>> userRepositories", constructorSource.Content);
-        Assert.Contains("IEnumerable<IRepository<Product>> productRepositories", constructorSource.Content);
-        Assert.Contains("IEnumerable<IService<User, UserDto>> userServices", constructorSource.Content);
-        Assert.Contains("IEnumerable<IService<Product, ProductDto>> productServices", constructorSource.Content);
+        constructorContent.Should().Contain("IEnumerable<IRepository<User>> userRepositories");
+        constructorContent.Should().Contain("IEnumerable<IRepository<Product>> productRepositories");
+        constructorContent.Should().Contain("IEnumerable<IService<User, UserDto>> userServices");
+        constructorContent.Should().Contain("IEnumerable<IService<Product, ProductDto>> productServices");
 
         // Should include configuration parameters
-        Assert.Contains("IConfiguration configuration", constructorSource.Content);
+        constructorContent.Should().Contain("IConfiguration configuration");
 
         // Should have proper field assignments
-        Assert.Contains("_userRepositories = userRepositories", constructorSource.Content);
-        Assert.Contains("_productRepositories = productRepositories", constructorSource.Content);
-        Assert.Contains("_userServices = userServices", constructorSource.Content);
-        Assert.Contains("_productServices = productServices", constructorSource.Content);
-        Assert.Contains("_genericConfig = ", constructorSource.Content);
+        constructorContent.Should().Contain("_userRepositories = userRepositories");
+        constructorContent.Should().Contain("_productRepositories = productRepositories");
+        constructorContent.Should().Contain("_userServices = userServices");
+        constructorContent.Should().Contain("_productServices = productServices");
+        constructorContent.Should().Contain("_genericConfig = ");
 
         // Configuration binding
-        Assert.Contains("configuration.GetSection(\"Generic:UserSettings\").Get<Dictionary<string, object>>()",
-            constructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Generic:ProductSettings\").Get<Dictionary<string, object>>()",
-            constructorSource.Content);
+        constructorContent.Should().Contain(
+            "configuration.GetSection(\"Generic:UserSettings\").Get<Dictionary<string, object>>()");
+        constructorContent.Should().Contain(
+            "configuration.GetSection(\"Generic:ProductSettings\").Get<Dictionary<string, object>>()");
 
         // Verify that service registration source was generated
-        var serviceRegistrations = result.GetServiceRegistrationSource();
-        Assert.NotNull(serviceRegistrations);
-    }
-
-    // ARCHITECTURAL LIMIT: Complex configuration injection error handling is an architectural limit
-    // See ARCHITECTURAL_LIMITS.md for details
-    // [Fact] - DISABLED: Architectural limit
-    public void
-        ConfigurationInjection_InvalidIEnumerableConfigCombinations_HandlesGracefully_DISABLED_ArchitecturalLimit()
-    {
-        // Arrange - Test edge cases and potential error scenarios
-        var source = @"
-using IoCTools.Abstractions.Annotations;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Options;
-using System.Collections.Generic;
-
-namespace Test;
-
-public interface IProcessor { }
-
-[Scoped] 
-public partial class ValidProcessor : IProcessor { }
-
-// Test service with mixed configuration patterns that should still work
-
-public partial class EdgeCaseService
-{
-    [Inject] private readonly IEnumerable<IProcessor> _processors;
-    
-    // Multiple configuration approaches for same data type (should work)
-    [InjectConfiguration(""EdgeCase:Settings"")] private readonly string _settingsString;
-    [InjectConfiguration] private readonly EdgeSettings _settingsObject;
-    [InjectConfiguration] private readonly IOptions<EdgeSettings> _settingsOptions;
-    
-    // Collections of different types
-    [InjectConfiguration(""EdgeCase:StringList"")] private readonly List<string> _stringList;
-    [InjectConfiguration(""EdgeCase:StringArray"")] private readonly string[] _stringArray;
-    [InjectConfiguration(""EdgeCase:StringEnumerable"")] private readonly IEnumerable<string> _stringEnumerable;
-    
-    // Complex nested configurations
-    [InjectConfiguration(""EdgeCase:NestedConfig"")] private readonly Dictionary<string, List<EdgeSettings>> _nestedConfig;
-}
-
-public class EdgeSettings
-{
-    public string Value { get; set; } = string.Empty;
-    public int Count { get; set; }
-    public bool IsValid { get; set; }
-}
-
-// Test service with potentially problematic but valid scenarios
-
-public partial class ComplexEdgeCaseService
-{
-    [Inject] private readonly IEnumerable<IProcessor> _processors1;
-    [Inject] private readonly IEnumerable<IProcessor> _processors2; // Duplicate IEnumerable types should work
-    
-    [InjectConfiguration(""Complex:SameKey"")] private readonly string _sameKey1;
-    [InjectConfiguration(""Complex:SameKey"")] private readonly string _sameKey2; // Same config key should work
-    
-    [InjectConfiguration] private readonly EdgeSettings _defaultSettings;
-    [InjectConfiguration(""Complex:CustomSettings"")] private readonly EdgeSettings _customSettings; // Same type, different sources
-}";
-
-        // Act
-        var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-
-        // Assert - These edge cases should compile without errors
-        Assert.False(result.HasErrors);
-
-        var edgeCaseConstructorSource = result.GetConstructorSource("EdgeCaseService");
-        var complexEdgeCaseConstructorSource = result.GetConstructorSource("ComplexEdgeCaseService");
-
-        Assert.NotNull(edgeCaseConstructorSource);
-        Assert.NotNull(complexEdgeCaseConstructorSource);
-
-        // EdgeCaseService should handle all dependency types
-        Assert.Contains("IEnumerable<IProcessor> processors", edgeCaseConstructorSource.Content);
-
-        // The generator binds [InjectConfiguration] fields directly in constructor body, not as parameters
-        // Verify the EdgeSettings field is bound correctly
-        var constructorContent = edgeCaseConstructorSource.Content;
-        Assert.Contains("configuration.GetSection(\"Edge\").Get<EdgeSettings>()", constructorContent);
-
-        Assert.Contains("IOptions<EdgeSettings> settingsOptions", edgeCaseConstructorSource.Content);
-        Assert.Contains("IConfiguration configuration", edgeCaseConstructorSource.Content);
-
-        // Should handle different collection types properly
-        Assert.Contains("configuration.GetValue<string>(\"EdgeCase:Settings\")", edgeCaseConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"EdgeCase:StringList\").Get<List<string>>()",
-            edgeCaseConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"EdgeCase:StringArray\").Get<string[]>()",
-            edgeCaseConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"EdgeCase:StringEnumerable\").Get<IEnumerable<string>>()",
-            edgeCaseConstructorSource.Content);
-
-        // ComplexEdgeCaseService should handle duplicate types
-        Assert.Contains("IEnumerable<IProcessor> processors1", complexEdgeCaseConstructorSource.Content);
-        Assert.Contains("IEnumerable<IProcessor> processors2", complexEdgeCaseConstructorSource.Content);
-
-        // Check configuration binding in constructor body instead of parameters
-        var complexConstructorContent = complexEdgeCaseConstructorSource.Content;
-        Assert.Contains("configuration.GetSection(\"Edge\").Get<EdgeSettings>()", complexConstructorContent);
-        Assert.Contains("configuration.GetSection(\"Complex:CustomSettings\").Get<EdgeSettings>()",
-            complexConstructorContent);
-
-        // Should handle same configuration keys
-        Assert.Contains("configuration.GetValue<string>(\"Complex:SameKey\")",
-            complexEdgeCaseConstructorSource.Content);
+        var registrationContent = result.GetServiceRegistrationText();
+        registrationContent.Should().NotBeNull();
     }
 
     #endregion
@@ -1351,7 +1224,7 @@ public class NonPartialConfigService  // Missing 'partial' keyword
         var constructorSource = result.GetConstructorSource("NonPartialConfigService");
         if (constructorSource != null)
             // If constructor exists, it should not contain configuration injection
-            Assert.DoesNotContain("IConfiguration", constructorSource.Content);
+            constructorSource.Content.Should().NotContain("IConfiguration");
     }
 
     [Fact]
@@ -1377,11 +1250,12 @@ public partial class StaticConfigService
         if (constructorSource != null)
         {
             // Should include instance field
-            Assert.Contains("configuration.GetValue<string>(\"Database:ConnectionString\")", constructorSource.Content);
+            constructorSource.Content.Should().Contain(
+                "configuration.GetValue<string>(\"Database:ConnectionString\")");
 
             // Should not include static field
-            Assert.DoesNotContain("App:Version", constructorSource.Content);
-            Assert.DoesNotContain("_appVersion", constructorSource.Content);
+            constructorSource.Content.Should().NotContain("App:Version");
+            constructorSource.Content.Should().NotContain("_appVersion");
         }
     }
 
@@ -1409,7 +1283,8 @@ public partial class UnsupportedTypeService
         var constructorSource = result.GetConstructorSource("UnsupportedTypeService");
         if (constructorSource != null)
             // Should include supported configuration
-            Assert.Contains("configuration.GetValue<string>(\"Database:ConnectionString\")", constructorSource.Content);
+            constructorSource.Content.Should().Contain(
+                "configuration.GetValue<string>(\"Database:ConnectionString\")");
         // Unsupported type handling depends on implementation
         // Might produce diagnostic or attempt configuration binding
     }
@@ -1483,7 +1358,7 @@ public partial class ManyConfigFieldsService
         // - Configuration injection in inheritance scenarios
         // - When base and derived classes have conflicting configuration needs
 
-        Assert.True(true); // This test documents expected behavior only
+        true.Should().BeTrue("This test documents expected behavior only");
     }
 
     #endregion
@@ -1517,13 +1392,12 @@ public partial class ConfigTestContainer
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("ConfigUnavailableService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("ConfigUnavailableService");
 
         // Should generate constructor that accepts IConfiguration
-        Assert.Contains("IConfiguration configuration", constructorSource.Content);
+        constructorContent.Should().Contain("IConfiguration configuration");
 
         // Runtime behavior: If IConfiguration is null, should throw meaningful exception
         // This is handled by the .NET DI container and configuration system
@@ -1561,19 +1435,16 @@ public partial class NullSafeSectionService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var valueConstructorSource = result.GetConstructorSource("NullSafeConfigService");
-        var sectionConstructorSource = result.GetConstructorSource("NullSafeSectionService");
-
-        Assert.NotNull(valueConstructorSource);
-        Assert.NotNull(sectionConstructorSource);
+        var valueConstructorContent = result.GetConstructorSourceText("NullSafeConfigService");
+        var sectionConstructorContent = result.GetConstructorSourceText("NullSafeSectionService");
 
         // Generated code should use standard .NET configuration calls
         // Null safety is handled by the framework's GetValue<T> and GetSection().Get<T>()
-        Assert.Contains("configuration.GetValue<string>(\"App:Name\")", valueConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"SafetyTest\").Get<SafetyTestSettings>()",
-            sectionConstructorSource.Content);
+        valueConstructorContent.Should().Contain("configuration.GetValue<string>(\"App:Name\")");
+        sectionConstructorContent.Should().Contain(
+            "configuration.GetSection(\"SafetyTest\").Get<SafetyTestSettings>()");
     }
 
     /// <summary>
@@ -1613,21 +1484,18 @@ public partial class ProviderFallbackService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var exceptionConstructorSource = result.GetConstructorSource("ProviderExceptionService");
-        var fallbackConstructorSource = result.GetConstructorSource("ProviderFallbackService");
-
-        Assert.NotNull(exceptionConstructorSource);
-        Assert.NotNull(fallbackConstructorSource);
+        var exceptionConstructorContent = result.GetConstructorSourceText("ProviderExceptionService");
+        var fallbackConstructorContent = result.GetConstructorSourceText("ProviderFallbackService");
 
         // Should generate standard configuration binding calls
-        Assert.Contains("configuration.GetSection(\"Database:Complex\").Get<ProviderTestSettings>()",
-            exceptionConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Security:ApiKeys\").Get<Dictionary<string, string>>()",
-            exceptionConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<global::System.TimeSpan>(\"Timeouts:Connection\")",
-            exceptionConstructorSource.Content);
+        exceptionConstructorContent.Should().Contain(
+            "configuration.GetSection(\"Database:Complex\").Get<ProviderTestSettings>()");
+        exceptionConstructorContent.Should().Contain(
+            "configuration.GetSection(\"Security:ApiKeys\").Get<Dictionary<string, string>>()");
+        exceptionConstructorContent.Should().Contain(
+            "configuration.GetValue<global::System.TimeSpan>(\"Timeouts:Connection\")");
     }
 
     /// <summary>
@@ -1667,21 +1535,21 @@ public partial class JsonResilienceService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var jsonConstructorSource = result.GetConstructorSource("MalformedJsonService");
-        var resilienceConstructorSource = result.GetConstructorSource("JsonResilienceService");
+        var jsonConstructorContent = result.GetConstructorSourceText("MalformedJsonService");
+        var resilienceConstructorContent = result.GetConstructorSourceText("JsonResilienceService");
 
-        Assert.NotNull(jsonConstructorSource);
-        Assert.NotNull(resilienceConstructorSource);
+        jsonConstructorContent.Should().NotBeNull();
+        resilienceConstructorContent.Should().NotBeNull();
 
         // Should generate standard configuration calls
-        Assert.Contains("configuration.GetSection(\"JsonTest\").Get<JsonTestSettings>()",
-            jsonConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Complex:NestedJson\").Get<Dictionary<string, object>>()",
-            jsonConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Arrays:StringArray\").Get<string[]>()",
-            jsonConstructorSource.Content);
+        jsonConstructorContent.Should().Contain(
+            "configuration.GetSection(\"JsonTest\").Get<JsonTestSettings>()");
+        jsonConstructorContent.Should().Contain(
+            "configuration.GetSection(\"Complex:NestedJson\").Get<Dictionary<string, object>>()");
+        jsonConstructorContent.Should().Contain(
+            "configuration.GetSection(\"Arrays:StringArray\").Get<string[]>()");
     }
 
     #endregion
@@ -1730,20 +1598,17 @@ public partial class ObjectDefaultService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var complexConstructorSource = result.GetConstructorSource("ComplexDefaultService");
-        var objectConstructorSource = result.GetConstructorSource("ObjectDefaultService");
-
-        Assert.NotNull(complexConstructorSource);
-        Assert.NotNull(objectConstructorSource);
+        var complexConstructorContent = result.GetConstructorSourceText("ComplexDefaultService");
+        var objectConstructorContent = result.GetConstructorSourceText("ObjectDefaultService");
 
         // Should use standard GetSection().Get<T>() calls
         // Default value handling is managed by the type's default constructor and property initializers
-        Assert.Contains("configuration.GetSection(\"ComplexDefault\").Get<ComplexDefaultSettings>()",
-            complexConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Custom:Nested\").Get<NestedDefaultSettings>()",
-            complexConstructorSource.Content);
+        complexConstructorContent.Should()
+            .Contain("configuration.GetSection(\"ComplexDefault\").Get<ComplexDefaultSettings>()");
+        complexConstructorContent.Should()
+            .Contain("configuration.GetSection(\"Custom:Nested\").Get<NestedDefaultSettings>()");
     }
 
     /// <summary>
@@ -1786,23 +1651,20 @@ public partial class NullableConversionService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var conversionConstructorSource = result.GetConstructorSource("TypeConversionService");
-        var nullableConstructorSource = result.GetConstructorSource("NullableConversionService");
-
-        Assert.NotNull(conversionConstructorSource);
-        Assert.NotNull(nullableConstructorSource);
+        var conversionConstructorContent = result.GetConstructorSourceText("TypeConversionService");
+        result.GetConstructorSource("NullableConversionService").Should().NotBeNull();
 
         // Should generate appropriate configuration calls for different types
-        Assert.Contains("configuration.GetSection(\"TypeConversion\").Get<TypeConversionSettings>()",
-            conversionConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<global::System.TimeSpan>(\"Conversion:Duration\")",
-            conversionConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<global::System.Uri>(\"Conversion:Endpoint\")",
-            conversionConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<global::System.Guid>(\"Conversion:InstanceId\")",
-            conversionConstructorSource.Content);
+        conversionConstructorContent.Should()
+            .Contain("configuration.GetSection(\"TypeConversion\").Get<TypeConversionSettings>()");
+        conversionConstructorContent.Should()
+            .Contain("configuration.GetValue<global::System.TimeSpan>(\"Conversion:Duration\")");
+        conversionConstructorContent.Should()
+            .Contain("configuration.GetValue<global::System.Uri>(\"Conversion:Endpoint\")");
+        conversionConstructorContent.Should()
+            .Contain("configuration.GetValue<global::System.Guid>(\"Conversion:InstanceId\")");
     }
 
     /// <summary>
@@ -1853,21 +1715,18 @@ public partial class MixedHierarchyService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var hierarchyConstructorSource = result.GetConstructorSource("HierarchyConfigService");
-        var mixedConstructorSource = result.GetConstructorSource("MixedHierarchyService");
-
-        Assert.NotNull(hierarchyConstructorSource);
-        Assert.NotNull(mixedConstructorSource);
+        var hierarchyConstructorContent = result.GetConstructorSourceText("HierarchyConfigService");
+        var mixedConstructorContent = result.GetConstructorSourceText("MixedHierarchyService");
 
         // Should handle inheritance in configuration classes correctly
-        Assert.Contains("configuration.GetSection(\"BaseConfig\").Get<BaseConfigSettings>()",
-            hierarchyConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"DerivedConfig\").Get<DerivedConfigSettings>()",
-            hierarchyConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"SpecializedConfig\").Get<SpecializedConfigSettings>()",
-            hierarchyConstructorSource.Content);
+        hierarchyConstructorContent.Should()
+            .Contain("configuration.GetSection(\"BaseConfig\").Get<BaseConfigSettings>()");
+        hierarchyConstructorContent.Should()
+            .Contain("configuration.GetSection(\"DerivedConfig\").Get<DerivedConfigSettings>()");
+        hierarchyConstructorContent.Should()
+            .Contain("configuration.GetSection(\"SpecializedConfig\").Get<SpecializedConfigSettings>()");
     }
 
     /// <summary>
@@ -1911,19 +1770,16 @@ public partial class MissingConfigService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var nullVsMissingConstructorSource = result.GetConstructorSource("NullVsMissingService");
-        var missingConstructorSource = result.GetConstructorSource("MissingConfigService");
-
-        Assert.NotNull(nullVsMissingConstructorSource);
-        Assert.NotNull(missingConstructorSource);
+        var nullVsMissingConstructorContent = result.GetConstructorSourceText("NullVsMissingService");
+        result.GetConstructorSource("MissingConfigService").Should().NotBeNull();
 
         // Should generate standard configuration calls
         // Framework handles null vs missing distinction through GetValue<T?>() behavior
-        Assert.Contains("configuration.GetValue<string?>(\"Nullable:String\")", nullVsMissingConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<int?>(\"Nullable:Int\")", nullVsMissingConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<bool?>(\"Nullable:Bool\")", nullVsMissingConstructorSource.Content);
+        nullVsMissingConstructorContent.Should().Contain("configuration.GetValue<string?>(\"Nullable:String\")");
+        nullVsMissingConstructorContent.Should().Contain("configuration.GetValue<int?>(\"Nullable:Int\")");
+        nullVsMissingConstructorContent.Should().Contain("configuration.GetValue<bool?>(\"Nullable:Bool\")");
     }
 
     #endregion
@@ -1977,22 +1833,19 @@ public partial class SingletonSnapshotService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var reloadableConstructorSource = result.GetConstructorSource("ReloadableSnapshotService");
-        var singletonConstructorSource = result.GetConstructorSource("SingletonSnapshotService");
-
-        Assert.NotNull(reloadableConstructorSource);
-        Assert.NotNull(singletonConstructorSource);
+        var reloadableConstructorContent = result.GetConstructorSourceText("ReloadableSnapshotService");
+        var singletonConstructorContent = result.GetConstructorSourceText("SingletonSnapshotService");
 
         // Should inject IOptionsSnapshot<T> directly for reloadable scenarios
-        Assert.Contains("IOptionsSnapshot<ReloadableSettings> reloadableSnapshot", reloadableConstructorSource.Content);
-        Assert.Contains("IOptionsSnapshot<ScenarioSettings> scenarioSnapshot", reloadableConstructorSource.Content);
-        Assert.Contains("IConfiguration configuration", reloadableConstructorSource.Content);
+        reloadableConstructorContent.Should().Contain("IOptionsSnapshot<ReloadableSettings> reloadableSnapshot");
+        reloadableConstructorContent.Should().Contain("IOptionsSnapshot<ScenarioSettings> scenarioSnapshot");
+        reloadableConstructorContent.Should().Contain("IConfiguration configuration");
 
         // Should handle mixed options types
-        Assert.Contains("IOptionsSnapshot<ReloadableSettings> snapshot", singletonConstructorSource.Content);
-        Assert.Contains("IOptions<ScenarioSettings> staticOptions", singletonConstructorSource.Content);
+        singletonConstructorContent.Should().Contain("IOptionsSnapshot<ReloadableSettings> snapshot");
+        singletonConstructorContent.Should().Contain("IOptions<ScenarioSettings> staticOptions");
     }
 
     /// <summary>
@@ -2039,24 +1892,20 @@ public partial class MixedMonitoringService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var monitoredConstructorSource = result.GetConstructorSource("MonitoredConfigService");
-        var mixedConstructorSource = result.GetConstructorSource("MixedMonitoringService");
-
-        Assert.NotNull(monitoredConstructorSource);
-        Assert.NotNull(mixedConstructorSource);
+        var monitoredConstructorContent = result.GetConstructorSourceText("MonitoredConfigService");
+        var mixedConstructorContent = result.GetConstructorSourceText("MixedMonitoringService");
 
         // Should inject IOptionsMonitor<T> directly
-        Assert.Contains("IOptionsMonitor<MonitoredSettings> monitoredSettings", monitoredConstructorSource.Content);
-        Assert.Contains("IOptionsMonitor<NotificationSettings> notificationSettings",
-            monitoredConstructorSource.Content);
+        monitoredConstructorContent.Should().Contain("IOptionsMonitor<MonitoredSettings> monitoredSettings");
+        monitoredConstructorContent.Should().Contain("IOptionsMonitor<NotificationSettings> notificationSettings");
 
         // Should handle mixed monitoring scenarios
-        Assert.Contains("IOptionsMonitor<MonitoredSettings> monitored", mixedConstructorSource.Content);
-        Assert.Contains("IOptionsSnapshot<NotificationSettings> snapshot", mixedConstructorSource.Content);
-        Assert.Contains("IOptions<MonitoredSettings> static", mixedConstructorSource.Content);
-        Assert.Contains("IConfiguration configuration", mixedConstructorSource.Content);
+        mixedConstructorContent.Should().Contain("IOptionsMonitor<MonitoredSettings> monitored");
+        mixedConstructorContent.Should().Contain("IOptionsSnapshot<NotificationSettings> snapshot");
+        mixedConstructorContent.Should().Contain("IOptions<MonitoredSettings> static");
+        mixedConstructorContent.Should().Contain("IConfiguration configuration");
     }
 
     /// <summary>
@@ -2115,26 +1964,22 @@ public partial class SingletonHotReloadService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var hotReloadConstructorSource = result.GetConstructorSource("HotReloadService");
-        var transientConstructorSource = result.GetConstructorSource("TransientHotReloadService");
-        var singletonConstructorSource = result.GetConstructorSource("SingletonHotReloadService");
-
-        Assert.NotNull(hotReloadConstructorSource);
-        Assert.NotNull(transientConstructorSource);
-        Assert.NotNull(singletonConstructorSource);
+        var hotReloadConstructorContent = result.GetConstructorSourceText("HotReloadService");
+        var transientConstructorContent = result.GetConstructorSourceText("TransientHotReloadService");
+        var singletonConstructorContent = result.GetConstructorSourceText("SingletonHotReloadService");
 
         // Should handle hot reload patterns based on service lifetime
-        Assert.Contains("IOptionsSnapshot<HotReloadSettings> hotReloadSettings", hotReloadConstructorSource.Content);
-        Assert.Contains("IOptionsMonitor<RuntimeSettings> runtimeSettings", hotReloadConstructorSource.Content);
+        hotReloadConstructorContent.Should().Contain("IOptionsSnapshot<HotReloadSettings> hotReloadSettings");
+        hotReloadConstructorContent.Should().Contain("IOptionsMonitor<RuntimeSettings> runtimeSettings");
 
         // Transient services can use IOptionsSnapshot effectively
-        Assert.Contains("IOptionsSnapshot<HotReloadSettings> settings", transientConstructorSource.Content);
+        transientConstructorContent.Should().Contain("IOptionsSnapshot<HotReloadSettings> settings");
 
         // Singleton services should use IOptionsMonitor for changes
-        Assert.Contains("IOptionsMonitor<HotReloadSettings> monitoredSettings", singletonConstructorSource.Content);
-        Assert.Contains("IOptions<RuntimeSettings> staticSettings", singletonConstructorSource.Content);
+        singletonConstructorContent.Should().Contain("IOptionsMonitor<HotReloadSettings> monitoredSettings");
+        singletonConstructorContent.Should().Contain("IOptions<RuntimeSettings> staticSettings");
     }
 
     /// <summary>
@@ -2182,21 +2027,18 @@ public partial class ConsistentBehaviorService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var behaviorConstructorSource = result.GetConstructorSource("BehaviorImpactService");
-        var consistentConstructorSource = result.GetConstructorSource("ConsistentBehaviorService");
-
-        Assert.NotNull(behaviorConstructorSource);
-        Assert.NotNull(consistentConstructorSource);
+        var behaviorConstructorContent = result.GetConstructorSourceText("BehaviorImpactService");
+        var consistentConstructorContent = result.GetConstructorSourceText("ConsistentBehaviorService");
 
         // Should handle mixed configuration update behaviors
-        Assert.Contains("IOptionsSnapshot<BehaviorSettings> behaviorSettings", behaviorConstructorSource.Content);
-        Assert.Contains("IConfiguration configuration", behaviorConstructorSource.Content);
+        behaviorConstructorContent.Should().Contain("IOptionsSnapshot<BehaviorSettings> behaviorSettings");
+        behaviorConstructorContent.Should().Contain("IConfiguration configuration");
 
         // Should support both static and dynamic configuration patterns
-        Assert.Contains("IOptions<ServiceBehaviorSettings> staticBehavior", consistentConstructorSource.Content);
-        Assert.Contains("IOptionsMonitor<BehaviorSettings> dynamicBehavior", consistentConstructorSource.Content);
+        consistentConstructorContent.Should().Contain("IOptions<ServiceBehaviorSettings> staticBehavior");
+        consistentConstructorContent.Should().Contain("IOptionsMonitor<BehaviorSettings> dynamicBehavior");
     }
 
     #endregion
@@ -2256,24 +2098,21 @@ public partial class PerformanceTestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var largeObjectConstructorSource = result.GetConstructorSource("LargeObjectService");
-        var performanceConstructorSource = result.GetConstructorSource("PerformanceTestService");
-
-        Assert.NotNull(largeObjectConstructorSource);
-        Assert.NotNull(performanceConstructorSource);
+        var largeObjectConstructorContent = result.GetConstructorSourceText("LargeObjectService");
+        var performanceConstructorContent = result.GetConstructorSourceText("PerformanceTestService");
 
         // Should handle large objects with standard configuration binding
-        Assert.Contains("configuration.GetSection(\"LargeConfiguration\").Get<LargeConfigurationObject>()",
-            largeObjectConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"DeepNested\").Get<DeepNestedSettings>()",
-            largeObjectConstructorSource.Content);
-        Assert.Contains("IOptions<LargeConfigurationObject> largeObjectOptions", largeObjectConstructorSource.Content);
+        largeObjectConstructorContent.Should()
+            .Contain("configuration.GetSection(\"LargeConfiguration\").Get<LargeConfigurationObject>()");
+        largeObjectConstructorContent.Should()
+            .Contain("configuration.GetSection(\"DeepNested\").Get<DeepNestedSettings>()");
+        largeObjectConstructorContent.Should().Contain("IOptions<LargeConfigurationObject> largeObjectOptions");
 
         // Performance is handled by the .NET configuration system
-        Assert.Contains("IOptionsSnapshot<LargeConfigurationObject> snapshot", performanceConstructorSource.Content);
-        Assert.Contains("IOptionsMonitor<DeepNestedSettings> monitor", performanceConstructorSource.Content);
+        performanceConstructorContent.Should().Contain("IOptionsSnapshot<LargeConfigurationObject> snapshot");
+        performanceConstructorContent.Should().Contain("IOptionsMonitor<DeepNestedSettings> monitor");
     }
 
     /// <summary>
@@ -2330,24 +2169,21 @@ public partial class MemoryOptimizedService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var memoryIntensiveConstructorSource = result.GetConstructorSource("MemoryIntensiveService");
-        var memoryOptimizedConstructorSource = result.GetConstructorSource("MemoryOptimizedService");
-
-        Assert.NotNull(memoryIntensiveConstructorSource);
-        Assert.NotNull(memoryOptimizedConstructorSource);
+        var memoryIntensiveConstructorContent = result.GetConstructorSourceText("MemoryIntensiveService");
+        result.GetConstructorSource("MemoryOptimizedService").Should().NotBeNull();
 
         // Should generate single IConfiguration parameter for all configuration values
-        Assert.Contains("IConfiguration configuration", memoryIntensiveConstructorSource.Content);
+        memoryIntensiveConstructorContent.Should().Contain("IConfiguration configuration");
 
         // Should generate efficient options injection
-        Assert.Contains("IOptions<MemoryTestSettings1> options1", memoryIntensiveConstructorSource.Content);
-        Assert.Contains("IOptions<MemoryTestSettings15> options15", memoryIntensiveConstructorSource.Content);
+        memoryIntensiveConstructorContent.Should().Contain("IOptions<MemoryTestSettings1> options1");
+        memoryIntensiveConstructorContent.Should().Contain("IOptions<MemoryTestSettings15> options15");
 
         // Should handle collections efficiently
-        Assert.Contains("configuration.GetSection(\"CollectionMemory\").Get<CollectionMemorySettings>()",
-            memoryIntensiveConstructorSource.Content);
+        memoryIntensiveConstructorContent.Should()
+            .Contain("configuration.GetSection(\"CollectionMemory\").Get<CollectionMemorySettings>()");
     }
 
     #endregion
@@ -2400,24 +2236,20 @@ public partial class SecureConfigurationService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var sensitiveConstructorSource = result.GetConstructorSource("SensitiveDataService");
-        var secureConstructorSource = result.GetConstructorSource("SecureConfigurationService");
-
-        Assert.NotNull(sensitiveConstructorSource);
-        Assert.NotNull(secureConstructorSource);
+        var sensitiveConstructorContent = result.GetConstructorSourceText("SensitiveDataService");
+        var secureConstructorContent = result.GetConstructorSourceText("SecureConfigurationService");
 
         // Should generate standard configuration calls without exposing sensitive values
-        Assert.Contains("configuration.GetValue<string>(\"Security:ApiKey\")", sensitiveConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"Database:Password\")", sensitiveConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"Certificates:PrivateKey\")",
-            sensitiveConstructorSource.Content);
+        sensitiveConstructorContent.Should().Contain("configuration.GetValue<string>(\"Security:ApiKey\")");
+        sensitiveConstructorContent.Should().Contain("configuration.GetValue<string>(\"Database:Password\")");
+        sensitiveConstructorContent.Should().Contain("configuration.GetValue<string>(\"Certificates:PrivateKey\")");
 
         // Should handle sensitive configuration objects
-        Assert.Contains("configuration.GetSection(\"Sensitive\").Get<SensitiveSettings>()",
-            sensitiveConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Secure\").Get<SecureSettings>()", secureConstructorSource.Content);
+        sensitiveConstructorContent.Should()
+            .Contain("configuration.GetSection(\"Sensitive\").Get<SensitiveSettings>()");
+        secureConstructorContent.Should().Contain("configuration.GetSection(\"Secure\").Get<SecureSettings>()");
 
         // Generated code should not contain actual sensitive values
         // Security is handled at runtime by the configuration system
@@ -2483,26 +2315,22 @@ public partial class ValidationOptionsService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var validationConstructorSource = result.GetConstructorSource("ValidationService");
-        var validationOptionsConstructorSource = result.GetConstructorSource("ValidationOptionsService");
-
-        Assert.NotNull(validationConstructorSource);
-        Assert.NotNull(validationOptionsConstructorSource);
+        var validationConstructorContent = result.GetConstructorSourceText("ValidationService");
+        var validationOptionsConstructorContent = result.GetConstructorSourceText("ValidationOptionsService");
 
         // Should handle validated configuration classes
-        Assert.Contains("configuration.GetSection(\"Validated\").Get<ValidatedSettings>()",
-            validationConstructorSource.Content);
-        Assert.Contains("IOptions<ComplexValidatedSettings> complexValidated", validationConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Custom:Validated\").Get<ValidatedSettings>()",
-            validationConstructorSource.Content);
+        validationConstructorContent.Should()
+            .Contain("configuration.GetSection(\"Validated\").Get<ValidatedSettings>()");
+        validationConstructorContent.Should().Contain("IOptions<ComplexValidatedSettings> complexValidated");
+        validationConstructorContent.Should()
+            .Contain("configuration.GetSection(\"Custom:Validated\").Get<ValidatedSettings>()");
 
         // Validation is handled by the Options validation system, not the generator
-        Assert.Contains("IOptionsSnapshot<ValidatedSettings> snapshotValidated",
-            validationOptionsConstructorSource.Content);
-        Assert.Contains("IOptionsMonitor<ComplexValidatedSettings> monitorValidated",
-            validationOptionsConstructorSource.Content);
+        validationOptionsConstructorContent.Should().Contain("IOptionsSnapshot<ValidatedSettings> snapshotValidated");
+        validationOptionsConstructorContent.Should()
+            .Contain("IOptionsMonitor<ComplexValidatedSettings> monitorValidated");
     }
 
     /// <summary>
@@ -2550,25 +2378,21 @@ public partial class ProtectedConfigService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var encryptedConstructorSource = result.GetConstructorSource("EncryptedConfigService");
-        var protectedConstructorSource = result.GetConstructorSource("ProtectedConfigService");
-
-        Assert.NotNull(encryptedConstructorSource);
-        Assert.NotNull(protectedConstructorSource);
+        var encryptedConstructorContent = result.GetConstructorSourceText("EncryptedConfigService");
+        var protectedConstructorContent = result.GetConstructorSourceText("ProtectedConfigService");
 
         // Should generate standard configuration calls
         // Encryption/decryption is handled by configuration providers, not the generator
-        Assert.Contains("configuration.GetSection(\"Encrypted\").Get<EncryptedSettings>()",
-            encryptedConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"Protected:Value\")", encryptedConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"Encrypted:ApiKey\")", encryptedConstructorSource.Content);
+        encryptedConstructorContent.Should()
+            .Contain("configuration.GetSection(\"Encrypted\").Get<EncryptedSettings>()");
+        encryptedConstructorContent.Should().Contain("configuration.GetValue<string>(\"Protected:Value\")");
+        encryptedConstructorContent.Should().Contain("configuration.GetValue<string>(\"Encrypted:ApiKey\")");
 
-        Assert.Contains("IOptions<ProtectedSettings> protectedOptions", protectedConstructorSource.Content);
-        Assert.Contains("IOptionsSnapshot<EncryptedSettings> encryptedSnapshot", protectedConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"Secure:EncryptedToken\")",
-            protectedConstructorSource.Content);
+        protectedConstructorContent.Should().Contain("IOptions<ProtectedSettings> protectedOptions");
+        protectedConstructorContent.Should().Contain("IOptionsSnapshot<EncryptedSettings> encryptedSnapshot");
+        protectedConstructorContent.Should().Contain("configuration.GetValue<string>(\"Secure:EncryptedToken\")");
     }
 
     /// <summary>
@@ -2623,26 +2447,21 @@ public partial class RoleBasedConfigService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var accessControlConstructorSource = result.GetConstructorSource("AccessControlService");
-        var roleBasedConstructorSource = result.GetConstructorSource("RoleBasedConfigService");
-
-        Assert.NotNull(accessControlConstructorSource);
-        Assert.NotNull(roleBasedConstructorSource);
+        var accessControlConstructorContent = result.GetConstructorSourceText("AccessControlService");
+        var roleBasedConstructorContent = result.GetConstructorSourceText("RoleBasedConfigService");
 
         // Should generate standard configuration binding
         // Access control is handled by configuration providers and middleware
-        Assert.Contains("configuration.GetSection(\"Admin\").Get<AdminSettings>()",
-            accessControlConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"User\").Get<UserSettings>()",
-            accessControlConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"Tenant:CurrentId\")", accessControlConstructorSource.Content);
+        accessControlConstructorContent.Should().Contain("configuration.GetSection(\"Admin\").Get<AdminSettings>()");
+        accessControlConstructorContent.Should().Contain("configuration.GetSection(\"User\").Get<UserSettings>()");
+        accessControlConstructorContent.Should().Contain("configuration.GetValue<string>(\"Tenant:CurrentId\")");
 
         // Should handle role-based options patterns
-        Assert.Contains("IOptions<AdminSettings> adminOptions", roleBasedConstructorSource.Content);
-        Assert.Contains("IOptionsSnapshot<UserSettings> userSnapshot", roleBasedConstructorSource.Content);
-        Assert.Contains("IOptionsMonitor<TenantSettings> tenantMonitor", roleBasedConstructorSource.Content);
+        roleBasedConstructorContent.Should().Contain("IOptions<AdminSettings> adminOptions");
+        roleBasedConstructorContent.Should().Contain("IOptionsSnapshot<UserSettings> userSnapshot");
+        roleBasedConstructorContent.Should().Contain("IOptionsMonitor<TenantSettings> tenantMonitor");
     }
 
     #endregion
@@ -2713,32 +2532,32 @@ public partial class DatabaseConfigurationService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var connectionConstructorSource = result.GetConstructorSource("DatabaseConnectionService");
-        var multiDbConstructorSource = result.GetConstructorSource("MultiDatabaseService");
-        var configConstructorSource = result.GetConstructorSource("DatabaseConfigurationService");
-
-        Assert.NotNull(connectionConstructorSource);
-        Assert.NotNull(multiDbConstructorSource);
-        Assert.NotNull(configConstructorSource);
+        var connectionConstructorContent = result.GetConstructorSourceText("DatabaseConnectionService");
+        var multiDbConstructorContent = result.GetConstructorSourceText("MultiDatabaseService");
+        var configConstructorContent = result.GetConstructorSourceText("DatabaseConfigurationService");
 
         // Should handle connection string patterns
-        Assert.Contains("configuration.GetValue<string>(\"ConnectionStrings:DefaultConnection\")",
-            connectionConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"ConnectionStrings:ReadOnlyConnection\")",
-            connectionConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Database\").Get<DatabaseSettings>()",
-            connectionConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"ConnectionPool\").Get<ConnectionPoolSettings>()",
-            connectionConstructorSource.Content);
+        connectionConstructorContent.Should()
+            .Contain("configuration.GetValue<string>(\"ConnectionStrings:DefaultConnection\")");
+        connectionConstructorContent.Should()
+            .Contain("configuration.GetValue<string>(\"ConnectionStrings:ReadOnlyConnection\")");
+        connectionConstructorContent.Should().Contain("configuration.GetSection(\"Database\").Get<DatabaseSettings>()");
+        connectionConstructorContent.Should()
+            .Contain("configuration.GetSection(\"ConnectionPool\").Get<ConnectionPoolSettings>()");
 
         // Should handle multi-database scenarios
-        Assert.Contains("configuration.GetSection(\"MultiDatabase\").Get<MultiDatabaseSettings>()",
-            multiDbConstructorSource.Content);
-        Assert.Contains("IOptions<DatabaseSettings> primaryDbOptions", multiDbConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Database:Secondary\").Get<DatabaseSettings>()",
-            multiDbConstructorSource.Content);
+        multiDbConstructorContent.Should()
+            .Contain("configuration.GetSection(\"MultiDatabase\").Get<MultiDatabaseSettings>()");
+        multiDbConstructorContent.Should().Contain("IOptions<DatabaseSettings> primaryDbOptions");
+        multiDbConstructorContent.Should()
+            .Contain("configuration.GetSection(\"Database:Secondary\").Get<DatabaseSettings>()");
+
+        // Should handle configuration monitoring scenarios
+        configConstructorContent.Should().Contain("IOptionsSnapshot<DatabaseSettings> dbSnapshot");
+        configConstructorContent.Should().Contain("IOptionsMonitor<ConnectionPoolSettings> poolMonitor");
+        configConstructorContent.Should().Contain("configuration.GetValue<string>(\"Database:Current:Provider\")");
     }
 
     /// <summary>
@@ -2805,29 +2624,31 @@ public partial class SecureConfigurationService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var apiKeyConstructorSource = result.GetConstructorSource("ApiKeyService");
-        var externalServiceConstructorSource = result.GetConstructorSource("ExternalServiceClient");
-        var secureConfigConstructorSource = result.GetConstructorSource("SecureConfigurationService");
-
-        Assert.NotNull(apiKeyConstructorSource);
-        Assert.NotNull(externalServiceConstructorSource);
-        Assert.NotNull(secureConfigConstructorSource);
+        var apiKeyConstructorContent = result.GetConstructorSourceText("ApiKeyService");
+        var externalServiceConstructorContent = result.GetConstructorSourceText("ExternalServiceClient");
+        var secureConfigConstructorContent = result.GetConstructorSourceText("SecureConfigurationService");
 
         // Should handle API key configuration
-        Assert.Contains("configuration.GetValue<string>(\"ApiKeys:Primary\")", apiKeyConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"ApiKeys:Secondary\")", apiKeyConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"ApiKey\").Get<ApiKeySettings>()", apiKeyConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Secret\").Get<SecretSettings>()", apiKeyConstructorSource.Content);
+        apiKeyConstructorContent.Should().Contain("configuration.GetValue<string>(\"ApiKeys:Primary\")");
+        apiKeyConstructorContent.Should().Contain("configuration.GetValue<string>(\"ApiKeys:Secondary\")");
+        apiKeyConstructorContent.Should().Contain("configuration.GetSection(\"ApiKey\").Get<ApiKeySettings>()");
+        apiKeyConstructorContent.Should().Contain("configuration.GetSection(\"Secret\").Get<SecretSettings>()");
 
         // Should handle external service configuration
-        Assert.Contains("configuration.GetSection(\"ExternalService\").Get<ExternalServiceSettings>()",
-            externalServiceConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"External:PaymentGateway:ApiKey\")",
-            externalServiceConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"External:EmailService:ApiKey\")",
-            externalServiceConstructorSource.Content);
+        externalServiceConstructorContent.Should()
+            .Contain("configuration.GetSection(\"ExternalService\").Get<ExternalServiceSettings>()");
+        externalServiceConstructorContent.Should()
+            .Contain("configuration.GetValue<string>(\"External:PaymentGateway:ApiKey\")");
+        externalServiceConstructorContent.Should()
+            .Contain("configuration.GetValue<string>(\"External:EmailService:ApiKey\")");
+
+        // Should handle secure configuration wrappers
+        secureConfigConstructorContent.Should().Contain("IOptions<SecretSettings> secretOptions");
+        secureConfigConstructorContent.Should().Contain("IOptionsSnapshot<ApiKeySettings> apiKeySnapshot");
+        secureConfigConstructorContent.Should()
+            .Contain("IOptionsMonitor<ExternalServiceSettings> externalServiceMonitor");
     }
 
     /// <summary>
@@ -2893,34 +2714,32 @@ public partial class MultiEnvironmentService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var environmentConstructorSource = result.GetConstructorSource("EnvironmentConfigService");
-        var featureFlagConstructorSource = result.GetConstructorSource("FeatureFlagService");
-        var multiEnvConstructorSource = result.GetConstructorSource("MultiEnvironmentService");
-
-        Assert.NotNull(environmentConstructorSource);
-        Assert.NotNull(featureFlagConstructorSource);
-        Assert.NotNull(multiEnvConstructorSource);
+        var environmentConstructorContent = result.GetConstructorSourceText("EnvironmentConfigService");
+        var featureFlagConstructorContent = result.GetConstructorSourceText("FeatureFlagService");
+        var multiEnvConstructorContent = result.GetConstructorSourceText("MultiEnvironmentService");
 
         // Should handle environment-specific configuration
-        Assert.Contains("configuration.GetSection(\"Environment\").Get<EnvironmentSettings>()",
-            environmentConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"Environment:Current\")",
-            environmentConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<bool>(\"Environment:IsProduction\")",
-            environmentConstructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Deployment\").Get<DeploymentSettings>()",
-            environmentConstructorSource.Content);
+        environmentConstructorContent.Should()
+            .Contain("configuration.GetSection(\"Environment\").Get<EnvironmentSettings>()");
+        environmentConstructorContent.Should().Contain("configuration.GetValue<string>(\"Environment:Current\")");
+        environmentConstructorContent.Should().Contain("configuration.GetValue<bool>(\"Environment:IsProduction\")");
+        environmentConstructorContent.Should()
+            .Contain("configuration.GetSection(\"Deployment\").Get<DeploymentSettings>()");
 
         // Should handle feature flag scenarios
-        Assert.Contains("configuration.GetSection(\"FeatureFlag\").Get<FeatureFlagSettings>()",
-            featureFlagConstructorSource.Content);
-        Assert.Contains("IOptionsSnapshot<FeatureFlagSettings> featureFlagSnapshot",
-            featureFlagConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<bool>(\"Features:EnableAdvancedSearch\")",
-            featureFlagConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<int>(\"Features:MaxResults\")", featureFlagConstructorSource.Content);
+        featureFlagConstructorContent.Should()
+            .Contain("configuration.GetSection(\"FeatureFlag\").Get<FeatureFlagSettings>()");
+        featureFlagConstructorContent.Should().Contain("IOptionsSnapshot<FeatureFlagSettings> featureFlagSnapshot");
+        featureFlagConstructorContent.Should()
+            .Contain("configuration.GetValue<bool>(\"Features:EnableAdvancedSearch\")");
+        featureFlagConstructorContent.Should().Contain("configuration.GetValue<int>(\"Features:MaxResults\")");
+
+        // Should handle multi-environment options
+        multiEnvConstructorContent.Should().Contain("IOptions<EnvironmentSettings> environmentOptions");
+        multiEnvConstructorContent.Should().Contain("IOptionsMonitor<DeploymentSettings> deploymentMonitor");
+        multiEnvConstructorContent.Should().Contain("configuration.GetValue<string>(\"Runtime:Environment\")");
     }
 
     /// <summary>
@@ -2993,49 +2812,39 @@ public partial class MultiProviderConfigService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var keyVaultConstructorSource = result.GetConstructorSource("KeyVaultConfigService");
-        var cloudConfigConstructorSource = result.GetConstructorSource("CloudConfigService");
-        var distributedConstructorSource = result.GetConstructorSource("DistributedConfigService");
-        var multiProviderConstructorSource = result.GetConstructorSource("MultiProviderConfigService");
-
-        Assert.NotNull(keyVaultConstructorSource);
-        Assert.NotNull(cloudConfigConstructorSource);
-        Assert.NotNull(distributedConstructorSource);
-        Assert.NotNull(multiProviderConstructorSource);
+        var keyVaultConstructorContent = result.GetConstructorSourceText("KeyVaultConfigService");
+        var cloudConfigConstructorContent = result.GetConstructorSourceText("CloudConfigService");
+        var distributedConstructorContent = result.GetConstructorSourceText("DistributedConfigService");
+        var multiProviderConstructorContent = result.GetConstructorSourceText("MultiProviderConfigService");
 
         // Should handle Key Vault configuration
-        Assert.Contains("configuration.GetSection(\"KeyVault\").Get<KeyVaultSettings>()",
-            keyVaultConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"KeyVault:SecretName\")", keyVaultConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"Azure:KeyVault:Certificate\")",
-            keyVaultConstructorSource.Content);
+        keyVaultConstructorContent.Should().Contain("configuration.GetSection(\"KeyVault\").Get<KeyVaultSettings>()");
+        keyVaultConstructorContent.Should().Contain("configuration.GetValue<string>(\"KeyVault:SecretName\")");
+        keyVaultConstructorContent.Should().Contain("configuration.GetValue<string>(\"Azure:KeyVault:Certificate\")");
 
         // Should handle cloud configuration services
-        Assert.Contains("configuration.GetSection(\"CloudConfig\").Get<CloudConfigSettings>()",
-            cloudConfigConstructorSource.Content);
-        Assert.Contains("IOptionsSnapshot<CloudConfigSettings> cloudConfigSnapshot",
-            cloudConfigConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"AppConfig:ConnectionString\")",
-            cloudConfigConstructorSource.Content);
+        cloudConfigConstructorContent.Should()
+            .Contain("configuration.GetSection(\"CloudConfig\").Get<CloudConfigSettings>()");
+        cloudConfigConstructorContent.Should().Contain("IOptionsSnapshot<CloudConfigSettings> cloudConfigSnapshot");
+        cloudConfigConstructorContent.Should()
+            .Contain("configuration.GetValue<string>(\"AppConfig:ConnectionString\")");
 
         // Should handle distributed configuration
-        Assert.Contains("configuration.GetSection(\"DistributedConfig\").Get<DistributedConfigSettings>()",
-            distributedConstructorSource.Content);
-        Assert.Contains("IOptionsMonitor<DistributedConfigSettings> distributedMonitor",
-            distributedConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"Consul:ServiceName\")", distributedConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"Etcd:Key\")", distributedConstructorSource.Content);
+        distributedConstructorContent.Should()
+            .Contain("configuration.GetSection(\"DistributedConfig\").Get<DistributedConfigSettings>()");
+        distributedConstructorContent.Should().Contain("IOptionsMonitor<DistributedConfigSettings> distributedMonitor");
+        distributedConstructorContent.Should().Contain("configuration.GetValue<string>(\"Consul:ServiceName\")");
+        distributedConstructorContent.Should().Contain("configuration.GetValue<string>(\"Etcd:Key\")");
 
         // Should handle multi-provider scenarios
-        Assert.Contains("IOptions<KeyVaultSettings> keyVaultOptions", multiProviderConstructorSource.Content);
-        Assert.Contains("IOptionsSnapshot<CloudConfigSettings> cloudConfigSnapshot",
-            multiProviderConstructorSource.Content);
-        Assert.Contains("IOptionsMonitor<DistributedConfigSettings> distributedMonitor",
-            multiProviderConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"MultiProvider:PrimarySource\")",
-            multiProviderConstructorSource.Content);
+        multiProviderConstructorContent.Should().Contain("IOptions<KeyVaultSettings> keyVaultOptions");
+        multiProviderConstructorContent.Should().Contain("IOptionsSnapshot<CloudConfigSettings> cloudConfigSnapshot");
+        multiProviderConstructorContent.Should()
+            .Contain("IOptionsMonitor<DistributedConfigSettings> distributedMonitor");
+        multiProviderConstructorContent.Should()
+            .Contain("configuration.GetValue<string>(\"MultiProvider:PrimarySource\")");
     }
 
     #endregion

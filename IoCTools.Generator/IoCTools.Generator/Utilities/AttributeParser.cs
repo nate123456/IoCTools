@@ -146,6 +146,52 @@ internal static class AttributeParser
         return (namingConvention, stripI, prefix, external);
     }
 
+    public static string GetRegistrationMode(AttributeData attribute)
+    {
+        const string defaultMode = "All";
+        if (attribute == null) return defaultMode;
+
+        if (attribute.ConstructorArguments.Length > 0)
+        {
+            var ctorValue = attribute.ConstructorArguments[0].Value;
+            if (ctorValue is int enumValue)
+                return enumValue switch
+                {
+                    0 => "DirectOnly",
+                    1 => "All",
+                    2 => "Exclusionary",
+                    _ => defaultMode
+                };
+
+            if (int.TryParse(ctorValue?.ToString(), out var parsedCtor))
+                return parsedCtor switch
+                {
+                    0 => "DirectOnly",
+                    1 => "All",
+                    2 => "Exclusionary",
+                    _ => defaultMode
+                };
+        }
+
+        var modeArg = attribute.NamedArguments.FirstOrDefault(arg => arg.Key == "Mode");
+        if (modeArg.Key != null)
+        {
+            if (modeArg.Value.Value is int namedEnum)
+                return namedEnum switch
+                {
+                    0 => "DirectOnly",
+                    1 => "All",
+                    2 => "Exclusionary",
+                    _ => defaultMode
+                };
+
+            var namedString = modeArg.Value.Value?.ToString();
+            if (namedString is "DirectOnly" or "All" or "Exclusionary") return namedString;
+        }
+
+        return defaultMode;
+    }
+
     public static string GenerateFieldName(string originalTypeName,
         string namingConvention,
         bool stripI,

@@ -49,13 +49,14 @@ public partial class Level3Final : Level2Middle
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"3-level inheritance failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+        result.HasErrors.Should().BeFalse("3-level inheritance failed: {0}", errorMessages);
 
-        var constructorSource = result.GetConstructorSource("Level3Final");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("Level3Final");
 
         // All dependencies from all levels should be present
         var expectedParams = new[]
@@ -68,22 +69,21 @@ public partial class Level3Final : Level2Middle
             "bool level3Bool" // Level3 Inject
         };
 
-        foreach (var param in expectedParams) Assert.Contains(param, constructorSource.Content);
+        foreach (var param in expectedParams) constructorContent.Should().Contain(param);
 
         // Validate proper base constructor call with all inherited dependencies
         // The generator orders parameters by level: DependsOn first, then Inject for each level
         var baseCallRegex =
             new Regex(@":\s*base\s*\(\s*level1Service\s*,\s*level1String\s*,\s*level2Service\s*,\s*level2Int\s*\)");
-        Assert.True(baseCallRegex.IsMatch(constructorSource.Content),
+        baseCallRegex.IsMatch(constructorContent).Should().BeTrue(
             "Base constructor call should include all inherited dependencies");
 
         // Only Level3Final should be registered with Scoped lifetime
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("services.AddScoped<global::Test.Level3Final, global::Test.Level3Final>()",
-            registrationSource.Content);
-        Assert.DoesNotContain("Level1Base>", registrationSource.Content);
-        Assert.DoesNotContain("Level2Middle>", registrationSource.Content);
+        var registrationContent = result.GetServiceRegistrationText();
+        registrationContent.Should().Contain(
+            "services.AddScoped<global::Test.Level3Final, global::Test.Level3Final>()");
+        registrationContent.Should().NotContain("Level1Base>");
+        registrationContent.Should().NotContain("Level2Middle>");
     }
 
     [Fact]
@@ -134,13 +134,14 @@ public partial class Level5Concrete : Level4
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"5-level inheritance failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+        result.HasErrors.Should().BeFalse("5-level inheritance failed: {0}", errorMessages);
 
-        var constructorSource = result.GetConstructorSource("Level5Concrete");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("Level5Concrete");
 
         // All generic types should be resolved to string - generator uses simple names
         var expectedParams = new[]
@@ -155,16 +156,15 @@ public partial class Level5Concrete : Level4
             "DateTime created" // Level5 - Inject
         };
 
-        foreach (var param in expectedParams) Assert.Contains(param, constructorSource.Content);
+        foreach (var param in expectedParams) constructorContent.Should().Contain(param);
 
         // Only Level5Concrete should be registered as Singleton
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("services.AddSingleton<global::Test.Level5Concrete, global::Test.Level5Concrete>()",
-            registrationSource.Content);
+        var registrationContent = result.GetServiceRegistrationText();
+        registrationContent.Should().Contain(
+            "services.AddSingleton<global::Test.Level5Concrete, global::Test.Level5Concrete>()");
 
         // No abstract/unregistered classes should be registered
-        for (var i = 1; i <= 4; i++) Assert.DoesNotContain($"Level{i}>", registrationSource.Content);
+        for (var i = 1; i <= 4; i++) registrationContent.Should().NotContain($"Level{i}>");
     }
 
     [Fact]
@@ -221,13 +221,14 @@ public partial class DiamondFinal : MiddleConverger
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Diamond inheritance failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+        result.HasErrors.Should().BeFalse("Diamond inheritance failed: {0}", errorMessages);
 
-        var constructorSource = result.GetConstructorSource("DiamondFinal");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("DiamondFinal");
 
         // Should have all dependencies from the inheritance path (Root -> Left -> Middle -> Final)
         var expectedParams = new[]
@@ -242,18 +243,18 @@ public partial class DiamondFinal : MiddleConverger
             "DateTime finalTimestamp" // DiamondFinal - Inject
         };
 
-        foreach (var param in expectedParams) Assert.Contains(param, constructorSource.Content);
+        foreach (var param in expectedParams) constructorContent.Should().Contain(param);
 
         // Should NOT have RightBranch dependencies (not in inheritance path)
-        Assert.DoesNotContain("IRightService", constructorSource.Content);
-        Assert.DoesNotContain("rightFlag", constructorSource.Content);
+        constructorContent.Should().NotContain("IRightService");
+        constructorContent.Should().NotContain("rightFlag");
 
         // Validate base constructor call includes all inherited dependencies
         // Generator orders parameters by level and type
         var baseCallRegex =
             new Regex(
                 @":\s*base\s*\(\s*baseService\s*,\s*rootData\s*,\s*leftService\s*,\s*leftValue\s*,\s*middleService\s*,\s*middleAmount\s*\)");
-        Assert.True(baseCallRegex.IsMatch(constructorSource.Content),
+        baseCallRegex.IsMatch(constructorContent).Should().BeTrue(
             "Base constructor call should follow inheritance path");
     }
 
@@ -304,14 +305,15 @@ public partial class AlternateDomainService : BusinessLayer
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Mixed service attributes failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+        result.HasErrors.Should().BeFalse("Mixed service attributes failed: {0}", errorMessages);
 
         // Check DomainService constructor
-        var domainConstructor = result.GetConstructorSource("DomainService");
-        Assert.NotNull(domainConstructor);
+        var domainConstructor = result.GetConstructorSourceText("DomainService");
 
         var expectedDomainParams = new[]
         {
@@ -326,11 +328,10 @@ public partial class AlternateDomainService : BusinessLayer
             "bool isActive" // DomainService - Inject
         };
 
-        foreach (var param in expectedDomainParams) Assert.Contains(param, domainConstructor.Content);
+        foreach (var param in expectedDomainParams) domainConstructor.Should().Contain(param);
 
         // Check AlternateDomainService constructor
-        var alternateConstructor = result.GetConstructorSource("AlternateDomainService");
-        Assert.NotNull(alternateConstructor);
+        var alternateConstructor = result.GetConstructorSourceText("AlternateDomainService");
 
         var expectedAlternateParams = new[]
         {
@@ -343,19 +344,17 @@ public partial class AlternateDomainService : BusinessLayer
             "decimal version" // AlternateDomainService - Inject
         };
 
-        foreach (var param in expectedAlternateParams) Assert.Contains(param, alternateConstructor.Content);
+        foreach (var param in expectedAlternateParams) alternateConstructor.Should().Contain(param);
 
         // Only concrete services should be registered, not abstract base classes
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationContent = result.GetServiceRegistrationText();
 
-        Assert.Contains("services.AddTransient<global::Test.DomainService, global::Test.DomainService>()",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.AlternateDomainService, global::Test.AlternateDomainService>()",
-            registrationSource.Content);
-        Assert.DoesNotContain("UtilityBase>", registrationSource.Content);
-        Assert.DoesNotContain("BusinessLayer>", registrationSource.Content);
+        registrationContent.Should().Contain(
+            "services.AddTransient<global::Test.DomainService, global::Test.DomainService>()");
+        registrationContent.Should().Contain(
+            "services.AddScoped<global::Test.AlternateDomainService, global::Test.AlternateDomainService>()");
+        registrationContent.Should().NotContain("UtilityBase>");
+        registrationContent.Should().NotContain("BusinessLayer>");
     }
 
     [Fact]
@@ -406,13 +405,14 @@ public class StringKey : IKey
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Complex generic inheritance failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+        result.HasErrors.Should().BeFalse("Complex generic inheritance failed: {0}", errorMessages);
 
-        var constructorSource = result.GetConstructorSource("ConcreteService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("ConcreteService");
 
         // All generic types should be properly resolved
         var expectedParams = new[]
@@ -424,12 +424,12 @@ public class StringKey : IKey
             "DateTime created" // ConcreteService - Inject
         };
 
-        foreach (var param in expectedParams) Assert.Contains(param, constructorSource.Content);
+        foreach (var param in expectedParams) constructorContent.Should().Contain(param);
 
         // Should not contain unresolved generic parameters
-        Assert.DoesNotContain("<TEntity>", constructorSource.Content);
-        Assert.DoesNotContain("<TKey>", constructorSource.Content);
-        Assert.DoesNotContain("<T>", constructorSource.Content);
+        constructorContent.Should().NotContain("<TEntity>");
+        constructorContent.Should().NotContain("<TKey>");
+        constructorContent.Should().NotContain("<T>");
 
         // Validate constraints are preserved in generated constructor
         var constraintRegex = new Regex(@"where\s+TEntity\s*:\s*class\s*,\s*IEntity\s*,\s*new\s*\(\s*\)");
@@ -503,23 +503,23 @@ public partial class InheritedLifetimeProblem : BaseWithScopedDependency
 
         // Assert - Should generate IOC015 diagnostics for lifetime violations
         var ioc015Diagnostics = result.GetDiagnosticsByCode("IOC015");
-        Assert.NotEmpty(ioc015Diagnostics);
+        ioc015Diagnostics.Should().NotBeEmpty();
 
         // Should have at least 1 IOC015 violation:
         // - InheritedLifetimeProblem inheriting scoped dependency as singleton
         // Note: ProblematicSingletonService -> IScopedService is IOC012, not IOC015
-        Assert.True(ioc015Diagnostics.Count >= 1,
-            $"Expected at least 1 IOC015 diagnostic, got {ioc015Diagnostics.Count}");
+        ioc015Diagnostics.Count.Should().BeGreaterOrEqualTo(1,
+            "Expected at least one IOC015 diagnostic but got {0}",
+            ioc015Diagnostics.Count);
 
         // Valid services should still compile and register correctly
-        var registrationSource = result.GetServiceRegistrationSource();
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
         if (registrationSource != null)
         {
-            Assert.Contains("services.AddScoped<global::Test.ValidScopedService, global::Test.ValidScopedService>()",
-                registrationSource.Content);
-            Assert.Contains(
-                "services.AddTransient<global::Test.ValidTransientService, global::Test.ValidTransientService>()",
-                registrationSource.Content);
+            registrationSource.Content.Should().Contain(
+                "services.AddScoped<global::Test.ValidScopedService, global::Test.ValidScopedService>()");
+            registrationSource.Content.Should().Contain(
+                "services.AddTransient<global::Test.ValidTransientService, global::Test.ValidTransientService>()");
         }
     }
 
@@ -561,13 +561,14 @@ public partial class Level3 : Level2
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Complex constructor generation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+        result.HasErrors.Should().BeFalse("Complex constructor generation failed: {0}", errorMessages);
 
-        var constructorSource = result.GetConstructorSource("Level3");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("Level3");
 
         // Validate complete constructor signature with proper parameter ordering
         // Expected order: DependsOn parameters first, then Inject parameters, level by level
@@ -586,8 +587,9 @@ public partial class Level3 : Level2
             @"\)"
         );
 
-        Assert.True(fullConstructorRegex.IsMatch(constructorSource.Content),
-            $"Constructor signature doesn't match expected parameter ordering. Actual: {constructorSource.Content}");
+        fullConstructorRegex.IsMatch(constructorContent).Should().BeTrue(
+            "Constructor signature doesn't match expected parameter ordering. Actual: {0}",
+            constructorContent);
 
         // Validate proper base constructor call with inherited parameters  
         // Generator orders by level: DependsOn first, then Inject for each level
@@ -598,16 +600,16 @@ public partial class Level3 : Level2
             @"\s*\)"
         );
 
-        Assert.True(baseCallRegex.IsMatch(constructorSource.Content),
+        baseCallRegex.IsMatch(constructorContent).Should().BeTrue(
             "Base constructor call should include all inherited parameters in correct order");
 
         // Validate field assignments for current level only
-        Assert.Contains("this._level3Amount = level3Amount;", constructorSource.Content);
-        Assert.Contains("this._level3Duration = level3Duration;", constructorSource.Content);
+        constructorContent.Should().Contain("this._level3Amount = level3Amount;");
+        constructorContent.Should().Contain("this._level3Duration = level3Duration;");
 
         // Should not have field assignments for inherited fields
-        Assert.DoesNotContain("this._level1Field1", constructorSource.Content);
-        Assert.DoesNotContain("this._level2Field", constructorSource.Content);
+        constructorContent.Should().NotContain("this._level1Field1");
+        constructorContent.Should().NotContain("this._level2Field");
     }
 
     [Fact]
@@ -650,33 +652,33 @@ public partial class FinalClass : MiddleClass
 
         // Assert - Should produce IOC007 warnings for conflicting DependsOn/Inject
         var ioc007Diagnostics = result.GetDiagnosticsByCode("IOC007");
-        Assert.NotEmpty(ioc007Diagnostics);
+        ioc007Diagnostics.Should().NotBeEmpty();
 
         // Should have conflicts for:
         // 1. ISharedService (DependsOn in base, Inject in middle)
         // 2. IBaseService (DependsOn in base, Inject in final)
-        Assert.True(ioc007Diagnostics.Count >= 2,
-            $"Expected at least 2 IOC007 conflicts, got {ioc007Diagnostics.Count}");
+        ioc007Diagnostics.Count.Should().BeGreaterOrEqualTo(2,
+            "Expected at least 2 IOC007 conflicts, got {0}",
+            ioc007Diagnostics.Count);
 
         // Should still compile successfully despite warnings
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("FinalClass");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("FinalClass");
 
         // Constructor should handle deduplication - each type should appear only once
-        var sharedServiceMatches = Regex.Matches(constructorSource.Content, @"ISharedService\s+\w+");
-        var baseServiceMatches = Regex.Matches(constructorSource.Content, @"IBaseService\s+\w+");
+        var sharedServiceMatches = Regex.Matches(constructorContent, @"ISharedService\s+\w+");
+        var baseServiceMatches = Regex.Matches(constructorContent, @"IBaseService\s+\w+");
 
-        Assert.Equal(1, sharedServiceMatches.Count); // Should deduplicate ISharedService
-        Assert.Equal(1, baseServiceMatches.Count); // Should deduplicate IBaseService
+        sharedServiceMatches.Count.Should().Be(1); // Should deduplicate ISharedService
+        baseServiceMatches.Count.Should().Be(1); // Should deduplicate IBaseService
 
         // Should contain middle and final specific dependencies
-        Assert.Contains("IMiddleService middleService", constructorSource.Content);
-        Assert.Contains("IFinalService finalService", constructorSource.Content);
-        Assert.Contains("string baseString", constructorSource.Content);
-        Assert.Contains("int middleInt", constructorSource.Content);
-        Assert.Contains("bool finalBool", constructorSource.Content);
+        constructorContent.Should().Contain("IMiddleService middleService");
+        constructorContent.Should().Contain("IFinalService finalService");
+        constructorContent.Should().Contain("string baseString");
+        constructorContent.Should().Contain("int middleInt");
+        constructorContent.Should().Contain("bool finalBool");
     }
 
     [Fact]
@@ -733,13 +735,14 @@ public partial class FeatureService : ApiLayer
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Configuration inheritance failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+        result.HasErrors.Should().BeFalse("Configuration inheritance failed: {0}", errorMessages);
 
-        var constructorSource = result.GetConstructorSource("FeatureService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("FeatureService");
 
         // Should have all configuration and inject dependencies
         var expectedParams = new[]
@@ -752,23 +755,22 @@ public partial class FeatureService : ApiLayer
             "DateTime initialized" // FeatureService - Inject
         };
 
-        foreach (var param in expectedParams) Assert.Contains(param, constructorSource.Content);
+        foreach (var param in expectedParams) constructorContent.Should().Contain(param);
 
         // Validate proper field assignments for current level configuration
-        Assert.Contains("this._featureConfig = featureConfig;", constructorSource.Content);
-        Assert.Contains("this._initialized = initialized;", constructorSource.Content);
+        constructorContent.Should().Contain("this._featureConfig = featureConfig;");
+        constructorContent.Should().Contain("this._initialized = initialized;");
 
         // Should not have field assignments for inherited configuration (handled by base constructor)
-        Assert.DoesNotContain("this._dbConfig =", constructorSource.Content);
-        Assert.DoesNotContain("this._apiConfig =", constructorSource.Content);
-        Assert.DoesNotContain("this._configuration =", constructorSource.Content);
-        Assert.DoesNotContain("this._serviceName =", constructorSource.Content);
+        constructorContent.Should().NotContain("this._dbConfig =");
+        constructorContent.Should().NotContain("this._apiConfig =");
+        constructorContent.Should().NotContain("this._configuration =");
+        constructorContent.Should().NotContain("this._serviceName =");
 
         // Check service registration includes configuration registration  
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("services.AddScoped<global::Test.FeatureService, global::Test.FeatureService>()",
-            registrationSource.Content);
+        var registrationContent = result.GetServiceRegistrationText();
+        registrationContent.Should().Contain(
+            "services.AddScoped<global::Test.FeatureService, global::Test.FeatureService>()");
 
         // Note: Configuration bindings are handled separately from this generator
         // The test focuses on constructor injection of configuration objects
@@ -838,17 +840,18 @@ public partial class Level7Final : Level6
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert - Should handle deep/wide inheritance without performance issues
-        Assert.False(result.HasErrors,
-            $"Performance stress test failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+        result.HasErrors.Should().BeFalse("Performance stress test failed: {0}", errorMessages);
 
-        var constructorSource = result.GetConstructorSource("Level7Final");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("Level7Final");
 
         // Should have all 35 service dependencies plus 15 inject fields
         var serviceParams = Enumerable.Range(1, 35).Select(i => $"IService{i} service{i}");
-        foreach (var param in serviceParams) Assert.Contains(param, constructorSource.Content);
+        foreach (var param in serviceParams) constructorContent.Should().Contain(param);
 
         // Should have all inject field parameters
         var injectParams = new[]
@@ -862,14 +865,13 @@ public partial class Level7Final : Level6
             "Uri level7A" // Level7
         };
 
-        foreach (var param in injectParams) Assert.Contains(param, constructorSource.Content);
+        foreach (var param in injectParams) constructorContent.Should().Contain(param);
 
         // Only Level7Final should be registered
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("services.AddScoped<global::Test.Level7Final, global::Test.Level7Final>()",
-            registrationSource.Content);
+        var registrationContent = result.GetServiceRegistrationText();
+        registrationContent.Should().Contain(
+            "services.AddScoped<global::Test.Level7Final, global::Test.Level7Final>()");
 
-        for (var i = 1; i <= 6; i++) Assert.DoesNotContain($"Level{i}>", registrationSource.Content);
+        for (var i = 1; i <= 6; i++) registrationContent.Should().NotContain($"Level{i}>");
     }
 }

@@ -26,8 +26,8 @@ public class MSBuildDiagnosticConfigurationTests
         var (compilation, diagnostics) = CompileWithMSBuildProperties(sourceCode, properties);
         var ioc001Diagnostics = diagnostics.Where(d => d.Id == "IOC001").ToList();
 
-        Assert.Single(ioc001Diagnostics);
-        Assert.Equal(DiagnosticSeverity.Warning, ioc001Diagnostics[0].Severity); // Default severity
+        ioc001Diagnostics.Should().ContainSingle();
+        ioc001Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Warning); // Default severity
     }
 
     #endregion
@@ -89,7 +89,17 @@ public class MSBuildDiagnosticConfigurationTests
         }
 
         public override bool TryGetValue(string key,
-            out string value) => _properties.TryGetValue(key, out value);
+            out string value)
+        {
+            if (_properties.TryGetValue(key, out var stored))
+            {
+                value = stored;
+                return true;
+            }
+
+            value = string.Empty;
+            return false;
+        }
     }
 
     /// <summary>
@@ -147,10 +157,10 @@ namespace TestNamespace
         var (compilation, diagnostics) = CompileWithMSBuildProperties(sourceCode, properties);
         var ioc001Diagnostics = diagnostics.Where(d => d.Id == "IOC001").ToList();
 
-        Assert.Single(ioc001Diagnostics);
-        Assert.Equal(DiagnosticSeverity.Warning, ioc001Diagnostics[0].Severity);
-        Assert.Contains("but no implementation of this interface exists", ioc001Diagnostics[0].GetMessage());
-        Assert.Contains("IMissingService", ioc001Diagnostics[0].GetMessage());
+        ioc001Diagnostics.Should().ContainSingle();
+        ioc001Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Warning);
+        ioc001Diagnostics[0].GetMessage().Should().Contain("but no implementation of this interface exists");
+        ioc001Diagnostics[0].GetMessage().Should().Contain("IMissingService");
     }
 
     [Fact]
@@ -163,10 +173,10 @@ namespace TestNamespace
         var (compilation, diagnostics) = CompileWithMSBuildProperties(sourceCode, properties);
         var ioc002Diagnostics = diagnostics.Where(d => d.Id == "IOC002").ToList();
 
-        Assert.Single(ioc002Diagnostics);
-        Assert.Equal(DiagnosticSeverity.Warning, ioc002Diagnostics[0].Severity);
-        Assert.Contains("implementation exists but lacks lifetime attribute", ioc002Diagnostics[0].GetMessage());
-        Assert.Contains("UnmanagedService", ioc002Diagnostics[0].GetMessage());
+        ioc002Diagnostics.Should().ContainSingle();
+        ioc002Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Warning);
+        ioc002Diagnostics[0].GetMessage().Should().Contain("implementation exists but lacks lifetime attribute");
+        ioc002Diagnostics[0].GetMessage().Should().Contain("UnmanagedService");
     }
 
     #endregion
@@ -190,8 +200,8 @@ namespace TestNamespace
         var (compilation, diagnostics) = CompileWithMSBuildProperties(sourceCode, properties);
 
         var ioc001Diagnostics = diagnostics.Where(d => d.Id == "IOC001").ToList();
-        Assert.Single(ioc001Diagnostics);
-        Assert.Equal(expectedSeverity, ioc001Diagnostics[0].Severity);
+        ioc001Diagnostics.Should().ContainSingle();
+        ioc001Diagnostics[0].Severity.Should().Be(expectedSeverity);
     }
 
     [Theory]
@@ -210,7 +220,7 @@ namespace TestNamespace
         var (compilation, diagnostics) = CompileWithMSBuildProperties(sourceCode, properties);
 
         var ioc001Diagnostics = diagnostics.Where(d => d.Id == "IOC001").ToList();
-        Assert.Single(ioc001Diagnostics);
+        ioc001Diagnostics.Should().ContainSingle();
 
         // Should parse case-insensitively
         var expectedSeverity = severityValue.ToLowerInvariant() switch
@@ -222,7 +232,7 @@ namespace TestNamespace
             _ => DiagnosticSeverity.Warning
         };
 
-        Assert.Equal(expectedSeverity, ioc001Diagnostics[0].Severity);
+        ioc001Diagnostics[0].Severity.Should().Be(expectedSeverity);
     }
 
     [Fact]
@@ -237,9 +247,9 @@ namespace TestNamespace
         var (compilation, diagnostics) = CompileWithMSBuildProperties(sourceCode, properties);
 
         var ioc001Diagnostics = diagnostics.Where(d => d.Id == "IOC001").ToList();
-        Assert.Single(ioc001Diagnostics);
+        ioc001Diagnostics.Should().ContainSingle();
         // Should fallback to default Warning severity for invalid values
-        Assert.Equal(DiagnosticSeverity.Warning, ioc001Diagnostics[0].Severity);
+        ioc001Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Warning);
     }
 
     #endregion
@@ -260,8 +270,8 @@ namespace TestNamespace
         var (compilation, diagnostics) = CompileWithMSBuildProperties(sourceCode, properties);
 
         var ioc002Diagnostics = diagnostics.Where(d => d.Id == "IOC002").ToList();
-        Assert.Single(ioc002Diagnostics);
-        Assert.Equal(expectedSeverity, ioc002Diagnostics[0].Severity);
+        ioc002Diagnostics.Should().ContainSingle();
+        ioc002Diagnostics[0].Severity.Should().Be(expectedSeverity);
     }
 
     [Theory]
@@ -277,7 +287,7 @@ namespace TestNamespace
         var (compilation, diagnostics) = CompileWithMSBuildProperties(sourceCode, properties);
 
         var ioc002Diagnostics = diagnostics.Where(d => d.Id == "IOC002").ToList();
-        Assert.Single(ioc002Diagnostics);
+        ioc002Diagnostics.Should().ContainSingle();
 
         // Should parse case-insensitively
         var expectedSeverity = severityValue.ToLowerInvariant() switch
@@ -289,7 +299,7 @@ namespace TestNamespace
             _ => DiagnosticSeverity.Warning
         };
 
-        Assert.Equal(expectedSeverity, ioc002Diagnostics[0].Severity);
+        ioc002Diagnostics[0].Severity.Should().Be(expectedSeverity);
     }
 
     #endregion
@@ -312,7 +322,7 @@ namespace TestNamespace
 
         // When diagnostics are disabled, no IOC001 or IOC002 diagnostics should be reported
         var iocDiagnostics = diagnostics.Where(d => d.Id.StartsWith("IOC")).ToList();
-        Assert.Empty(iocDiagnostics);
+        iocDiagnostics.Should().BeEmpty();
     }
 
     [Theory]
@@ -334,7 +344,7 @@ namespace TestNamespace
 
         // When diagnostics are enabled (false or invalid values), IOC001 should be reported
         var ioc001Diagnostics = diagnostics.Where(d => d.Id == "IOC001").ToList();
-        Assert.Single(ioc001Diagnostics);
+        ioc001Diagnostics.Should().ContainSingle();
     }
 
     #endregion
@@ -375,11 +385,11 @@ namespace TestNamespace
         var ioc001Diagnostics = diagnostics.Where(d => d.Id == "IOC001").ToList();
         var ioc002Diagnostics = diagnostics.Where(d => d.Id == "IOC002").ToList();
 
-        Assert.Single(ioc001Diagnostics);
-        Assert.Single(ioc002Diagnostics);
+        ioc001Diagnostics.Should().ContainSingle();
+        ioc002Diagnostics.Should().ContainSingle();
 
-        Assert.Equal(DiagnosticSeverity.Error, ioc001Diagnostics[0].Severity);
-        Assert.Equal(DiagnosticSeverity.Info, ioc002Diagnostics[0].Severity);
+        ioc001Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Error);
+        ioc002Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Info);
     }
 
     [Fact]
@@ -398,7 +408,7 @@ namespace TestNamespace
 
         // Even with Error severity configured, disable should take precedence
         var iocDiagnostics = diagnostics.Where(d => d.Id.StartsWith("IOC")).ToList();
-        Assert.Empty(iocDiagnostics);
+        iocDiagnostics.Should().BeEmpty();
     }
 
     #endregion
@@ -420,9 +430,9 @@ namespace TestNamespace
         var (compilation, diagnostics) = CompileWithMSBuildProperties(sourceCode, properties);
 
         var ioc001Diagnostics = diagnostics.Where(d => d.Id == "IOC001").ToList();
-        Assert.Single(ioc001Diagnostics);
+        ioc001Diagnostics.Should().ContainSingle();
         // Empty values should fall back to default Warning severity
-        Assert.Equal(DiagnosticSeverity.Warning, ioc001Diagnostics[0].Severity);
+        ioc001Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Warning);
     }
 
     [Fact]
@@ -439,9 +449,9 @@ namespace TestNamespace
         var (compilation, diagnostics) = CompileWithMSBuildProperties(sourceCode, properties);
 
         var ioc001Diagnostics = diagnostics.Where(d => d.Id == "IOC001").ToList();
-        Assert.Single(ioc001Diagnostics);
+        ioc001Diagnostics.Should().ContainSingle();
         // Whitespace values should fall back to default Warning severity
-        Assert.Equal(DiagnosticSeverity.Warning, ioc001Diagnostics[0].Severity);
+        ioc001Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Warning);
     }
 
     #endregion
@@ -459,12 +469,12 @@ namespace TestNamespace
         };
 
         // All properties should follow the build_property.IoCTools[Feature] pattern
-        foreach (var property in expectedProperties) Assert.StartsWith("build_property.IoCTools", property);
+        foreach (var property in expectedProperties) property.Should().StartWith("build_property.IoCTools");
 
         // Severity properties should end with "Severity"
         var severityProperties = expectedProperties.Where(p => p.Contains("Severity"));
-        Assert.Equal(2, severityProperties.Count());
-        Assert.All(severityProperties, p => Assert.EndsWith("Severity", p));
+        severityProperties.Count().Should().Be(2);
+        severityProperties.Should().AllSatisfy(p => p.Should().EndWith("Severity"));
     }
 
     [Fact]
@@ -482,7 +492,7 @@ namespace TestNamespace
         //   <IoCToolsDisableDiagnostics>true</IoCToolsDisableDiagnostics>
         // </PropertyGroup>
 
-        Assert.True(true, "MSBuild configuration examples documented in CLAUDE.md");
+        true.Should().BeTrue("MSBuild configuration examples documented in CLAUDE.md");
     }
 
     #endregion

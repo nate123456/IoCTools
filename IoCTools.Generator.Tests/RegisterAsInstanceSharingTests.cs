@@ -34,23 +34,21 @@ public partial class UserNotificationService : IUserService, INotificationServic
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
+        result.HasErrors.Should()
+            .BeFalse($"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Default InstanceSharing.Separate should create separate AddScoped calls
-        Assert.Contains(
-            "services.AddScoped<global::Test.UserNotificationService, global::Test.UserNotificationService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IUserService, global::Test.UserNotificationService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.INotificationService, global::Test.UserNotificationService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.UserNotificationService, global::Test.UserNotificationService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IUserService, global::Test.UserNotificationService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.INotificationService, global::Test.UserNotificationService>");
 
         // Should NOT register IValidationService since it's not in RegisterAs
-        Assert.DoesNotContain("IValidationService", registrationSource.Content);
+        registrationSource.Content.Should().NotContain("IValidationService");
     }
 
     [Fact]
@@ -78,20 +76,18 @@ public partial class UserNotificationService : IUserService, INotificationServic
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
+        result.HasErrors.Should()
+            .BeFalse($"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // InstanceSharing.Separate should create separate AddScoped calls
-        Assert.Contains(
-            "services.AddScoped<global::Test.UserNotificationService, global::Test.UserNotificationService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IUserService, global::Test.UserNotificationService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.INotificationService, global::Test.UserNotificationService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.UserNotificationService, global::Test.UserNotificationService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IUserService, global::Test.UserNotificationService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.INotificationService, global::Test.UserNotificationService>");
     }
 
     [Fact]
@@ -119,11 +115,10 @@ public partial class UserNotificationService : IUserService, INotificationServic
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
+        result.HasErrors.Should()
+            .BeFalse($"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // DEBUG: Write content to a file for analysis
         try
@@ -142,13 +137,13 @@ public partial class UserNotificationService : IUserService, INotificationServic
 
         // InstanceSharing.Shared should create concrete registration + factory registrations
         // CRITICAL FIX: Services with explicit lifetime attributes ([Scoped]) use single-parameter form for concrete registration
-        Assert.Contains("services.AddScoped<global::Test.UserNotificationService>();", registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IUserService>(provider => provider.GetRequiredService<global::Test.UserNotificationService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.INotificationService>(provider => provider.GetRequiredService<global::Test.UserNotificationService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should().Contain("services.AddScoped<global::Test.UserNotificationService>();");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IUserService>(provider => provider.GetRequiredService<global::Test.UserNotificationService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.INotificationService>(provider => provider.GetRequiredService<global::Test.UserNotificationService>())");
     }
 
     [Fact]
@@ -175,18 +170,17 @@ public partial class UserService : IUserService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
+        result.HasErrors.Should()
+            .BeFalse($"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Even with single interface, should use shared pattern (factory)
         // CRITICAL FIX: Services with explicit lifetime attributes ([Scoped]) use single-parameter form for concrete registration
-        Assert.Contains("services.AddScoped<global::Test.UserService>();", registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IUserService>(provider => provider.GetRequiredService<global::Test.UserService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should().Contain("services.AddScoped<global::Test.UserService>();");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IUserService>(provider => provider.GetRequiredService<global::Test.UserService>())");
     }
 
     [Fact]
@@ -215,24 +209,23 @@ public partial class ComplexService : IUserService, INotificationService, IValid
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
+        result.HasErrors.Should()
+            .BeFalse($"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should create one concrete registration + three factory registrations
         // CRITICAL FIX: Services with explicit lifetime attributes ([Scoped]) use single-parameter form for concrete registration
-        Assert.Contains("services.AddScoped<global::Test.ComplexService>();", registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IUserService>(provider => provider.GetRequiredService<global::Test.ComplexService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.INotificationService>(provider => provider.GetRequiredService<global::Test.ComplexService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IValidationService>(provider => provider.GetRequiredService<global::Test.ComplexService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should().Contain("services.AddScoped<global::Test.ComplexService>();");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IUserService>(provider => provider.GetRequiredService<global::Test.ComplexService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.INotificationService>(provider => provider.GetRequiredService<global::Test.ComplexService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IValidationService>(provider => provider.GetRequiredService<global::Test.ComplexService>())");
     }
 
     [Fact]
@@ -260,21 +253,20 @@ public partial class SingletonSharedService : IUserService, INotificationService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
+        result.HasErrors.Should()
+            .BeFalse($"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should respect Singleton lifetime with shared instances
         // CRITICAL FIX: Services with explicit lifetime attributes ([Singleton]) use single-parameter form for concrete registration
-        Assert.Contains("services.AddSingleton<global::Test.SingletonSharedService>();", registrationSource.Content);
-        Assert.Contains(
-            "services.AddSingleton<global::Test.IUserService>(provider => provider.GetRequiredService<global::Test.SingletonSharedService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddSingleton<global::Test.INotificationService>(provider => provider.GetRequiredService<global::Test.SingletonSharedService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should().Contain("services.AddSingleton<global::Test.SingletonSharedService>();");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddSingleton<global::Test.IUserService>(provider => provider.GetRequiredService<global::Test.SingletonSharedService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddSingleton<global::Test.INotificationService>(provider => provider.GetRequiredService<global::Test.SingletonSharedService>())");
     }
 
     [Fact]
@@ -308,102 +300,28 @@ public partial class MaxInterfaceService : IService1, IService2, IService3, ISer
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
+        result.HasErrors.Should()
+            .BeFalse($"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should create one concrete + 8 factory registrations
         // CRITICAL FIX: Services with explicit lifetime attributes ([Scoped]) use single-parameter form for concrete registration
-        Assert.Contains("services.AddScoped<global::Test.MaxInterfaceService>();", registrationSource.Content);
+        registrationSource.Content.Should().Contain("services.AddScoped<global::Test.MaxInterfaceService>();");
 
         for (var i = 1; i <= 8; i++)
-            Assert.Contains(
-                $"services.AddScoped<global::Test.IService{i}>(provider => provider.GetRequiredService<global::Test.MaxInterfaceService>())",
-                registrationSource.Content);
+            registrationSource.Content.Should()
+                .Contain(
+                    $"services.AddScoped<global::Test.IService{i}>(provider => provider.GetRequiredService<global::Test.MaxInterfaceService>())");
     }
 
     // Removed: complex comparison between RegisterAs and RegisterAsAll with DirectOnly mode.
     // The RegisterAsAll(RegistrationMode.DirectOnly) semantics intentionally register only the concrete type.
     // Interface registration equivalence is already validated by other tests in this class.
     /*
-    [Fact]
-    public void RegisterAs_CompareWithRegisterAsAll_ShouldHaveSameBehavior()
-    {
-        var registerAsSource = @"
-using IoCTools.Abstractions.Annotations;
-using IoCTools.Abstractions.Enumerations;
-using Microsoft.Extensions.Logging;
-
-namespace Test;
-
-public interface IUserService { }
-public interface INotificationService { }
-
-[Scoped]
-[RegisterAs<IUserService, INotificationService>(InstanceSharing.Shared)]
-public partial class RegisterAsService : IUserService, INotificationService
-{
-    [Inject] private readonly ILogger<RegisterAsService> _logger;
-}";
-
-        var registerAsAllSource = @"
-using IoCTools.Abstractions.Annotations;
-using IoCTools.Abstractions.Enumerations;
-using Microsoft.Extensions.Logging;
-
-namespace Test;
-
-public interface IUserService { }
-public interface INotificationService { }
-public interface IExtraService { }
-
-[Scoped]
-[RegisterAsAll(RegistrationMode.DirectOnly, InstanceSharing.Shared)]
-[SkipRegistration<IExtraService>]
-public partial class RegisterAsAllService : IUserService, INotificationService, IExtraService
-{
-    [Inject] private readonly ILogger<RegisterAsAllService> _logger;
-}";
-
-        // Act
-        var registerAsResult = SourceGeneratorTestHelper.CompileWithGenerator(registerAsSource);
-        var registerAsAllResult = SourceGeneratorTestHelper.CompileWithGenerator(registerAsAllSource);
-
-        // Assert both compile
-        Assert.False(registerAsResult.HasErrors);
-        Assert.False(registerAsAllResult.HasErrors);
-
-        var registerAsRegistrations = registerAsResult.GetServiceRegistrationSource();
-        var registerAsAllRegistrations = registerAsAllResult.GetServiceRegistrationSource();
-
-        Assert.NotNull(registerAsRegistrations);
-        Assert.NotNull(registerAsAllRegistrations);
-
-        // Both should have similar patterns for shared instance registration
-        // RegisterAs version
-        // CRITICAL FIX: Services with explicit lifetime attributes ([Scoped]) use single-parameter form for concrete registration
-        Assert.Contains("services.AddScoped<global::Test.RegisterAsService>();", registerAsRegistrations.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IUserService>(provider => provider.GetRequiredService<global::Test.RegisterAsService>())",
-            registerAsRegistrations.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.INotificationService>(provider => provider.GetRequiredService<global::Test.RegisterAsService>())",
-            registerAsRegistrations.Content);
-
-        // RegisterAsAll version
-        // CRITICAL FIX: Services with explicit lifetime attributes ([Scoped]) use single-parameter form for concrete registration
-        Assert.Contains("services.AddScoped<global::Test.RegisterAsAllService>();", registerAsAllRegistrations.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IUserService>(provider => provider.GetRequiredService<global::Test.RegisterAsAllService>())",
-            registerAsAllRegistrations.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.INotificationService>(provider => provider.GetRequiredService<global::Test.RegisterAsAllService>())",
-            registerAsAllRegistrations.Content);
-
-        // RegisterAsAll should NOT register IExtraService due to SkipRegistration
-        Assert.DoesNotContain("IExtraService", registerAsAllRegistrations.Content);
-    }
-    */
+     * Legacy comparison test removed:
+     * - The scenario validated RegisterAs vs RegisterAsAll parity before shared-instance fixes landed.
+     * - With updated helper coverage elsewhere, this duplication is no longer necessary.
+     * - Historical expectations remain in git history if reinstatement is required.
+     */
 }

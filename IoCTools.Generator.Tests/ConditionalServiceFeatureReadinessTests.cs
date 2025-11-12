@@ -30,23 +30,23 @@ public partial class TestService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - Environment-based conditional service registration should work correctly
-        Assert.False(result.HasErrors,
-            $"Environment-based conditional service registration should work correctly. Errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+        result.HasErrors.Should()
+            .BeFalse(
+                $"Environment-based conditional service registration should work correctly. Errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
 
         // Verify that conditional service registration is generated
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should contain environment detection code
-        Assert.Contains("var environment = Environment.GetEnvironmentVariable(\"ASPNETCORE_ENVIRONMENT\")",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("var environment = Environment.GetEnvironmentVariable(\"ASPNETCORE_ENVIRONMENT\")");
 
         // Should contain conditional registration logic with robust case-insensitive comparison
-        Assert.Contains("if (string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase))",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("if (string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase))");
 
         // Should contain the service registration (using simplified qualified names)
-        Assert.Contains("AddScoped<Test.ITestService, Test.TestService>", registrationSource.Content);
+        registrationSource.Content.Should().Contain("AddScoped<Test.ITestService, Test.TestService>");
     }
 
     [Fact]
@@ -71,17 +71,16 @@ public partial class TestService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - Existing functionality should work
-        Assert.False(result.HasErrors,
-            $"Existing Service attribute functionality should work. Errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+        result.HasErrors.Should()
+            .BeFalse(
+                $"Existing Service attribute functionality should work. Errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
 
         // Should generate constructor
-        var constructorSource = result.GetConstructorSource("TestService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("TestService");
 
         // Should generate service registration
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("AddScoped<global::Test.ITestService, global::Test.TestService>", registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should().Contain("AddScoped<global::Test.ITestService, global::Test.TestService>");
     }
 
     [Fact]
@@ -106,12 +105,13 @@ public partial class TestService : ITestService
         };
 
         // All features are implemented and validated
-        Assert.NotEmpty(implementedFeatures);
-        Assert.Equal(18, implementedFeatures.Length);
+        implementedFeatures.Should().NotBeEmpty();
+        implementedFeatures.Length.Should().Be(18);
 
         // All ConditionalService features are ready for production use
-        Assert.True(true,
-            $"ConditionalService feature validation complete - all features implemented:\n{string.Join("\n", implementedFeatures)}");
+        true.Should()
+            .BeTrue(
+                $"ConditionalService feature validation complete - all features implemented:\n{string.Join("\n", implementedFeatures)}");
     }
 
     [Fact]
@@ -144,8 +144,9 @@ public partial class TestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - Required namespaces should be available
-        Assert.False(result.HasErrors,
-            "Required namespaces (System, Microsoft.Extensions.Configuration, Microsoft.Extensions.DependencyInjection) should be available");
+        result.HasErrors.Should()
+            .BeFalse(
+                "Required namespaces (System, Microsoft.Extensions.Configuration, Microsoft.Extensions.DependencyInjection) should be available");
     }
 
     [Fact]
@@ -174,21 +175,21 @@ public partial class TestService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Verify basic registration method structure that ConditionalService extends
-        Assert.Contains("public static IServiceCollection", registrationSource.Content);
-        Assert.Contains("this IServiceCollection services", registrationSource.Content);
-        Assert.Contains("return services;", registrationSource.Content);
-        Assert.Contains("AddScoped<global::TestNamespace.ITestService, global::TestNamespace.TestService>",
-            registrationSource.Content);
+        registrationSource.Content.Should().Contain("public static IServiceCollection");
+        registrationSource.Content.Should().Contain("this IServiceCollection services");
+        registrationSource.Content.Should().Contain("return services;");
+        registrationSource.Content.Should()
+            .Contain("AddScoped<global::TestNamespace.ITestService, global::TestNamespace.TestService>");
 
         // ConditionalService builds upon this foundation and is fully implemented
-        Assert.True(true,
-            "Basic service registration generation works - ConditionalService successfully extends this functionality");
+        true.Should()
+            .BeTrue(
+                "Basic service registration generation works - ConditionalService successfully extends this functionality");
     }
 
     [Fact]
@@ -212,22 +213,21 @@ public partial class FeatureService : IFeatureService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - Configuration-based conditional service registration should work
-        Assert.False(result.HasErrors,
-            $"Configuration-based conditional service registration should work. Errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+        result.HasErrors.Should()
+            .BeFalse(
+                $"Configuration-based conditional service registration should work. Errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should contain configuration access code using robust indexer syntax
-        Assert.Contains("configuration[\"Feature:Enabled\"]", registrationSource.Content);
+        registrationSource.Content.Should().Contain("configuration[\"Feature:Enabled\"]");
 
         // Should contain conditional registration logic with robust case-insensitive comparison
-        Assert.Contains(
-            "string.Equals(configuration[\"Feature:Enabled\"], \"true\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("string.Equals(configuration[\"Feature:Enabled\"], \"true\", StringComparison.OrdinalIgnoreCase)");
 
         // Should contain the service registration with simplified names
-        Assert.Contains("AddScoped<Test.IFeatureService, Test.FeatureService>", registrationSource.Content);
+        registrationSource.Content.Should().Contain("AddScoped<Test.IFeatureService, Test.FeatureService>");
     }
 
     [Fact]
@@ -251,18 +251,18 @@ public partial class ComplexService : IComplexService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - Combined condition logic should work
-        Assert.False(result.HasErrors,
-            $"Combined condition logic should work. Errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+        result.HasErrors.Should()
+            .BeFalse(
+                $"Combined condition logic should work. Errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should contain both environment and configuration checks with robust patterns
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("configuration[\"Debug:Enabled\"]", registrationSource.Content);
-        Assert.Contains("string.Equals(configuration[\"Debug:Enabled\"], \"true\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should().Contain("configuration[\"Debug:Enabled\"]");
+        registrationSource.Content.Should()
+            .Contain("string.Equals(configuration[\"Debug:Enabled\"], \"true\", StringComparison.OrdinalIgnoreCase)");
     }
 
     [Fact]
@@ -291,21 +291,21 @@ public partial class ProdTestService : ITestService { }";
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - If-else chains should work correctly
-        Assert.False(result.HasErrors,
-            $"If-else chains should work correctly. Errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+        result.HasErrors.Should()
+            .BeFalse(
+                $"If-else chains should work correctly. Errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should generate proper if-else structure with robust patterns
-        Assert.Contains("var environment = Environment.GetEnvironmentVariable", registrationSource.Content);
-        Assert.Contains("if (string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase))",
-            registrationSource.Content);
-        Assert.Contains("if (string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase))",
-            registrationSource.Content);
+        registrationSource.Content.Should().Contain("var environment = Environment.GetEnvironmentVariable");
+        registrationSource.Content.Should()
+            .Contain("if (string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase))");
+        registrationSource.Content.Should()
+            .Contain("if (string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase))");
 
         // Should contain both service registrations with simplified names
-        Assert.Contains("AddScoped<Test.ITestService, Test.DevTestService>", registrationSource.Content);
-        Assert.Contains("AddScoped<Test.ITestService, Test.ProdTestService>", registrationSource.Content);
+        registrationSource.Content.Should().Contain("AddScoped<Test.ITestService, Test.DevTestService>");
+        registrationSource.Content.Should().Contain("AddScoped<Test.ITestService, Test.ProdTestService>");
     }
 }

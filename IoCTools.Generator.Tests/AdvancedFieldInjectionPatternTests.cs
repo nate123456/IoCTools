@@ -57,18 +57,19 @@ public partial class PropertyInjectionService
 
         if (constructorSource != null)
         {
+            var constructorText = constructorSource.Content;
             // Field injection should always work
-            Assert.Contains("ITestService fieldService", constructorSource.Content);
-            Assert.Contains("this._fieldService = fieldService;", constructorSource.Content);
+            constructorText.Should().Contain("ITestService fieldService");
+            constructorText.Should().Contain("this._fieldService = fieldService;");
 
             // Property injection behavior depends on implementation
             // Document what IoCTools currently supports
-            var supportsPropertyInjection = constructorSource.Content.Contains("PropertyService") ||
-                                            constructorSource.Content.Contains("propertyService");
+            var supportsPropertyInjection = constructorText.Contains("PropertyService") ||
+                                            constructorText.Contains("propertyService");
 
             // This test documents current behavior - properties may or may not be supported
             // If they are supported, verify the parameter exists
-            if (supportsPropertyInjection) Assert.Contains("PropertyService", constructorSource.Content);
+            if (supportsPropertyInjection) constructorText.Should().Contain("PropertyService");
         }
     }
 
@@ -107,21 +108,19 @@ public partial class CollectionConsumerService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - Should compile and generate registration code
-        Assert.False(result.HasErrors,
-            $"Runtime integration test failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
+        result.HasErrors.Should().BeFalse(
+            "Runtime integration test failed: {0}",
+            string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)));
 
         // Verify constructor generation
-        var constructorSource = result.GetConstructorSource("CollectionConsumerService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("IEnumerable<ITestService> services", constructorSource.Content);
+        var constructorContent = result.GetConstructorSourceText("CollectionConsumerService");
+        constructorContent.Should().Contain("IEnumerable<ITestService> services");
 
         // Verify service registration includes all implementations
-        var registrationSource = result.GeneratedSources
-            .FirstOrDefault(s => s.Content.Contains("AddIoCTools") || s.Content.Contains("RegisteredServices"));
-        Assert.NotNull(registrationSource);
-        Assert.Contains("TestService1", registrationSource.Content);
-        Assert.Contains("TestService2", registrationSource.Content);
-        Assert.Contains("CollectionConsumerService", registrationSource.Content);
+        var registrationContent = result.GetServiceRegistrationText();
+        registrationContent.Should().Contain("TestService1");
+        registrationContent.Should().Contain("TestService2");
+        registrationContent.Should().Contain("CollectionConsumerService");
     }
 
     #endregion
@@ -150,15 +149,18 @@ public class NonPartialService  // Missing 'partial' keyword
         var constructorSource = result.GetConstructorSource("NonPartialService");
 
         if (constructorSource != null)
+        {
+            var constructorText = constructorSource.Content;
             // If constructor is generated, it should not include [Inject] fields
-            Assert.DoesNotContain("ITestService service", constructorSource.Content);
+            constructorText.Should().NotContain("ITestService service");
+        }
 
         // This test documents how IoCTools handles non-partial classes
         var hasPartialWarning = result.CompilationDiagnostics
             .Any(d => d.GetMessage().Contains("partial") || d.GetMessage().Contains("constructor"));
 
         // Either generates warning or skips generation - both are valid approaches
-        Assert.True(true, "Non-partial class behavior documented");
+        true.Should().BeTrue("Non-partial class behavior documented");
     }
 
     #endregion
@@ -189,25 +191,25 @@ public partial class CollectionInjectionService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Collection injection compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
+        result.HasErrors.Should().BeFalse(
+            "Collection injection compilation failed: {0}",
+            string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)));
 
-        var constructorSource = result.GetConstructorSource("CollectionInjectionService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("CollectionInjectionService");
 
         // Verify all collection types are in constructor parameters
-        Assert.Contains("IEnumerable<ITestService> enumerable", constructorSource.Content);
-        Assert.Contains("IList<ITestService> list", constructorSource.Content);
-        Assert.Contains("ICollection<ITestService> collection", constructorSource.Content);
-        Assert.Contains("IReadOnlyList<ITestService> readOnlyList", constructorSource.Content);
-        Assert.Contains("IReadOnlyCollection<ITestService> readOnlyCollection", constructorSource.Content);
+        constructorContent.Should().Contain("IEnumerable<ITestService> enumerable");
+        constructorContent.Should().Contain("IList<ITestService> list");
+        constructorContent.Should().Contain("ICollection<ITestService> collection");
+        constructorContent.Should().Contain("IReadOnlyList<ITestService> readOnlyList");
+        constructorContent.Should().Contain("IReadOnlyCollection<ITestService> readOnlyCollection");
 
         // Verify all field assignments
-        Assert.Contains("this._enumerable = enumerable;", constructorSource.Content);
-        Assert.Contains("this._list = list;", constructorSource.Content);
-        Assert.Contains("this._collection = collection;", constructorSource.Content);
-        Assert.Contains("this._readOnlyList = readOnlyList;", constructorSource.Content);
-        Assert.Contains("this._readOnlyCollection = readOnlyCollection;", constructorSource.Content);
+        constructorContent.Should().Contain("this._enumerable = enumerable;");
+        constructorContent.Should().Contain("this._list = list;");
+        constructorContent.Should().Contain("this._collection = collection;");
+        constructorContent.Should().Contain("this._readOnlyList = readOnlyList;");
+        constructorContent.Should().Contain("this._readOnlyCollection = readOnlyCollection;");
     }
 
     [Fact]
@@ -233,16 +235,15 @@ public partial class ConcreteCollectionService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("ConcreteCollectionService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("ConcreteCollectionService");
 
         // Verify concrete collection types
-        Assert.Contains("List<ITestService> list", constructorSource.Content);
-        Assert.Contains("HashSet<ITestService> hashSet", constructorSource.Content);
-        Assert.Contains("Queue<ITestService> queue", constructorSource.Content);
-        Assert.Contains("Stack<ITestService> stack", constructorSource.Content);
+        constructorContent.Should().Contain("List<ITestService> list");
+        constructorContent.Should().Contain("HashSet<ITestService> hashSet");
+        constructorContent.Should().Contain("Queue<ITestService> queue");
+        constructorContent.Should().Contain("Stack<ITestService> stack");
     }
 
     [Fact]
@@ -266,15 +267,14 @@ public partial class ArrayInjectionService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("ArrayInjectionService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("ArrayInjectionService");
 
         // Verify array types in constructor
-        Assert.Contains("ITestService[] serviceArray", constructorSource.Content);
-        Assert.Contains("ITestService[,] multiDimensionalArray", constructorSource.Content);
-        Assert.Contains("ITestService[][] jaggedArray", constructorSource.Content);
+        constructorContent.Should().Contain("ITestService[] serviceArray");
+        constructorContent.Should().Contain("ITestService[,] multiDimensionalArray");
+        constructorContent.Should().Contain("ITestService[][] jaggedArray");
     }
 
     [Fact]
@@ -300,18 +300,18 @@ public partial class NestedCollectionService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Nested collection compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
+        result.HasErrors.Should().BeFalse(
+            "Nested collection compilation failed: {0}",
+            string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)));
 
-        var constructorSource = result.GetConstructorSource("NestedCollectionService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("NestedCollectionService");
 
         // Verify complex nested generics are handled correctly
-        Assert.Contains("IEnumerable<IList<ITestService>> enumerableOfLists", constructorSource.Content);
-        Assert.Contains("IDictionary<string, IEnumerable<ITestService>> dictionaryOfEnumerables",
-            constructorSource.Content);
-        Assert.Contains("IList<IDictionary<string, ITestService>> listOfDictionaries", constructorSource.Content);
-        Assert.Contains("IEnumerable<IEnumerable<IEnumerable<ITestService>>> tripleNested", constructorSource.Content);
+        constructorContent.Should().Contain("IEnumerable<IList<ITestService>> enumerableOfLists");
+        constructorContent.Should().Contain(
+            "IDictionary<string, IEnumerable<ITestService>> dictionaryOfEnumerables");
+        constructorContent.Should().Contain("IList<IDictionary<string, ITestService>> listOfDictionaries");
+        constructorContent.Should().Contain("IEnumerable<IEnumerable<IEnumerable<ITestService>>> tripleNested");
     }
 
     #endregion
@@ -342,22 +342,21 @@ public partial class OptionalDependencyService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("OptionalDependencyService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("OptionalDependencyService");
 
         // Verify nullable types in constructor
-        Assert.Contains("IOptionalService? optionalService", constructorSource.Content);
-        Assert.Contains("string? optionalString", constructorSource.Content);
-        Assert.Contains("int? optionalInt", constructorSource.Content);
-        Assert.Contains("TestStruct? optionalStruct", constructorSource.Content);
+        constructorContent.Should().Contain("IOptionalService? optionalService");
+        constructorContent.Should().Contain("string? optionalString");
+        constructorContent.Should().Contain("int? optionalInt");
+        constructorContent.Should().Contain("TestStruct? optionalStruct");
 
         // Verify field assignments
-        Assert.Contains("this._optionalService = optionalService;", constructorSource.Content);
-        Assert.Contains("this._optionalString = optionalString;", constructorSource.Content);
-        Assert.Contains("this._optionalInt = optionalInt;", constructorSource.Content);
-        Assert.Contains("this._optionalStruct = optionalStruct;", constructorSource.Content);
+        constructorContent.Should().Contain("this._optionalService = optionalService;");
+        constructorContent.Should().Contain("this._optionalString = optionalString;");
+        constructorContent.Should().Contain("this._optionalInt = optionalInt;");
+        constructorContent.Should().Contain("this._optionalStruct = optionalStruct;");
     }
 
     [Fact]
@@ -384,16 +383,15 @@ public partial class NullableCollectionService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("NullableCollectionService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("NullableCollectionService");
 
         // Verify nullable collection types
-        Assert.Contains("IEnumerable<ITestService>? optionalEnumerable", constructorSource.Content);
-        Assert.Contains("IList<ITestService>? optionalList", constructorSource.Content);
-        Assert.Contains("ITestService[]? optionalArray", constructorSource.Content);
-        Assert.Contains("IDictionary<string, ITestService>? optionalDictionary", constructorSource.Content);
+        constructorContent.Should().Contain("IEnumerable<ITestService>? optionalEnumerable");
+        constructorContent.Should().Contain("IList<ITestService>? optionalList");
+        constructorContent.Should().Contain("ITestService[]? optionalArray");
+        constructorContent.Should().Contain("IDictionary<string, ITestService>? optionalDictionary");
     }
 
     #endregion
@@ -423,17 +421,17 @@ public partial class FuncFactoryService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Func factory compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
+        result.HasErrors.Should().BeFalse(
+            "Func factory compilation failed: {0}",
+            string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)));
 
-        var constructorSource = result.GetConstructorSource("FuncFactoryService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("FuncFactoryService");
 
         // Verify Func delegate types
-        Assert.Contains("Func<ITestService> simpleFactory", constructorSource.Content);
-        Assert.Contains("Func<string, ITestService> parameterizedFactory", constructorSource.Content);
-        Assert.Contains("Func<string, int, ITestService> multiParameterFactory", constructorSource.Content);
-        Assert.Contains("Func<IServiceProvider, ITestService> serviceProviderFactory", constructorSource.Content);
+        constructorContent.Should().Contain("Func<ITestService> simpleFactory");
+        constructorContent.Should().Contain("Func<string, ITestService> parameterizedFactory");
+        constructorContent.Should().Contain("Func<string, int, ITestService> multiParameterFactory");
+        constructorContent.Should().Contain("Func<IServiceProvider, ITestService> serviceProviderFactory");
     }
 
     [Fact]
@@ -458,15 +456,14 @@ public partial class ActionPatternService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("ActionPatternService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("ActionPatternService");
 
         // Verify Action delegate types
-        Assert.Contains("Action simpleAction", constructorSource.Content);
-        Assert.Contains("Action<ITestService> serviceAction", constructorSource.Content);
-        Assert.Contains("Action<string, ITestService> parameterizedAction", constructorSource.Content);
+        constructorContent.Should().Contain("Action simpleAction");
+        constructorContent.Should().Contain("Action<ITestService> serviceAction");
+        constructorContent.Should().Contain("Action<string, ITestService> parameterizedAction");
     }
 
     [Fact]
@@ -494,15 +491,14 @@ public partial class CustomDelegateService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("CustomDelegateService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("CustomDelegateService");
 
         // Verify custom delegate types
-        Assert.Contains("ServiceFactory customFactory", constructorSource.Content);
-        Assert.Contains("ServiceProcessor processor", constructorSource.Content);
-        Assert.Contains("GenericFactory<ITestService> genericFactory", constructorSource.Content);
+        constructorContent.Should().Contain("ServiceFactory customFactory");
+        constructorContent.Should().Contain("ServiceProcessor processor");
+        constructorContent.Should().Contain("GenericFactory<ITestService> genericFactory");
     }
 
     #endregion
@@ -527,14 +523,13 @@ public partial class ServiceProviderInjectionService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("ServiceProviderInjectionService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("ServiceProviderInjectionService");
 
         // Verify IServiceProvider injection
-        Assert.Contains("IServiceProvider serviceProvider", constructorSource.Content);
-        Assert.Contains("this._serviceProvider = serviceProvider;", constructorSource.Content);
+        constructorContent.Should().Contain("IServiceProvider serviceProvider");
+        constructorContent.Should().Contain("this._serviceProvider = serviceProvider;");
     }
 
     [Fact]
@@ -563,145 +558,13 @@ public partial class ManualResolutionService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("ManualResolutionService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("ManualResolutionService");
 
         // Should only inject IServiceProvider, not try to inject the method
-        Assert.Contains("IServiceProvider serviceProvider", constructorSource.Content);
-        Assert.Contains("this._serviceProvider = serviceProvider;", constructorSource.Content);
-    }
-
-    #endregion
-
-    #region Field Access Modifier Variations
-
-    // ARCHITECTURAL LIMIT: Complex access modifier patterns are architectural limits
-    // See ConsolidatedFieldInjectionLimitsTests.cs and ARCHITECTURAL_LIMITS.md
-    // These tests have been consolidated to reduce maintenance burden and document limitations clearly
-    // [Fact] - DISABLED: Architectural limit
-    public void AccessModifiers_PrivateFields_GeneratesCorrectly_DISABLED_ArchitecturalLimit()
-    {
-        // Arrange - Test private field access modifiers
-        var source = @"
-using IoCTools.Abstractions.Annotations;
-
-namespace Test;
-
-public interface ITestService { }
-public partial class PrivateFieldService
-{
-    [Inject] private readonly ITestService _privateReadonly;
-    [Inject] private ITestService _privateMutable;
-}";
-
-        // Act
-        var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-
-        // Assert
-        Assert.False(result.HasErrors);
-
-        var constructorSource = result.GetConstructorSource("PrivateFieldService");
-        Assert.NotNull(constructorSource);
-
-        // Both private field variations should be handled
-        Assert.Contains("ITestService privateReadonly", constructorSource.Content);
-        Assert.Contains("ITestService privateMutable", constructorSource.Content);
-        Assert.Contains("this._privateReadonly = privateReadonly;", constructorSource.Content);
-        Assert.Contains("this._privateMutable = privateMutable;", constructorSource.Content);
-    }
-
-    // [Fact] - DISABLED: Architectural limit
-    public void AccessModifiers_ProtectedFields_GeneratesCorrectly_DISABLED_ArchitecturalLimit()
-    {
-        // Arrange - Test protected field access modifiers
-        var source = @"
-using IoCTools.Abstractions.Annotations;
-
-namespace Test;
-
-public interface ITestService { }
-public partial class ProtectedFieldService
-{
-    [Inject] protected readonly ITestService _protectedReadonly;
-    [Inject] protected ITestService _protectedMutable;
-}";
-
-        // Act
-        var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-
-        // Assert
-        Assert.False(result.HasErrors);
-
-        var constructorSource = result.GetConstructorSource("ProtectedFieldService");
-        Assert.NotNull(constructorSource);
-
-        // Protected fields should be handled
-        Assert.Contains("ITestService protectedReadonly", constructorSource.Content);
-        Assert.Contains("ITestService protectedMutable", constructorSource.Content);
-    }
-
-    // [Fact] - DISABLED: Architectural limit
-    public void AccessModifiers_InternalFields_GeneratesCorrectly_DISABLED_ArchitecturalLimit()
-    {
-        // Arrange - Test internal and protected internal field access modifiers
-        var source = @"
-using IoCTools.Abstractions.Annotations;
-
-namespace Test;
-
-public interface ITestService { }
-public partial class InternalFieldService
-{
-    [Inject] internal readonly ITestService _internalReadonly;
-    [Inject] protected internal ITestService _protectedInternal;
-    [Inject] private protected readonly ITestService _privateProtected;
-}";
-
-        // Act
-        var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-
-        // Assert
-        Assert.False(result.HasErrors);
-
-        var constructorSource = result.GetConstructorSource("InternalFieldService");
-        Assert.NotNull(constructorSource);
-
-        // All internal variations should be handled
-        Assert.Contains("ITestService internalReadonly", constructorSource.Content);
-        Assert.Contains("ITestService protectedInternal", constructorSource.Content);
-        Assert.Contains("ITestService privateProtected", constructorSource.Content);
-    }
-
-    // [Fact] - DISABLED: Architectural limit
-    public void AccessModifiers_PublicFields_GeneratesCorrectly_DISABLED_ArchitecturalLimit()
-    {
-        // Arrange - Test public field injection (unusual but valid)
-        var source = @"
-using IoCTools.Abstractions.Annotations;
-
-namespace Test;
-
-public interface ITestService { }
-public partial class PublicFieldService
-{
-    [Inject] public readonly ITestService _publicReadonly;
-    [Inject] public ITestService _publicMutable;
-}";
-
-        // Act
-        var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-
-        // Assert
-        Assert.False(result.HasErrors);
-
-        var constructorSource = result.GetConstructorSource("PublicFieldService");
-        Assert.NotNull(constructorSource);
-
-        // Public fields should be handled (though unusual)
-        Assert.Contains("ITestService publicReadonly", constructorSource.Content);
-        Assert.Contains("ITestService publicMutable", constructorSource.Content);
+        constructorContent.Should().Contain("IServiceProvider serviceProvider");
+        constructorContent.Should().Contain("this._serviceProvider = serviceProvider;");
     }
 
     [Fact]
@@ -728,15 +591,17 @@ public partial class StaticFieldService
         var constructorSource = result.GetConstructorSource("StaticFieldService");
         if (constructorSource != null)
         {
+            var constructorText = constructorSource.Content;
+
             // Should include instance field but ignore static fields
-            Assert.Contains("ITestService instanceField", constructorSource.Content);
-            Assert.DoesNotContain("staticField", constructorSource.Content);
-            Assert.DoesNotContain("publicStaticField", constructorSource.Content);
+            constructorText.Should().Contain("ITestService instanceField");
+            constructorText.Should().NotContain("staticField");
+            constructorText.Should().NotContain("publicStaticField");
 
             // Should only have instance field assignment
-            Assert.Contains("this._instanceField = instanceField;", constructorSource.Content);
-            Assert.DoesNotContain("_staticField =", constructorSource.Content);
-            Assert.DoesNotContain("_publicStaticField =", constructorSource.Content);
+            constructorText.Should().Contain("this._instanceField = instanceField;");
+            constructorText.Should().NotContain("_staticField =");
+            constructorText.Should().NotContain("_publicStaticField =");
         }
     }
 
@@ -767,33 +632,33 @@ public partial class MixedInjectionService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("MixedInjectionService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("MixedInjectionService");
+        var constructorText = constructorSource!.Content;
 
         // Extract constructor parameters to verify ordering
         var constructorMatch = Regex.Match(
-            constructorSource.Content,
+            constructorText,
             @"public MixedInjectionService\(\s*([^)]+)\s*\)");
-        Assert.True(constructorMatch.Success);
+        constructorMatch.Success.Should().BeTrue();
 
         var parameters = constructorMatch.Groups[1].Value
             .Split(',')
             .Select(p => p.Trim())
             .ToArray();
 
-        Assert.Equal(3, parameters.Length);
+        parameters.Length.Should().Be(3);
 
         // CRITICAL: DependsOn parameters should come before Inject parameters
-        Assert.Contains("IDependsOnService", parameters[0]); // DependsOn first
-        Assert.Contains("IInjectService1", parameters[1]); // Inject second
-        Assert.Contains("IInjectService2", parameters[2]); // Inject third
+        parameters[0].Should().Contain("IDependsOnService"); // DependsOn first
+        parameters[1].Should().Contain("IInjectService1"); // Inject second
+        parameters[2].Should().Contain("IInjectService2"); // Inject third
 
         // Verify field assignments (DependsOn creates fields too)
-        Assert.Contains("this._dependsOnService = dependsOnService;", constructorSource.Content);
-        Assert.Contains("this._inject1 = inject1;", constructorSource.Content);
-        Assert.Contains("this._inject2 = inject2;", constructorSource.Content);
+        constructorText.Should().Contain("this._dependsOnService = dependsOnService;");
+        constructorText.Should().Contain("this._inject1 = inject1;");
+        constructorText.Should().Contain("this._inject2 = inject2;");
     }
 
     [Fact]
@@ -819,29 +684,29 @@ public partial class MultipleDependsOnWithInjectService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("MultipleDependsOnWithInjectService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("MultipleDependsOnWithInjectService");
+        var constructorTextMultiple = constructorSource!.Content;
 
         // Extract parameters to verify ordering
         var constructorMatch = Regex.Match(
-            constructorSource.Content,
+            constructorTextMultiple,
             @"public MultipleDependsOnWithInjectService\(\s*([^)]+)\s*\)");
-        Assert.True(constructorMatch.Success);
+        constructorMatch.Success.Should().BeTrue();
 
         var parameters = constructorMatch.Groups[1].Value
             .Split(',')
             .Select(p => p.Trim())
             .ToArray();
 
-        Assert.Equal(4, parameters.Length);
+        parameters.Length.Should().Be(4);
 
         // Verify order: All DependsOn parameters first, then Inject parameters
-        Assert.Contains("IFirst", parameters[0]);
-        Assert.Contains("ISecond", parameters[1]);
-        Assert.Contains("IThird", parameters[2]);
-        Assert.Contains("IInjectService", parameters[3]); // Inject comes last
+        parameters[0].Should().Contain("IFirst");
+        parameters[1].Should().Contain("ISecond");
+        parameters[2].Should().Contain("IThird");
+        parameters[3].Should().Contain("IInjectService"); // Inject comes last
     }
 
     #endregion
@@ -873,16 +738,15 @@ public partial class GenericService<T> where T : class
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("GenericService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("GenericService");
 
         // Verify generic type parameters are preserved correctly
-        Assert.Contains("IRepository<T> repository", constructorSource.Content);
-        Assert.Contains("IValidator<T> validator", constructorSource.Content);
-        Assert.Contains("IEnumerable<IRepository<T>> repositories", constructorSource.Content);
-        Assert.Contains("ICacheService<string, T> cache", constructorSource.Content);
+        constructorContent.Should().Contain("IRepository<T> repository");
+        constructorContent.Should().Contain("IValidator<T> validator");
+        constructorContent.Should().Contain("IEnumerable<IRepository<T>> repositories");
+        constructorContent.Should().Contain("ICacheService<string, T> cache");
     }
 
     [Fact]
@@ -910,19 +774,18 @@ public partial class ConstrainedGenericService<T, U>
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("ConstrainedGenericService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("ConstrainedGenericService");
 
         // Verify generic constraints are preserved and types are correct
-        Assert.Contains("IRepository<T> repository", constructorSource.Content);
-        Assert.Contains("IEnumerable<T> entities", constructorSource.Content);
-        Assert.Contains("IDictionary<U, IList<T>> complexCollection", constructorSource.Content);
+        constructorContent.Should().Contain("IRepository<T> repository");
+        constructorContent.Should().Contain("IEnumerable<T> entities");
+        constructorContent.Should().Contain("IDictionary<U, IList<T>> complexCollection");
 
         // Verify class constraints are preserved
-        Assert.Contains("where T : class, IEntity, new()", constructorSource.Content);
-        Assert.Contains("where U : struct", constructorSource.Content);
+        constructorContent.Should().Contain("where T : class, IEntity, new()");
+        constructorContent.Should().Contain("where U : struct");
     }
 
     #endregion
@@ -952,12 +815,17 @@ public partial class LazyService
         var constructorSource = result.GetConstructorSource("LazyService");
 
         if (constructorSource != null)
+        {
+            var constructorText = constructorSource.Content;
             // If IoCTools generates constructor for Lazy<T>, it's supported
-            Assert.Contains("Lazy<ITestService> lazyService", constructorSource.Content);
+            constructorText.Should().Contain("Lazy<ITestService> lazyService");
+        }
         else
+        {
             // If no constructor generated, Lazy<T> requires manual setup
             // This is expected behavior - Lazy<T> typically needs custom factory registration
-            Assert.True(true, "Lazy<T> requires manual DI container registration - this is expected");
+            true.Should().BeTrue("Lazy<T> requires manual DI container registration - this is expected");
+        }
     }
 
     [Fact]
@@ -986,17 +854,18 @@ public partial class ValueTupleService
 
         if (constructorSource != null)
         {
+            var constructorText = constructorSource.Content;
             // If tuples are supported, verify the syntax
-            var supportsTuples = constructorSource.Content.Contains("serviceTuple") ||
-                                 constructorSource.Content.Contains("valueTypeTuple");
+            var supportsTuples = constructorText.Contains("serviceTuple") ||
+                                 constructorText.Contains("valueTypeTuple");
 
             if (supportsTuples)
                 // Document that tuples are supported
-                Assert.True(true, "Tuple injection is supported by IoCTools");
+                true.Should().BeTrue("Tuple injection is supported by IoCTools");
         }
 
         // Either way, this test documents the current behavior
-        Assert.True(true, "ValueTuple injection behavior documented");
+        true.Should().BeTrue("ValueTuple injection behavior documented");
     }
 
     #endregion

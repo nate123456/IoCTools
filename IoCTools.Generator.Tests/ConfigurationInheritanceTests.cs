@@ -26,6 +26,6 @@ public partial class ConcreteService : AbstractService<string>
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - Just verify it compiles and generates something
-        Assert.True(result.GeneratedSources.Any(), "Should generate at least one file");
+        result.GeneratedSources.Any().Should().BeTrue("Should generate at least one file");
     }
 }

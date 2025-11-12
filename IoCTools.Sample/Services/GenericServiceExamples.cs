@@ -34,7 +34,7 @@ public interface IRepository<T> where T : class, IEntity
 
 public interface IGenericValidator<T> where T : class
 {
-    Task<System.ComponentModel.DataAnnotations.ValidationResult?> ValidateAsync(T entity);
+    Task<ValidationResult?> ValidateAsync(T entity);
 }
 
 public interface IProcessor<TInput, TOutput>

@@ -27,16 +27,15 @@ namespace Test
 namespace IoCTools.Generator.Configuration { public static class GeneratorOptions { public const string SkipAssignableTypesAdd = ""Mediator.*""; } }
 ";
         var result = SourceGeneratorTestHelper.CompileWithGenerator(code);
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Registration should not contain the handler at all
         var reg = result.GetServiceRegistrationSource();
         if (reg != null)
-            Assert.DoesNotContain("Handler", reg.Content);
+            reg.Content.Should().NotContain("Handler");
 
         // Constructor should still be generated (DI works for consuming code)
-        var ctor = result.GetConstructorSource("Handler");
-        Assert.NotNull(ctor);
-        Assert.Contains("public Handler(", ctor!.Content);
+        var ctor = result.GetRequiredConstructorSource("Handler");
+        ctor!.Content.Should().Contain("public Handler(");
     }
 }

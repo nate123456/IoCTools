@@ -288,4 +288,67 @@ internal static class DiagnosticDescriptors
         DiagnosticSeverity.Error,
         true,
         "RegisterAs can only specify interface types. Use concrete class types for direct registration.");
+
+    public static readonly DiagnosticDescriptor RedundantRegisterAsAttribute = new(
+        "IOC032",
+        "RegisterAs attribute is redundant",
+        "Class '{0}' already registers interfaces {1} by default. Remove redundant [RegisterAs] attribute or reduce the interface list.",
+        "IoCTools",
+        DiagnosticSeverity.Warning,
+        true,
+        "RegisterAs should only be used when selectively registering a subset of interfaces.");
+
+    public static readonly DiagnosticDescriptor RedundantScopedLifetimeAttribute = new(
+        "IOC033",
+        "Scoped lifetime attribute is redundant",
+        "Class '{0}' is already implicitly registered as Scoped via {1}. Remove redundant [Scoped] attribute or change the lifetime to a non-default value.",
+        "IoCTools",
+        DiagnosticSeverity.Warning,
+        true,
+        "Scoped is the default lifetime for implicit services; only specify it when clarifying intent or when no other service indicators exist.");
+
+    public static readonly DiagnosticDescriptor RedundantRegisterAsWithRegisterAsAll = new(
+        "IOC034",
+        "RegisterAsAll already registers every interface",
+        "Class '{0}' uses both [RegisterAsAll] and [RegisterAs]; selective RegisterAs attributes have no effect when RegisterAsAll is present",
+        "IoCTools",
+        DiagnosticSeverity.Warning,
+        true,
+        "Remove redundant [RegisterAs] attributes or drop [RegisterAsAll] if selective registration is required.");
+
+    public static readonly DiagnosticDescriptor InjectFieldPreferDependsOn = new(
+        "IOC035",
+        "Inject field can be simplified to DependsOn",
+        "Field '{0}' in class '{1}' uses [Inject] but matches the default DependsOn naming for dependency '{2}'. Prefer [DependsOn<{2}>] unless you require a custom field name or mutability.",
+        "IoCTools",
+        DiagnosticSeverity.Warning,
+        true,
+        "Replace the [Inject] field with a [DependsOn] attribute so the generator can produce constructor parameters and backing fields automatically. Keep [Inject] only when a custom field name or non-readonly behavior is required.");
+
+    public static readonly DiagnosticDescriptor MultipleLifetimeAttributes = new(
+        "IOC036",
+        "Multiple lifetime attributes declared",
+        "Class '{0}' applies multiple lifetime attributes ({1}). Choose a single lifetime to avoid conflicting registrations.",
+        "IoCTools",
+        DiagnosticSeverity.Warning,
+        true,
+        "Remove redundant lifetime attributes so only one of [Scoped], [Singleton], or [Transient] remains on the class.");
+
+    public static readonly DiagnosticDescriptor SkipRegistrationOverridesOtherAttributes = new(
+        "IOC037",
+        "SkipRegistration overrides other registration attributes",
+        "Class '{0}' uses [SkipRegistration] along with {1}, but SkipRegistration prevents those attributes from taking effect",
+        "IoCTools",
+        DiagnosticSeverity.Warning,
+        true,
+        "Remove redundant registration attributes or drop [SkipRegistration] so the class can register as intended.");
+
+    public static readonly DiagnosticDescriptor SkipRegistrationIneffectiveInDirectMode = new(
+        "IOC038",
+        "SkipRegistration for interfaces has no effect in RegisterAsAll(DirectOnly)",
+        "Class '{0}' declares [SkipRegistration] for interfaces, but RegisterAsAll is set to DirectOnly so no interfaces would register anyway",
+        "IoCTools",
+        DiagnosticSeverity.Warning,
+        true,
+        "Change RegisterAsAll to RegistrationMode.All/Exclusionary or remove the ineffective [SkipRegistration] declaration.");
 }

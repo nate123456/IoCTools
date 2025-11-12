@@ -40,7 +40,7 @@ public partial class LegacyPaymentProcessor : IPaymentProcessor
         var (compilation, generatedCode) = GenerateServiceRegistrations(sourceCode);
 
         // Assert: Should NOT generate impossible logic conditions
-        Assert.NotNull(generatedCode);
+        generatedCode.Should().NotBeNull();
         // CRITICAL: This currently FAILS - generates impossible condition:
         // if ((config.GetValue("FeatureFlags:NewPaymentProcessor") ?? "") == "enabled" && 
         //     (config.GetValue("FeatureFlags:NewPaymentProcessor") ?? "") != "enabled")
@@ -52,27 +52,27 @@ public partial class LegacyPaymentProcessor : IPaymentProcessor
         // Check for the specific impossible pattern
         var impossiblePattern = @"""enabled"" && \(configuration\.GetValue.*?!= ""enabled""";
         var hasImpossiblePattern = Regex.IsMatch(normalizedCode, impossiblePattern);
-        Assert.False(hasImpossiblePattern,
-            $"Found impossible AND condition pattern in generated code: {normalizedCode}");
+        hasImpossiblePattern.Should()
+            .BeFalse($"Found impossible AND condition pattern in generated code: {normalizedCode}");
 
         // Should not have the exact impossible sequence that was generated before
-        Assert.DoesNotContain(@"== ""enabled"" && (configuration.GetValue", normalizedCode);
+        normalizedCode.Should().NotContain(@"== ""enabled"" && (configuration.GetValue");
 
         // Should contain logical registration for each service based on condition
-        Assert.Contains("NewPaymentProcessor", generatedCode);
-        Assert.Contains("LegacyPaymentProcessor", generatedCode);
+        generatedCode.Should().Contain("NewPaymentProcessor");
+        generatedCode.Should().Contain("LegacyPaymentProcessor");
 
         // Should not have both services registered under impossible conditions
         var lines = generatedCode.Split('\n').Select(l => l.Trim()).ToArray();
         var impossibleConditions = lines.Where(l =>
             l.Contains("== \"enabled\"") && l.Contains("!= \"enabled\"")).ToArray();
 
-        Assert.Empty(impossibleConditions);
+        impossibleConditions.Should().BeEmpty();
 
         var errors = compilation.GetDiagnostics()
             .Where(d => d.Severity == DiagnosticSeverity.Error)
             .ToArray();
-        Assert.Empty(errors);
+        errors.Should().BeEmpty();
     }
 
     [Fact]
@@ -104,27 +104,27 @@ public partial class ProductionEmailService : IEmailService
         var (compilation, generatedCode) = GenerateServiceRegistrations(sourceCode);
 
         // Assert: Should generate proper environment checks
-        Assert.NotNull(generatedCode);
+        generatedCode.Should().NotBeNull();
 
         // Should contain environment variable checks
-        Assert.Contains("ASPNETCORE_ENVIRONMENT", generatedCode);
-        Assert.Contains("Development", generatedCode);
-        Assert.Contains("Production", generatedCode);
+        generatedCode.Should().Contain("ASPNETCORE_ENVIRONMENT");
+        generatedCode.Should().Contain("Development");
+        generatedCode.Should().Contain("Production");
 
         // Should not have conflicting environment conditions
         var lines = generatedCode.Split('\n').Select(l => l.Trim()).ToArray();
         var environmentChecks = lines.Where(l => l.Contains("Environment.GetEnvironmentVariable")).ToArray();
 
-        Assert.NotEmpty(environmentChecks);
+        environmentChecks.Should().NotBeEmpty();
 
         // Each service should have its own conditional block
-        Assert.Contains("DevelopmentEmailService", generatedCode);
-        Assert.Contains("ProductionEmailService", generatedCode);
+        generatedCode.Should().Contain("DevelopmentEmailService");
+        generatedCode.Should().Contain("ProductionEmailService");
 
         var errors = compilation.GetDiagnostics()
             .Where(d => d.Severity == DiagnosticSeverity.Error)
             .ToArray();
-        Assert.Empty(errors);
+        errors.Should().BeEmpty();
     }
 
     [Fact]
@@ -151,16 +151,16 @@ public partial class ProductionAdvancedSecurityService : ISecurityService
         var (compilation, generatedCode) = GenerateServiceRegistrations(sourceCode);
 
         // Assert: Should generate proper AND logic for combined conditions
-        Assert.NotNull(generatedCode);
+        generatedCode.Should().NotBeNull();
 
         // Should contain both environment and config checks
-        Assert.Contains("ASPNETCORE_ENVIRONMENT", generatedCode);
-        Assert.Contains("Production", generatedCode);
-        Assert.Contains("Features:UseAdvancedSecurity", generatedCode);
+        generatedCode.Should().Contain("ASPNETCORE_ENVIRONMENT");
+        generatedCode.Should().Contain("Production");
+        generatedCode.Should().Contain("Features:UseAdvancedSecurity");
 
         // Should use AND logic, not impossible conditions
         var containsAND = generatedCode.Contains("&&") || generatedCode.Contains(" AND ");
-        Assert.True(containsAND, "Combined conditions should use AND logic");
+        containsAND.Should().BeTrue("Combined conditions should use AND logic");
 
         // Should not contain impossible logic
         var impossiblePatterns = new[]
@@ -170,12 +170,12 @@ public partial class ProductionAdvancedSecurityService : ISecurityService
         };
 
         foreach (var pattern in impossiblePatterns)
-            Assert.DoesNotContain(pattern, generatedCode.Replace(" ", "").Replace("\n", ""));
+            generatedCode.Replace(" ", "").Replace("\n", "").Should().NotContain(pattern);
 
         var errors = compilation.GetDiagnostics()
             .Where(d => d.Severity == DiagnosticSeverity.Error)
             .ToArray();
-        Assert.Empty(errors);
+        errors.Should().BeEmpty();
     }
 
     private (Compilation compilation, string generatedCode) GenerateServiceRegistrations(string sourceCode)
@@ -186,7 +186,7 @@ public partial class ProductionAdvancedSecurityService : ISecurityService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         var generatedCode = "";
-        var registrationSource = result.GetServiceRegistrationSource();
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
         if (registrationSource != null) generatedCode = registrationSource.Content;
 
         return (result.Compilation, generatedCode);

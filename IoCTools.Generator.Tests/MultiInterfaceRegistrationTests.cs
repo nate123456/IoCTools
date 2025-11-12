@@ -32,18 +32,16 @@ public partial class UserNotificationService : IUserService, INotificationServic
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should register concrete type and INotificationService but not IUserService
-        Assert.Contains(
-            "services.AddScoped<global::Test.UserNotificationService, global::Test.UserNotificationService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.INotificationService, global::Test.UserNotificationService>",
-            registrationSource.Content);
-        Assert.DoesNotContain("AddScoped<IUserService", registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.UserNotificationService, global::Test.UserNotificationService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.INotificationService, global::Test.UserNotificationService>");
+        registrationSource.Content.Should().NotContain("AddScoped<IUserService");
     }
 
     #endregion
@@ -77,21 +75,20 @@ public partial class StackedSkipService : IService1, IService2, IService3, IServ
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should only register concrete type since all interfaces are skipped
-        Assert.Contains("services.AddScoped<global::Test.StackedSkipService, global::Test.StackedSkipService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.StackedSkipService, global::Test.StackedSkipService>");
 
         // Should not register any interfaces
-        Assert.DoesNotContain("AddScoped<IService1", registrationSource.Content);
-        Assert.DoesNotContain("AddScoped<IService2", registrationSource.Content);
-        Assert.DoesNotContain("AddScoped<IService3", registrationSource.Content);
-        Assert.DoesNotContain("AddScoped<IService4", registrationSource.Content);
-        Assert.DoesNotContain("AddScoped<IService5", registrationSource.Content);
+        registrationSource.Content.Should().NotContain("AddScoped<IService1");
+        registrationSource.Content.Should().NotContain("AddScoped<IService2");
+        registrationSource.Content.Should().NotContain("AddScoped<IService3");
+        registrationSource.Content.Should().NotContain("AddScoped<IService4");
+        registrationSource.Content.Should().NotContain("AddScoped<IService5");
     }
 
     #endregion
@@ -122,22 +119,21 @@ public partial class ExternalMultiService : IUserService, INotificationService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should have no diagnostics for missing dependency due to ExternalService
         var ioc001Diagnostics = result.GetDiagnosticsByCode("IOC001");
         var serviceRelatedDiagnostics = ioc001Diagnostics.Where(d => d.GetMessage().Contains("ExternalMultiService"));
-        Assert.Empty(serviceRelatedDiagnostics);
+        serviceRelatedDiagnostics.Should().BeEmpty();
 
         // Should still register all interfaces
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("services.AddScoped<global::Test.ExternalMultiService, global::Test.ExternalMultiService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IUserService, global::Test.ExternalMultiService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.INotificationService, global::Test.ExternalMultiService>",
-            registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.ExternalMultiService, global::Test.ExternalMultiService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IUserService, global::Test.ExternalMultiService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.INotificationService, global::Test.ExternalMultiService>");
     }
 
     #endregion
@@ -170,27 +166,26 @@ public partial class ConcreteService : BaseService, IService2, IService3
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should register concrete class and all interfaces (including inherited) with shared instance pattern
         // For InstanceSharing.Shared: concrete class gets direct registration, interfaces get factory pattern
-        Assert.Contains("services.AddScoped<global::Test.ConcreteService, global::Test.ConcreteService>",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IService1>(provider => provider.GetRequiredService<global::Test.ConcreteService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IService2>(provider => provider.GetRequiredService<global::Test.ConcreteService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IService3>(provider => provider.GetRequiredService<global::Test.ConcreteService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.ConcreteService, global::Test.ConcreteService>");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IService1>(provider => provider.GetRequiredService<global::Test.ConcreteService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IService2>(provider => provider.GetRequiredService<global::Test.ConcreteService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IService3>(provider => provider.GetRequiredService<global::Test.ConcreteService>())");
 
         // Should NOT register abstract base class
-        Assert.DoesNotContain("AddScoped<BaseService", registrationSource.Content);
+        registrationSource.Content.Should().NotContain("AddScoped<BaseService");
     }
 
     #endregion
@@ -226,28 +221,27 @@ public partial class TransientService : IUserService, INotificationService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Singleton with shared instances
         // CRITICAL FIX: Services with explicit lifetime attributes ([Singleton]) use single-parameter form for concrete registration
-        Assert.Contains("services.AddSingleton<global::Test.SingletonService>();", registrationSource.Content);
-        Assert.Contains(
-            "services.AddSingleton<global::Test.IUserService>(provider => provider.GetRequiredService<global::Test.SingletonService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddSingleton<global::Test.INotificationService>(provider => provider.GetRequiredService<global::Test.SingletonService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should().Contain("services.AddSingleton<global::Test.SingletonService>();");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddSingleton<global::Test.IUserService>(provider => provider.GetRequiredService<global::Test.SingletonService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddSingleton<global::Test.INotificationService>(provider => provider.GetRequiredService<global::Test.SingletonService>())");
 
         // Transient with separate instances  
         // CRITICAL FIX: Services with explicit lifetime attributes ([Transient]) use single-parameter form for concrete registration
-        Assert.Contains("services.AddTransient<global::Test.TransientService>();", registrationSource.Content);
-        Assert.Contains("services.AddTransient<global::Test.IUserService, global::Test.TransientService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddTransient<global::Test.INotificationService, global::Test.TransientService>",
-            registrationSource.Content);
+        registrationSource.Content.Should().Contain("services.AddTransient<global::Test.TransientService>();");
+        registrationSource.Content.Should()
+            .Contain("services.AddTransient<global::Test.IUserService, global::Test.TransientService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddTransient<global::Test.INotificationService, global::Test.TransientService>");
     }
 
     #endregion
@@ -293,49 +287,47 @@ public partial class ComplexService : IUserQuery, IRepository<string>, IValidato
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should have no diagnostics due to ExternalService
         var ioc001Diagnostics = result.GetDiagnosticsByCode("IOC001");
         var complexServiceDiagnostics = ioc001Diagnostics.Where(d => d.GetMessage().Contains("ComplexService"));
-        Assert.Empty(complexServiceDiagnostics);
+        complexServiceDiagnostics.Should().BeEmpty();
 
         // Check constructor generation
-        var constructorSource = result.GetConstructorSource("ComplexService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("public ComplexService(ILogger logger, IExternalDep externalDep, IEnumerable<ILogger> loggers)",
-            constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("ComplexService");
+        constructorSource.Content.Should()
+            .Contain("public ComplexService(ILogger logger, IExternalDep externalDep, IEnumerable<ILogger> loggers)");
 
         // Check service registration
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should register Logger first
-        Assert.Contains("services.AddScoped<global::Test.ILogger, global::Test.Logger>", registrationSource.Content);
+        registrationSource.Content.Should().Contain("services.AddScoped<global::Test.ILogger, global::Test.Logger>");
 
         // Should register ComplexService as Singleton with shared instances
-        Assert.Contains("services.AddSingleton<global::Test.ComplexService>", registrationSource.Content);
+        registrationSource.Content.Should().Contain("services.AddSingleton<global::Test.ComplexService>");
 
         // Should register all non-skipped interfaces with factory pattern
-        Assert.Contains(
-            "services.AddSingleton<global::Test.IUserQuery>(provider => provider.GetRequiredService<global::Test.ComplexService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddSingleton<global::Test.IUser>(provider => provider.GetRequiredService<global::Test.ComplexService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddSingleton<global::Test.IEntity>(provider => provider.GetRequiredService<global::Test.ComplexService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddSingleton<global::Test.IValidator<string>>(provider => provider.GetRequiredService<global::Test.ComplexService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddSingleton<global::Test.INotificationService>(provider => provider.GetRequiredService<global::Test.ComplexService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddSingleton<global::Test.IUserQuery>(provider => provider.GetRequiredService<global::Test.ComplexService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddSingleton<global::Test.IUser>(provider => provider.GetRequiredService<global::Test.ComplexService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddSingleton<global::Test.IEntity>(provider => provider.GetRequiredService<global::Test.ComplexService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddSingleton<global::Test.IValidator<string>>(provider => provider.GetRequiredService<global::Test.ComplexService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddSingleton<global::Test.INotificationService>(provider => provider.GetRequiredService<global::Test.ComplexService>())");
 
         // Should NOT register skipped interfaces
-        Assert.DoesNotContain("AddSingleton<ISkippedService>", registrationSource.Content);
-        Assert.DoesNotContain("AddSingleton<IRepository<string>>", registrationSource.Content);
+        registrationSource.Content.Should().NotContain("AddSingleton<ISkippedService>");
+        registrationSource.Content.Should().NotContain("AddSingleton<IRepository<string>>");
     }
 
     #endregion
@@ -369,32 +361,31 @@ public partial class ServiceB : IServiceB
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should detect and warn about circular dependency
         var circularDiagnostics = result.GetDiagnosticsByCode("IOC003");
-        Assert.NotEmpty(circularDiagnostics);
+        circularDiagnostics.Should().NotBeEmpty();
 
         // Validate circular dependency diagnostic content
-        Assert.All(circularDiagnostics, d =>
+        circularDiagnostics.Should().AllSatisfy(d =>
         {
-            Assert.Equal(DiagnosticSeverity.Warning, d.Severity);
+            d.Severity.Should().Be(DiagnosticSeverity.Warning);
             var message = d.GetMessage();
-            Assert.True(message.Contains("ServiceA") || message.Contains("ServiceB"));
+            (message.Contains("ServiceA") || message.Contains("ServiceB")).Should().BeTrue();
         });
 
         // But should still generate registration code
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
         // Should register with InstanceSharing.Shared pattern - concrete direct, interfaces with factory
-        Assert.Contains("services.AddScoped<global::Test.ServiceA, global::Test.ServiceA>", registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IServiceA>(provider => provider.GetRequiredService<global::Test.ServiceA>())",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.ServiceB, global::Test.ServiceB>", registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IServiceB>(provider => provider.GetRequiredService<global::Test.ServiceB>())",
-            registrationSource.Content);
+        registrationSource.Content.Should().Contain("services.AddScoped<global::Test.ServiceA, global::Test.ServiceA>");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IServiceA>(provider => provider.GetRequiredService<global::Test.ServiceA>())");
+        registrationSource.Content.Should().Contain("services.AddScoped<global::Test.ServiceB, global::Test.ServiceB>");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IServiceB>(provider => provider.GetRequiredService<global::Test.ServiceB>())");
     }
 
     #endregion
@@ -422,19 +413,17 @@ public partial class UserNotificationService : IUserService, INotificationServic
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should only register concrete type
-        Assert.Contains(
-            "services.AddScoped<global::Test.UserNotificationService, global::Test.UserNotificationService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.UserNotificationService, global::Test.UserNotificationService>");
 
         // Should NOT register interfaces
-        Assert.DoesNotContain("AddScoped<IUserService", registrationSource.Content);
-        Assert.DoesNotContain("AddScoped<INotificationService", registrationSource.Content);
+        registrationSource.Content.Should().NotContain("AddScoped<IUserService");
+        registrationSource.Content.Should().NotContain("AddScoped<INotificationService");
     }
 
     [Fact]
@@ -458,19 +447,17 @@ public partial class UserNotificationService : IUserService, INotificationServic
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should register concrete type and all interfaces
-        Assert.Contains(
-            "services.AddScoped<global::Test.UserNotificationService, global::Test.UserNotificationService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IUserService, global::Test.UserNotificationService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.INotificationService, global::Test.UserNotificationService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.UserNotificationService, global::Test.UserNotificationService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IUserService, global::Test.UserNotificationService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.INotificationService, global::Test.UserNotificationService>");
     }
 
     [Fact]
@@ -494,20 +481,19 @@ public partial class UserNotificationService : IUserService, INotificationServic
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should register interfaces only
-        Assert.Contains("services.AddScoped<global::Test.IUserService, global::Test.UserNotificationService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.INotificationService, global::Test.UserNotificationService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IUserService, global::Test.UserNotificationService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.INotificationService, global::Test.UserNotificationService>");
 
         // Should NOT register concrete type
-        Assert.DoesNotContain("AddScoped<global::Test.UserNotificationService, global::Test.UserNotificationService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .NotContain("AddScoped<global::Test.UserNotificationService, global::Test.UserNotificationService>");
     }
 
     #endregion
@@ -535,21 +521,19 @@ public partial class UserNotificationService : IUserService, INotificationServic
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // For shared instances, should register concrete type normally and interfaces with factory pattern
-        Assert.Contains(
-            "services.AddScoped<global::Test.UserNotificationService, global::Test.UserNotificationService>",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IUserService>(provider => provider.GetRequiredService<global::Test.UserNotificationService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.INotificationService>(provider => provider.GetRequiredService<global::Test.UserNotificationService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.UserNotificationService, global::Test.UserNotificationService>");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IUserService>(provider => provider.GetRequiredService<global::Test.UserNotificationService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.INotificationService>(provider => provider.GetRequiredService<global::Test.UserNotificationService>())");
     }
 
     [Fact]
@@ -573,19 +557,17 @@ public partial class UserNotificationService : IUserService, INotificationServic
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // For separate instances, each registration creates its own instance
-        Assert.Contains(
-            "services.AddScoped<global::Test.UserNotificationService, global::Test.UserNotificationService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IUserService, global::Test.UserNotificationService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.INotificationService, global::Test.UserNotificationService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.UserNotificationService, global::Test.UserNotificationService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IUserService, global::Test.UserNotificationService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.INotificationService, global::Test.UserNotificationService>");
     }
 
     [Fact]
@@ -609,28 +591,27 @@ public partial class UserNotificationService : IUserService, INotificationServic
 
         // Act - Get the generated registration method
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-        var registrationSource = result.GetServiceRegistrationSource();
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Assert - Validate the registration pattern is correct for shared instances
-        Assert.False(result.HasErrors);
-        Assert.NotNull(registrationSource);
+        result.HasErrors.Should().BeFalse();
+        registrationSource.Should().NotBeNull();
 
         // CRITICAL: Validate that the factory pattern is generated correctly for shared instances
-        Assert.Contains(
-            "services.AddScoped<global::Test.UserNotificationService, global::Test.UserNotificationService>",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IUserService>(provider => provider.GetRequiredService<global::Test.UserNotificationService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.INotificationService>(provider => provider.GetRequiredService<global::Test.UserNotificationService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.UserNotificationService, global::Test.UserNotificationService>");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IUserService>(provider => provider.GetRequiredService<global::Test.UserNotificationService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.INotificationService>(provider => provider.GetRequiredService<global::Test.UserNotificationService>())");
 
         // CRITICAL: Validate that we don't have direct interface registrations for shared instances
-        Assert.DoesNotContain("AddScoped<global::Test.IUserService, global::Test.UserNotificationService>",
-            registrationSource.Content);
-        Assert.DoesNotContain("AddScoped<global::Test.INotificationService, global::Test.UserNotificationService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .NotContain("AddScoped<global::Test.IUserService, global::Test.UserNotificationService>");
+        registrationSource.Content.Should()
+            .NotContain("AddScoped<global::Test.INotificationService, global::Test.UserNotificationService>");
     }
 
     [Fact]
@@ -654,23 +635,22 @@ public partial class UserNotificationService : IUserService, INotificationServic
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-        var registrationSource = result.GetServiceRegistrationSource();
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Assert - Validate separate instance registration pattern
-        Assert.False(result.HasErrors);
-        Assert.NotNull(registrationSource);
+        result.HasErrors.Should().BeFalse();
+        registrationSource.Should().NotBeNull();
 
         // CRITICAL: Validate direct registrations (no factory pattern)
-        Assert.Contains(
-            "services.AddScoped<global::Test.UserNotificationService, global::Test.UserNotificationService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IUserService, global::Test.UserNotificationService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.INotificationService, global::Test.UserNotificationService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.UserNotificationService, global::Test.UserNotificationService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IUserService, global::Test.UserNotificationService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.INotificationService, global::Test.UserNotificationService>");
 
         // CRITICAL: Validate that we don't have factory patterns
-        Assert.DoesNotContain("provider => provider.GetRequiredService", registrationSource.Content);
+        registrationSource.Content.Should().NotContain("provider => provider.GetRequiredService");
     }
 
     [Fact]
@@ -692,27 +672,26 @@ public interface IService3 { }
 public partial class SingletonSharedService : IService1, IService2, IService3 { }";
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-        var registrationSource = result.GetServiceRegistrationSource();
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
-        Assert.False(result.HasErrors);
-        Assert.NotNull(registrationSource);
+        result.HasErrors.Should().BeFalse();
+        registrationSource.Should().NotBeNull();
 
         // CRITICAL: All registrations must use the same lifetime (single parameter for explicit lifetime + shared)
-        Assert.Contains("services.AddSingleton<global::Test.SingletonSharedService>",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddSingleton<global::Test.IService1>(provider => provider.GetRequiredService<global::Test.SingletonSharedService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddSingleton<global::Test.IService2>(provider => provider.GetRequiredService<global::Test.SingletonSharedService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddSingleton<global::Test.IService3>(provider => provider.GetRequiredService<global::Test.SingletonSharedService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should().Contain("services.AddSingleton<global::Test.SingletonSharedService>");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddSingleton<global::Test.IService1>(provider => provider.GetRequiredService<global::Test.SingletonSharedService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddSingleton<global::Test.IService2>(provider => provider.GetRequiredService<global::Test.SingletonSharedService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddSingleton<global::Test.IService3>(provider => provider.GetRequiredService<global::Test.SingletonSharedService>())");
 
         // CRITICAL: No mixed lifetimes
-        Assert.DoesNotContain("AddScoped<", registrationSource.Content);
-        Assert.DoesNotContain("AddTransient<", registrationSource.Content);
+        registrationSource.Content.Should().NotContain("AddScoped<");
+        registrationSource.Content.Should().NotContain("AddTransient<");
     }
 
     #endregion
@@ -742,18 +721,17 @@ public partial class MultiService : IUserService, INotificationService, ILogging
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should only register concrete type and ILoggingService
-        Assert.Contains("services.AddScoped<global::Test.MultiService, global::Test.MultiService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.ILoggingService, global::Test.MultiService>",
-            registrationSource.Content);
-        Assert.DoesNotContain("AddScoped<IUserService", registrationSource.Content);
-        Assert.DoesNotContain("AddScoped<INotificationService", registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.MultiService, global::Test.MultiService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.ILoggingService, global::Test.MultiService>");
+        registrationSource.Content.Should().NotContain("AddScoped<IUserService");
+        registrationSource.Content.Should().NotContain("AddScoped<INotificationService");
     }
 
     [Fact]
@@ -782,23 +760,22 @@ public partial class MegaService : IService1, IService2, IService3, IService4, I
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should only register concrete type and IService6
-        Assert.Contains("services.AddScoped<global::Test.MegaService, global::Test.MegaService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IService6, global::Test.MegaService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.MegaService, global::Test.MegaService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IService6, global::Test.MegaService>");
 
         // Should not register the skipped services
-        Assert.DoesNotContain("AddScoped<IService1", registrationSource.Content);
-        Assert.DoesNotContain("AddScoped<IService2", registrationSource.Content);
-        Assert.DoesNotContain("AddScoped<IService3", registrationSource.Content);
-        Assert.DoesNotContain("AddScoped<IService4", registrationSource.Content);
-        Assert.DoesNotContain("AddScoped<IService5", registrationSource.Content);
+        registrationSource.Content.Should().NotContain("AddScoped<IService1");
+        registrationSource.Content.Should().NotContain("AddScoped<IService2");
+        registrationSource.Content.Should().NotContain("AddScoped<IService3");
+        registrationSource.Content.Should().NotContain("AddScoped<IService4");
+        registrationSource.Content.Should().NotContain("AddScoped<IService5");
     }
 
     #endregion
@@ -827,19 +804,18 @@ public partial class UserService : IUserQuery
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should register concrete type and all interface levels
-        Assert.Contains("services.AddScoped<global::Test.UserService, global::Test.UserService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IUserQuery, global::Test.UserService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IUser, global::Test.UserService>", registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IEntity, global::Test.UserService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.UserService, global::Test.UserService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IUserQuery, global::Test.UserService>");
+        registrationSource.Content.Should().Contain("services.AddScoped<global::Test.IUser, global::Test.UserService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IEntity, global::Test.UserService>");
     }
 
     [Fact]
@@ -865,19 +841,18 @@ public partial class UserService : IUserQuery
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should register concrete type, IUserQuery, and IEntity but not IUser
-        Assert.Contains("services.AddScoped<global::Test.UserService, global::Test.UserService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IUserQuery, global::Test.UserService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IEntity, global::Test.UserService>",
-            registrationSource.Content);
-        Assert.DoesNotContain("AddScoped<global::Test.IUser, global::Test.UserService>", registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.UserService, global::Test.UserService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IUserQuery, global::Test.UserService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IEntity, global::Test.UserService>");
+        registrationSource.Content.Should().NotContain("AddScoped<global::Test.IUser, global::Test.UserService>");
     }
 
     #endregion
@@ -906,18 +881,17 @@ public partial class UserRepository : IRepository<string>, IValidator<string>
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should register concrete type and both generic interfaces
-        Assert.Contains("services.AddScoped<global::Test.UserRepository, global::Test.UserRepository>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IRepository<string>, global::Test.UserRepository>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IValidator<string>, global::Test.UserRepository>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.UserRepository, global::Test.UserRepository>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IRepository<string>, global::Test.UserRepository>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IValidator<string>, global::Test.UserRepository>");
     }
 
     [Fact]
@@ -943,22 +917,20 @@ public partial class UserRepository : IRepository<string>, IValidator<string>
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should register concrete type and IValidator but not IRepository
-        Assert.Contains("services.AddScoped<global::Test.UserRepository, global::Test.UserRepository>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.UserRepository, global::Test.UserRepository>");
         // Accept either string or System.String format for generic types
-        Assert.True(
-            registrationSource.Content.Contains(
-                "AddScoped<global::Test.IValidator<System.String>, global::Test.UserRepository>") ||
-            registrationSource.Content.Contains(
-                "AddScoped<global::Test.IValidator<string>, global::Test.UserRepository>"),
-            "Should contain IValidator registration with either string or System.String format");
-        Assert.DoesNotContain("AddScoped<IRepository<", registrationSource.Content); // Skip any form of IRepository
+        (registrationSource.Content.Contains(
+             "AddScoped<global::Test.IValidator<System.String>, global::Test.UserRepository>") ||
+         registrationSource.Content.Contains(
+             "AddScoped<global::Test.IValidator<string>, global::Test.UserRepository>")).Should()
+            .BeTrue("Should contain IValidator registration with either string or System.String format");
+        registrationSource.Content.Should().NotContain("AddScoped<IRepository<"); // Skip any form of IRepository
     }
 
     #endregion
@@ -989,26 +961,23 @@ public partial class UserNotificationService : IUserService, INotificationServic
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should have constructor with dependencies
-        var constructorSource = result.GetConstructorSource("UserNotificationService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("public UserNotificationService(ILogger logger, IValidator validator)",
-            constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("UserNotificationService");
+        constructorSource.Content.Should()
+            .Contain("public UserNotificationService(ILogger logger, IValidator validator)");
 
         // Should register with shared instances (factory pattern)
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains(
-            "services.AddScoped<global::Test.UserNotificationService, global::Test.UserNotificationService>",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IUserService>(provider => provider.GetRequiredService<global::Test.UserNotificationService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.INotificationService>(provider => provider.GetRequiredService<global::Test.UserNotificationService>())",
-            registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.UserNotificationService, global::Test.UserNotificationService>");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IUserService>(provider => provider.GetRequiredService<global::Test.UserNotificationService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.INotificationService>(provider => provider.GetRequiredService<global::Test.UserNotificationService>())");
     }
 
     [Fact]
@@ -1034,24 +1003,21 @@ public partial class UserNotificationService : IUserService, INotificationServic
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should have constructor with injected dependencies
-        var constructorSource = result.GetConstructorSource("UserNotificationService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("public UserNotificationService(ILogger logger)", constructorSource.Content);
-        Assert.Contains("_logger = logger", constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("UserNotificationService");
+        constructorSource.Content.Should().Contain("public UserNotificationService(ILogger logger)");
+        constructorSource.Content.Should().Contain("_logger = logger");
 
         // Should register all interfaces separately
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains(
-            "services.AddScoped<global::Test.UserNotificationService, global::Test.UserNotificationService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IUserService, global::Test.UserNotificationService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.INotificationService, global::Test.UserNotificationService>",
-            registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.UserNotificationService, global::Test.UserNotificationService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IUserService, global::Test.UserNotificationService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.INotificationService, global::Test.UserNotificationService>");
     }
 
     [Fact]
@@ -1079,28 +1045,27 @@ public partial class DerivedService : BaseService, ISpecialService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // BaseService should register with InstanceSharing.Shared pattern
-        Assert.Contains("services.AddScoped<global::Test.BaseService, global::Test.BaseService>",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IService>(provider => provider.GetRequiredService<global::Test.BaseService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.BaseService, global::Test.BaseService>");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IService>(provider => provider.GetRequiredService<global::Test.BaseService>())");
 
         // DerivedService should register with InstanceSharing.Shared pattern
-        Assert.Contains("services.AddScoped<global::Test.DerivedService, global::Test.DerivedService>",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.ISpecialService>(provider => provider.GetRequiredService<global::Test.DerivedService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.DerivedService, global::Test.DerivedService>");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.ISpecialService>(provider => provider.GetRequiredService<global::Test.DerivedService>())");
         // Note: IService from base class should also be registered for derived class with factory pattern
-        Assert.Contains(
-            "services.AddScoped<global::Test.IService>(provider => provider.GetRequiredService<global::Test.DerivedService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IService>(provider => provider.GetRequiredService<global::Test.DerivedService>())");
     }
 
     #endregion
@@ -1127,19 +1092,18 @@ public partial class UserService : IUserService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should work but potentially have a warning about using RegisterAsAll with single interface
         var warnings = result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Warning).ToList();
         // Note: Currently no specific warning for single interface RegisterAsAll usage
         // This is acceptable behavior - future enhancement could add IOC010 diagnostic
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("services.AddScoped<global::Test.UserService, global::Test.UserService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IUserService, global::Test.UserService>",
-            registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.UserService, global::Test.UserService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IUserService, global::Test.UserService>");
     }
 
     [Fact]
@@ -1165,28 +1129,50 @@ public partial class UserService : IUserService, INotificationService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should have warning about skipping non-implemented interface
         var ioc009Diagnostics = result.GetDiagnosticsByCode("IOC009");
-        Assert.NotEmpty(ioc009Diagnostics);
+        ioc009Diagnostics.Should().NotBeEmpty();
 
         // Validate the diagnostic message contains relevant context
-        Assert.All(ioc009Diagnostics, d =>
+        ioc009Diagnostics.Should().AllSatisfy(d =>
         {
-            Assert.Equal(DiagnosticSeverity.Warning, d.Severity);
+            d.Severity.Should().Be(DiagnosticSeverity.Warning);
             var message = d.GetMessage();
-            Assert.Contains("INonImplemented", message);
+            message.Should().Contain("INonImplemented");
         });
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("services.AddScoped<global::Test.UserService, global::Test.UserService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IUserService, global::Test.UserService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.INotificationService, global::Test.UserService>",
-            registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.UserService, global::Test.UserService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IUserService, global::Test.UserService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.INotificationService, global::Test.UserService>");
+    }
+
+    [Fact]
+    public void SkipRegistration_WithDirectOnlyRegisterAsAll_GeneratesIOC038()
+    {
+        var source = @"
+using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
+
+namespace Test;
+
+public interface IUserService { }
+[RegisterAsAll(RegistrationMode.DirectOnly)]
+[SkipRegistration<IUserService>]
+public partial class DirectOnlyService : IUserService
+{
+}
+";
+
+        var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+        var diagnostics = result.GetDiagnosticsByCode("IOC038");
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Warning);
     }
 
     [Fact]
@@ -1218,7 +1204,7 @@ public partial class UserService : IUserService, INotificationService
         // When using Exclusionary mode but skipping all interfaces, there's nothing to register
         // So the generator correctly doesn't generate any registration file
         var registrationSource = result.GetServiceRegistrationSource();
-        Assert.Null(registrationSource);
+        registrationSource.Should().BeNull();
 
         // The test passes - this edge case is handled correctly by generating no registrations
     }
@@ -1249,17 +1235,16 @@ public partial class UserService : IUserService
 
         // Assert - With intelligent inference, this should work without IOC004 diagnostic
         var ioc004Diagnostics = result.GetDiagnosticsByCode("IOC004");
-        Assert.Empty(ioc004Diagnostics);
+        ioc004Diagnostics.Should().BeEmpty();
 
         // Should generate service registrations
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should register concrete class and all interfaces with separate instances
-        Assert.Contains("services.AddScoped<global::Test.UserService, global::Test.UserService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IUserService, global::Test.UserService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.UserService, global::Test.UserService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IUserService, global::Test.UserService>");
     }
 
     [Fact]
@@ -1281,21 +1266,21 @@ public partial class UserService : IUserService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // With intelligent inference, IOC005 diagnostic was removed
         var ioc005Diagnostics = result.GetDiagnosticsByCode("IOC005");
-        Assert.Empty(ioc005Diagnostics);
+        ioc005Diagnostics.Should().BeEmpty();
 
         // Should generate registration based on intelligent inference
-        var registrationSource = result.GetServiceRegistrationSource();
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // With SkipRegistration without RegisterAsAll, the generator might not produce any registrations
         // since SkipRegistration typically means "don't register this interface"
         if (registrationSource != null)
             // If registrations are generated, check they are correct
-            Assert.Contains("services.AddScoped<global::Test.UserService, global::Test.UserService>",
-                registrationSource.Content);
+            registrationSource.Content.Should()
+                .Contain("services.AddScoped<global::Test.UserService, global::Test.UserService>");
         // The IUserService interface might be skipped due to SkipRegistration
         // It's valid for SkipRegistration to result in no registrations
         // This indicates the generator correctly interpreted the SkipRegistration hint
@@ -1334,20 +1319,19 @@ public partial class MegaInterfaceService : IService01, IService02, IService03, 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should register concrete type and all 10 interfaces
-        Assert.Contains("services.AddScoped<global::Test.MegaInterfaceService, global::Test.MegaInterfaceService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.MegaInterfaceService, global::Test.MegaInterfaceService>");
         for (var i = 1; i <= 10; i++)
-            Assert.Contains($"AddScoped<global::Test.IService{i:D2}, global::Test.MegaInterfaceService>",
-                registrationSource.Content);
+            registrationSource.Content.Should()
+                .Contain($"AddScoped<global::Test.IService{i:D2}, global::Test.MegaInterfaceService>");
 
         // Performance check - should generate reasonable amount of code
-        Assert.True(registrationSource.Content.Length < 50000, "Generated code should be reasonable in size");
+        (registrationSource.Content.Length < 50000).Should().BeTrue("Generated code should be reasonable in size");
     }
 
     [Fact]
@@ -1377,23 +1361,22 @@ public partial class MaxSkipService : IService1, IService2, IService3, IService4
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should register concrete type and only non-skipped interfaces
-        Assert.Contains("services.AddScoped<global::Test.MaxSkipService, global::Test.MaxSkipService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IService6, global::Test.MaxSkipService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IService7, global::Test.MaxSkipService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.MaxSkipService, global::Test.MaxSkipService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IService6, global::Test.MaxSkipService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IService7, global::Test.MaxSkipService>");
 
         // Should NOT register skipped interfaces
         for (var i = 1; i <= 5; i++)
-            Assert.DoesNotContain($"AddScoped<global::Test.IService{i}, global::Test.MaxSkipService>",
-                registrationSource.Content);
+            registrationSource.Content.Should()
+                .NotContain($"AddScoped<global::Test.IService{i}, global::Test.MaxSkipService>");
     }
 
     #endregion
@@ -1422,20 +1405,19 @@ public partial class NestedGenericService : IRepository<List<string>>, IComplexR
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // NestedGenericService uses InstanceSharing.Shared, so should use factory pattern
-        Assert.Contains("services.AddScoped<global::Test.NestedGenericService, global::Test.NestedGenericService>",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IRepository<List<string>>>(provider => provider.GetRequiredService<global::Test.NestedGenericService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IComplexRepository<Dictionary<string, int>>>(provider => provider.GetRequiredService<global::Test.NestedGenericService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.NestedGenericService, global::Test.NestedGenericService>");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IRepository<List<string>>>(provider => provider.GetRequiredService<global::Test.NestedGenericService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IComplexRepository<Dictionary<string, int>>>(provider => provider.GetRequiredService<global::Test.NestedGenericService>())");
     }
 
     [Fact]
@@ -1461,19 +1443,18 @@ public partial class ConstrainedService : IConstrainedRepository<TestClass>, IVa
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should register with correct generic constraints
-        Assert.Contains("services.AddScoped<global::Test.ConstrainedService, global::Test.ConstrainedService>",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IConstrainedRepository<global::Test.TestClass>, global::Test.ConstrainedService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IValueRepository<int>, global::Test.ConstrainedService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.ConstrainedService, global::Test.ConstrainedService>");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IConstrainedRepository<global::Test.TestClass>, global::Test.ConstrainedService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IValueRepository<int>, global::Test.ConstrainedService>");
     }
 
     [Fact]
@@ -1497,21 +1478,20 @@ public partial class MultiGenericService : IMapper<string, int>, IConverter<byte
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should handle multiple generic parameters correctly with shared instance pattern (factory lambda)
         // For shared instances, concrete class uses direct registration, interfaces use factory lambdas
-        Assert.Contains("services.AddScoped<global::Test.MultiGenericService, global::Test.MultiGenericService>",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IMapper<string, int>>(provider => provider.GetRequiredService<global::Test.MultiGenericService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IConverter<byte[], string, object>>(provider => provider.GetRequiredService<global::Test.MultiGenericService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.MultiGenericService, global::Test.MultiGenericService>");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IMapper<string, int>>(provider => provider.GetRequiredService<global::Test.MultiGenericService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IConverter<byte[], string, object>>(provider => provider.GetRequiredService<global::Test.MultiGenericService>())");
     }
 
     #endregion
@@ -1544,24 +1524,23 @@ public partial class DerivedService : BaseService, IDerivedService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Base service should use RegisterAsAll behavior with InstanceSharing.Shared pattern
-        Assert.Contains("services.AddScoped<global::Test.BaseService, global::Test.BaseService>",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IBaseService>(provider => provider.GetRequiredService<global::Test.BaseService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.BaseService, global::Test.BaseService>");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IBaseService>(provider => provider.GetRequiredService<global::Test.BaseService>())");
 
         // Derived service should use standard behavior (interface → implementation)
-        Assert.Contains("services.AddScoped<global::Test.IDerivedService, global::Test.DerivedService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IDerivedService, global::Test.DerivedService>");
         // Derived should also handle inherited interface normally
-        Assert.Contains("services.AddScoped<global::Test.IBaseService, global::Test.DerivedService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IBaseService, global::Test.DerivedService>");
     }
 
     [Fact]
@@ -1589,24 +1568,23 @@ public partial class SeparateService : ISharedService, ISpecialService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Each service should maintain its own configuration
         // SharedService with InstanceSharing.Shared should use factory pattern for interfaces
-        Assert.Contains("services.AddScoped<global::Test.SharedService, global::Test.SharedService>",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.ISharedService>(provider => provider.GetRequiredService<global::Test.SharedService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.SharedService, global::Test.SharedService>");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.ISharedService>(provider => provider.GetRequiredService<global::Test.SharedService>())");
 
         // SeparateService with direct registration
-        Assert.Contains("services.AddScoped<global::Test.ISharedService, global::Test.SeparateService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.ISpecialService, global::Test.SeparateService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.ISharedService, global::Test.SeparateService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.ISpecialService, global::Test.SeparateService>");
     }
 
     [Fact]
@@ -1637,26 +1615,25 @@ public partial class ConcreteImpl : AbstractBase, IService2, IService3
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // ConcreteImpl uses InstanceSharing.Shared, so should use factory pattern
-        Assert.Contains("services.AddScoped<global::Test.ConcreteImpl, global::Test.ConcreteImpl>",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IService1>(provider => provider.GetRequiredService<global::Test.ConcreteImpl>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IService3>(provider => provider.GetRequiredService<global::Test.ConcreteImpl>())",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.ConcreteImpl, global::Test.ConcreteImpl>");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IService1>(provider => provider.GetRequiredService<global::Test.ConcreteImpl>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IService3>(provider => provider.GetRequiredService<global::Test.ConcreteImpl>())");
 
         // Should NOT register skipped interface
-        Assert.DoesNotContain("AddScoped<IService2>", registrationSource.Content);
+        registrationSource.Content.Should().NotContain("AddScoped<IService2>");
 
         // Should NOT register abstract base
-        Assert.DoesNotContain("AddScoped<AbstractBase", registrationSource.Content);
+        registrationSource.Content.Should().NotContain("AddScoped<AbstractBase");
     }
 
     #endregion
@@ -1697,21 +1674,20 @@ namespace Test.Implementation
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should handle interfaces from different namespaces
-        Assert.Contains(
-            "services.AddScoped<global::Test.Implementation.CrossNamespaceService, global::Test.Implementation.CrossNamespaceService>",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.Services.IUserService, global::Test.Implementation.CrossNamespaceService>",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.Notifications.INotificationService, global::Test.Implementation.CrossNamespaceService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.Implementation.CrossNamespaceService, global::Test.Implementation.CrossNamespaceService>");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.Services.IUserService, global::Test.Implementation.CrossNamespaceService>");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.Notifications.INotificationService, global::Test.Implementation.CrossNamespaceService>");
     }
 
     [Fact]
@@ -1742,20 +1718,19 @@ public partial class PartialService : IService2
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // PartialService uses InstanceSharing.Shared, so should use factory pattern  
-        Assert.Contains("services.AddScoped<global::Test.PartialService, global::Test.PartialService>",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IService1>(provider => provider.GetRequiredService<global::Test.PartialService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IService2>(provider => provider.GetRequiredService<global::Test.PartialService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.PartialService, global::Test.PartialService>");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IService1>(provider => provider.GetRequiredService<global::Test.PartialService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IService2>(provider => provider.GetRequiredService<global::Test.PartialService>())");
     }
 
     #endregion
@@ -1786,34 +1761,32 @@ public partial class SharedInstanceService : IService1, IService2, IService3
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Validate shared instance pattern: concrete registered normally, interfaces use factory
         // CRITICAL FIX: Services with explicit lifetime attributes ([Singleton]) use single-parameter form for concrete registration
-        Assert.Contains("services.AddSingleton<global::Test.SharedInstanceService>();",
-            registrationSource.Content);
+        registrationSource.Content.Should().Contain("services.AddSingleton<global::Test.SharedInstanceService>();");
 
         // All interfaces should resolve to the same instance via factory
-        Assert.Contains(
-            "services.AddSingleton<global::Test.IService1>(provider => provider.GetRequiredService<global::Test.SharedInstanceService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddSingleton<global::Test.IService2>(provider => provider.GetRequiredService<global::Test.SharedInstanceService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddSingleton<global::Test.IService3>(provider => provider.GetRequiredService<global::Test.SharedInstanceService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddSingleton<global::Test.IService1>(provider => provider.GetRequiredService<global::Test.SharedInstanceService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddSingleton<global::Test.IService2>(provider => provider.GetRequiredService<global::Test.SharedInstanceService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddSingleton<global::Test.IService3>(provider => provider.GetRequiredService<global::Test.SharedInstanceService>())");
 
         // Should NOT have direct interface-to-implementation registrations
-        Assert.DoesNotContain("AddSingleton<global::Test.IService1, global::Test.SharedInstanceService>",
-            registrationSource.Content);
-        Assert.DoesNotContain("AddSingleton<global::Test.IService2, global::Test.SharedInstanceService>",
-            registrationSource.Content);
-        Assert.DoesNotContain("AddSingleton<global::Test.IService3, global::Test.SharedInstanceService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .NotContain("AddSingleton<global::Test.IService1, global::Test.SharedInstanceService>");
+        registrationSource.Content.Should()
+            .NotContain("AddSingleton<global::Test.IService2, global::Test.SharedInstanceService>");
+        registrationSource.Content.Should()
+            .NotContain("AddSingleton<global::Test.IService3, global::Test.SharedInstanceService>");
     }
 
     [Fact]
@@ -1840,24 +1813,22 @@ public partial class SeparateInstanceService : IService1, IService2, IService3
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Validate separate instance pattern: each registration creates new instance
-        Assert.Contains("services.AddTransient<global::Test.SeparateInstanceService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddTransient<global::Test.IService1, global::Test.SeparateInstanceService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddTransient<global::Test.IService2, global::Test.SeparateInstanceService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddTransient<global::Test.IService3, global::Test.SeparateInstanceService>",
-            registrationSource.Content);
+        registrationSource.Content.Should().Contain("services.AddTransient<global::Test.SeparateInstanceService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddTransient<global::Test.IService1, global::Test.SeparateInstanceService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddTransient<global::Test.IService2, global::Test.SeparateInstanceService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddTransient<global::Test.IService3, global::Test.SeparateInstanceService>");
 
         // Should NOT have factory-based registrations
-        Assert.DoesNotContain("provider => provider.GetRequiredService<global::Test.SeparateInstanceService>()",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .NotContain("provider => provider.GetRequiredService<global::Test.SeparateInstanceService>()");
     }
 
     #endregion
@@ -1889,23 +1860,22 @@ public partial class FactoryService : IService, IServiceFactory, IFactory<IConfi
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should handle factory patterns correctly with shared instances
-        Assert.Contains("services.AddScoped<global::Test.FactoryService, global::Test.FactoryService>",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IService>(provider => provider.GetRequiredService<global::Test.FactoryService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IServiceFactory>(provider => provider.GetRequiredService<global::Test.FactoryService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IFactory<global::Test.IConfigurableService>>(provider => provider.GetRequiredService<global::Test.FactoryService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.FactoryService, global::Test.FactoryService>");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IService>(provider => provider.GetRequiredService<global::Test.FactoryService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IServiceFactory>(provider => provider.GetRequiredService<global::Test.FactoryService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IFactory<global::Test.IConfigurableService>>(provider => provider.GetRequiredService<global::Test.FactoryService>())");
     }
 
     [Fact]
@@ -1972,60 +1942,57 @@ public partial class NotificationService : INotificationService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Validate DirectOnly service (only concrete type registered)
-        Assert.Contains("services.AddSingleton<global::Test.DirectOnlyService>", registrationSource.Content);
-        Assert.DoesNotContain("AddSingleton<global::Test.IUser, global::Test.DirectOnlyService>",
-            registrationSource.Content);
-        Assert.DoesNotContain("AddSingleton<global::Test.IRepository<string>, global::Test.DirectOnlyService>",
-            registrationSource.Content);
+        registrationSource.Content.Should().Contain("services.AddSingleton<global::Test.DirectOnlyService>");
+        registrationSource.Content.Should()
+            .NotContain("AddSingleton<global::Test.IUser, global::Test.DirectOnlyService>");
+        registrationSource.Content.Should()
+            .NotContain("AddSingleton<global::Test.IRepository<string>, global::Test.DirectOnlyService>");
 
         // Validate Exclusionary service (interfaces only, not skipped ones)
         // ExclusionaryService uses InstanceSharing.Shared, so should use factory pattern
-        Assert.Contains("services.AddScoped<global::Test.ExclusionaryService>", registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IValidator<int>>(provider => provider.GetRequiredService<global::Test.ExclusionaryService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.INotificationService>(provider => provider.GetRequiredService<global::Test.ExclusionaryService>())",
-            registrationSource.Content);
-        Assert.DoesNotContain("AddScoped<ISkippedInterface1>", registrationSource.Content);
-        Assert.DoesNotContain("AddScoped<ISkippedInterface2>", registrationSource.Content);
+        registrationSource.Content.Should().Contain("services.AddScoped<global::Test.ExclusionaryService>");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IValidator<int>>(provider => provider.GetRequiredService<global::Test.ExclusionaryService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.INotificationService>(provider => provider.GetRequiredService<global::Test.ExclusionaryService>())");
+        registrationSource.Content.Should().NotContain("AddScoped<ISkippedInterface1>");
+        registrationSource.Content.Should().NotContain("AddScoped<ISkippedInterface2>");
 
         // Validate All mode service (concrete + all interfaces, shared instances)
-        Assert.Contains("services.AddTransient<global::Test.AllModeService>", registrationSource.Content);
-        Assert.Contains(
-            "services.AddTransient<global::Test.IRepository<byte[]>>(provider => provider.GetRequiredService<global::Test.AllModeService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddTransient<global::Test.IValidator<string>>(provider => provider.GetRequiredService<global::Test.AllModeService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should().Contain("services.AddTransient<global::Test.AllModeService>");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddTransient<global::Test.IRepository<byte[]>>(provider => provider.GetRequiredService<global::Test.AllModeService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddTransient<global::Test.IValidator<string>>(provider => provider.GetRequiredService<global::Test.AllModeService>())");
 
         // Validate supporting services
-        Assert.Contains("services.AddScoped<global::Test.ILoggingService, global::Test.LoggingService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.INotificationService, global::Test.NotificationService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.ILoggingService, global::Test.LoggingService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.INotificationService, global::Test.NotificationService>");
 
         // Validate constructors are generated correctly
-        var directConstructor = result.GetConstructorSource("DirectOnlyService");
-        Assert.NotNull(directConstructor);
-        Assert.Contains("public DirectOnlyService(ILoggingService loggingService)", directConstructor.Content);
+        var directConstructor = result.GetRequiredConstructorSource("DirectOnlyService");
+        directConstructor.Content.Should().Contain("public DirectOnlyService(ILoggingService loggingService)");
 
-        var allModeConstructor = result.GetConstructorSource("AllModeService");
-        Assert.NotNull(allModeConstructor);
-        Assert.Contains(
-            "public AllModeService(ILoggingService loggingService, IExternalDep external, IEnumerable<INotificationService> notifications)",
-            allModeConstructor.Content);
+        var allModeConstructor = result.GetRequiredConstructorSource("AllModeService");
+        allModeConstructor.Content.Should()
+            .Contain(
+                "public AllModeService(ILoggingService loggingService, IExternalDep external, IEnumerable<INotificationService> notifications)");
 
         // No diagnostics for external dependencies due to ExternalService attribute
         var ioc001Diagnostics = result.GetDiagnosticsByCode("IOC001");
         var allModeServiceDiagnostics = ioc001Diagnostics.Where(d => d.GetMessage().Contains("AllModeService"));
-        Assert.Empty(allModeServiceDiagnostics);
+        allModeServiceDiagnostics.Should().BeEmpty();
     }
 
     #endregion
@@ -2069,25 +2036,23 @@ public partial class NotificationManager
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // All implementations should be registered
-        Assert.Contains("services.AddScoped<global::Test.INotificationService, global::Test.EmailService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.INotificationService, global::Test.SmsService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.INotificationService, global::Test.PushService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.INotificationService, global::Test.EmailService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.INotificationService, global::Test.SmsService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.INotificationService, global::Test.PushService>");
 
         // Constructor should accept IEnumerable<INotificationService>
-        var constructorSource = result.GetConstructorSource("NotificationManager");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("public NotificationManager(IEnumerable<INotificationService> services)",
-            constructorSource.Content);
-        Assert.Contains("_services = services", constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("NotificationManager");
+        constructorSource.Content.Should()
+            .Contain("public NotificationManager(IEnumerable<INotificationService> services)");
+        constructorSource.Content.Should().Contain("_services = services");
     }
 
     [Fact]
@@ -2113,20 +2078,18 @@ public partial class ServiceWithEmptyDependency
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should not contain any IMissingService registrations
-        Assert.DoesNotContain("AddScoped<IMissingService", registrationSource.Content);
+        registrationSource.Content.Should().NotContain("AddScoped<IMissingService");
 
         // Constructor should still accept IEnumerable<IMissingService>
-        var constructorSource = result.GetConstructorSource("ServiceWithEmptyDependency");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("public ServiceWithEmptyDependency(IEnumerable<IMissingService> services)",
-            constructorSource.Content);
-        Assert.Contains("_services = services", constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("ServiceWithEmptyDependency");
+        constructorSource.Content.Should()
+            .Contain("public ServiceWithEmptyDependency(IEnumerable<IMissingService> services)");
+        constructorSource.Content.Should().Contain("_services = services");
     }
 
     [Fact]
@@ -2158,19 +2121,17 @@ public partial class ConsumerService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Single implementation should be registered
-        Assert.Contains("services.AddScoped<global::Test.IUniqueService, global::Test.OnlyImplementation>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IUniqueService, global::Test.OnlyImplementation>");
 
         // Constructor should accept IEnumerable<IUniqueService>
-        var constructorSource = result.GetConstructorSource("ConsumerService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("public ConsumerService(IEnumerable<IUniqueService> services)", constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("ConsumerService");
+        constructorSource.Content.Should().Contain("public ConsumerService(IEnumerable<IUniqueService> services)");
     }
 
     [Fact]
@@ -2219,38 +2180,36 @@ public partial class ComplexService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Validators
-        Assert.Contains("services.AddScoped<global::Test.IValidator, global::Test.ValidationService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IValidator, global::Test.AuditValidator>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IValidator, global::Test.ValidationService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IValidator, global::Test.AuditValidator>");
 
         // Processors
-        Assert.Contains("services.AddScoped<global::Test.IProcessor, global::Test.DataProcessor>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IProcessor, global::Test.FileProcessor>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IProcessor, global::Test.BatchProcessor>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IProcessor, global::Test.DataProcessor>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IProcessor, global::Test.FileProcessor>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IProcessor, global::Test.BatchProcessor>");
 
         // Loggers
-        Assert.Contains("services.AddScoped<global::Test.ILogger, global::Test.ConsoleLogger>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.ILogger, global::Test.ConsoleLogger>");
 
         // Constructor should have all three collections
-        var constructorSource = result.GetConstructorSource("ComplexService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains(
-            "public ComplexService(IEnumerable<IValidator> validators, IEnumerable<IProcessor> processors, IEnumerable<ILogger> loggers)",
-            constructorSource.Content);
-        Assert.Contains("_validators = validators", constructorSource.Content);
-        Assert.Contains("_processors = processors", constructorSource.Content);
-        Assert.Contains("_loggers = loggers", constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("ComplexService");
+        constructorSource.Content.Should()
+            .Contain(
+                "public ComplexService(IEnumerable<IValidator> validators, IEnumerable<IProcessor> processors, IEnumerable<ILogger> loggers)");
+        constructorSource.Content.Should().Contain("_validators = validators");
+        constructorSource.Content.Should().Contain("_processors = processors");
+        constructorSource.Content.Should().Contain("_loggers = loggers");
     }
 
     [Fact]
@@ -2285,28 +2244,25 @@ public partial class NotificationCoordinator
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Both services should register for INotificationService
-        Assert.Contains("services.AddScoped<global::Test.INotificationService, global::Test.StandardNotification>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.INotificationService, global::Test.EmailNotificationService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.INotificationService, global::Test.StandardNotification>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.INotificationService, global::Test.EmailNotificationService>");
 
         // RegisterAsAll should also register for IEmailService
-        Assert.Contains("services.AddScoped<global::Test.IEmailService, global::Test.EmailNotificationService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.EmailNotificationService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IEmailService, global::Test.EmailNotificationService>");
+        registrationSource.Content.Should().Contain("services.AddScoped<global::Test.EmailNotificationService>");
 
         // Constructor should collect both implementations
-        var constructorSource = result.GetConstructorSource("NotificationCoordinator");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("public NotificationCoordinator(IEnumerable<INotificationService> notifications)",
-            constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("NotificationCoordinator");
+        constructorSource.Content.Should()
+            .Contain("public NotificationCoordinator(IEnumerable<INotificationService> notifications)");
     }
 
     [Fact]
@@ -2346,38 +2302,36 @@ public partial class ServiceConsumer
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // All services should register for IService
-        Assert.Contains("services.AddScoped<global::Test.IService, global::Test.StandardService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IService, global::Test.StandardService>");
 
         // SharedMultiService uses InstanceSharing.Shared, so it should use factory pattern
-        Assert.Contains("services.AddScoped<global::Test.SharedMultiService>", registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.IService>(provider => provider.GetRequiredService<global::Test.SharedMultiService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should().Contain("services.AddScoped<global::Test.SharedMultiService>");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IService>(provider => provider.GetRequiredService<global::Test.SharedMultiService>())");
 
         // SeparateMultiService uses InstanceSharing.Separate, so direct registration
-        Assert.Contains("services.AddScoped<global::Test.IService, global::Test.SeparateMultiService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IService, global::Test.SeparateMultiService>");
 
         // Multi-services should also register for ISpecialService
-        Assert.Contains(
-            "services.AddScoped<global::Test.ISpecialService>(provider => provider.GetRequiredService<global::Test.SharedMultiService>())",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.ISpecialService, global::Test.SeparateMultiService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.ISpecialService>(provider => provider.GetRequiredService<global::Test.SharedMultiService>())");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.ISpecialService, global::Test.SeparateMultiService>");
 
         // Constructors should handle collections correctly
-        var constructorSource = result.GetConstructorSource("ServiceConsumer");
-        Assert.NotNull(constructorSource);
-        Assert.Contains(
-            "public ServiceConsumer(IEnumerable<IService> services, IEnumerable<ISpecialService> specialServices)",
-            constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("ServiceConsumer");
+        constructorSource.Content.Should()
+            .Contain(
+                "public ServiceConsumer(IEnumerable<IService> services, IEnumerable<ISpecialService> specialServices)");
     }
 
     [Fact]
@@ -2412,27 +2366,24 @@ public partial class CollectionConsumer
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Shared services should use factory pattern for interface registration
-        Assert.Contains("services.AddSingleton<global::Test.SharedSingletonService>",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddSingleton<global::Test.ISharedService>(provider => provider.GetRequiredService<global::Test.SharedSingletonService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should().Contain("services.AddSingleton<global::Test.SharedSingletonService>");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddSingleton<global::Test.ISharedService>(provider => provider.GetRequiredService<global::Test.SharedSingletonService>())");
 
-        Assert.Contains("services.AddScoped<global::Test.SharedScopedService>", registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.ISharedService>(provider => provider.GetRequiredService<global::Test.SharedScopedService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should().Contain("services.AddScoped<global::Test.SharedScopedService>");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.ISharedService>(provider => provider.GetRequiredService<global::Test.SharedScopedService>())");
 
         // Constructor should accept collection
-        var constructorSource = result.GetConstructorSource("CollectionConsumer");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("public CollectionConsumer(IEnumerable<ISharedService> services)", constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("CollectionConsumer");
+        constructorSource.Content.Should().Contain("public CollectionConsumer(IEnumerable<ISharedService> services)");
     }
 
     [Fact]
@@ -2472,28 +2423,27 @@ public partial class UserManager
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // All users should register for IEntity (through inheritance)
-        Assert.Contains("services.AddScoped<global::Test.IEntity, global::Test.BasicUser>", registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IEntity, global::Test.AdminUser>", registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IEntity, global::Test.SuperAdmin>",
-            registrationSource.Content);
+        registrationSource.Content.Should().Contain("services.AddScoped<global::Test.IEntity, global::Test.BasicUser>");
+        registrationSource.Content.Should().Contain("services.AddScoped<global::Test.IEntity, global::Test.AdminUser>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IEntity, global::Test.SuperAdmin>");
 
         // Users should register for IUser
-        Assert.Contains("services.AddScoped<global::Test.IUser, global::Test.BasicUser>", registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IUser, global::Test.AdminUser>", registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IUser, global::Test.SuperAdmin>", registrationSource.Content);
+        registrationSource.Content.Should().Contain("services.AddScoped<global::Test.IUser, global::Test.BasicUser>");
+        registrationSource.Content.Should().Contain("services.AddScoped<global::Test.IUser, global::Test.AdminUser>");
+        registrationSource.Content.Should().Contain("services.AddScoped<global::Test.IUser, global::Test.SuperAdmin>");
 
         // Only admin users should register for IAdminUser
-        Assert.Contains("services.AddScoped<global::Test.IAdminUser, global::Test.AdminUser>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IAdminUser, global::Test.SuperAdmin>",
-            registrationSource.Content);
-        Assert.DoesNotContain("AddScoped<global::Test.IAdminUser, global::Test.BasicUser>", registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IAdminUser, global::Test.AdminUser>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IAdminUser, global::Test.SuperAdmin>");
+        registrationSource.Content.Should().NotContain("AddScoped<global::Test.IAdminUser, global::Test.BasicUser>");
     }
 
     [Fact]
@@ -2534,29 +2484,27 @@ public partial class GenericConsumer
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // String repositories
-        Assert.Contains("services.AddScoped<global::Test.IRepository<string>, global::Test.UserRepository>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IRepository<string>, global::Test.ProductRepository>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IRepository<string>, global::Test.UserRepository>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IRepository<string>, global::Test.ProductRepository>");
 
         // Validators by type
-        Assert.Contains("services.AddScoped<global::Test.IValidator<int>, global::Test.IntValidator>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IValidator<string>, global::Test.StringValidator>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IValidator<int>, global::Test.IntValidator>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IValidator<string>, global::Test.StringValidator>");
 
         // Constructor should handle generic collections
-        var constructorSource = result.GetConstructorSource("GenericConsumer");
-        Assert.NotNull(constructorSource);
-        Assert.Contains(
-            "public GenericConsumer(IEnumerable<IRepository<string>> stringRepositories, IEnumerable<IValidator<int>> intValidators, IEnumerable<IValidator<string>> stringValidators)",
-            constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("GenericConsumer");
+        constructorSource.Content.Should()
+            .Contain(
+                "public GenericConsumer(IEnumerable<IRepository<string>> stringRepositories, IEnumerable<IValidator<int>> intValidators, IEnumerable<IValidator<string>> stringValidators)");
     }
 
     [Fact]
@@ -2584,18 +2532,17 @@ public partial class ExternalConsumer
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should not have diagnostics for missing IExternalDependency implementations
         var ioc001Diagnostics = result.GetDiagnosticsByCode("IOC001");
         var externalServiceDiagnostics = ioc001Diagnostics.Where(d => d.GetMessage().Contains("ExternalConsumer"));
-        Assert.Empty(externalServiceDiagnostics);
+        externalServiceDiagnostics.Should().BeEmpty();
 
         // Constructor should still be generated
-        var constructorSource = result.GetConstructorSource("ExternalConsumer");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("public ExternalConsumer(IEnumerable<IExternalDependency> dependencies)",
-            constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("ExternalConsumer");
+        constructorSource.Content.Should()
+            .Contain("public ExternalConsumer(IEnumerable<IExternalDependency> dependencies)");
     }
 
     [Fact]
@@ -2631,23 +2578,21 @@ public partial class MixedLifetimeConsumer
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Each service should maintain its own lifetime
-        Assert.Contains("services.AddSingleton<global::Test.IService, global::Test.SingletonService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IService, global::Test.ScopedService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddTransient<global::Test.IService, global::Test.TransientService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddSingleton<global::Test.IService, global::Test.SingletonService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.IService, global::Test.ScopedService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddTransient<global::Test.IService, global::Test.TransientService>");
 
         // Constructor should accept collection
-        var constructorSource = result.GetConstructorSource("MixedLifetimeConsumer");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("public MixedLifetimeConsumer(IEnumerable<IService> services)", constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("MixedLifetimeConsumer");
+        constructorSource.Content.Should().Contain("public MixedLifetimeConsumer(IEnumerable<IService> services)");
     }
 
     #endregion

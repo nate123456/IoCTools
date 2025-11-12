@@ -65,35 +65,36 @@ public partial class MemoryCacheService : ICacheService
         var redisConfiguration = SourceGeneratorTestHelper.CreateConfiguration(redisConfigData);
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         var runtimeContext = SourceGeneratorTestHelper.CreateRuntimeContext(result);
         var redisServiceProvider =
             SourceGeneratorTestHelper.BuildServiceProvider(runtimeContext, configuration: redisConfiguration);
 
-        var cacheServiceType = runtimeContext.Assembly.GetType("Test.ICacheService");
-        var redisCacheServiceType = runtimeContext.Assembly.GetType("Test.RedisCacheService");
-        var memoryCacheServiceType = runtimeContext.Assembly.GetType("Test.MemoryCacheService");
-
-        Assert.NotNull(cacheServiceType);
-        Assert.NotNull(redisCacheServiceType);
-        Assert.NotNull(memoryCacheServiceType);
+        var cacheServiceType = runtimeContext.Assembly.GetType("Test.ICacheService") ??
+                               throw new InvalidOperationException("ICacheService type not generated.");
+        var redisCacheServiceType = runtimeContext.Assembly.GetType("Test.RedisCacheService") ??
+                                    throw new InvalidOperationException("RedisCacheService type not generated.");
+        var memoryCacheServiceType = runtimeContext.Assembly.GetType("Test.MemoryCacheService") ??
+                                     throw new InvalidOperationException("MemoryCacheService type not generated.");
 
         var redisCacheService = redisServiceProvider.GetRequiredService(cacheServiceType);
-        Assert.IsType(redisCacheServiceType, redisCacheService);
+        redisCacheService.Should().BeOfType(redisCacheServiceType);
 
-        var getSettingsMethod = redisCacheServiceType.GetMethod("GetSettings");
-        Assert.NotNull(getSettingsMethod);
+        var getSettingsMethod = redisCacheServiceType.GetMethod("GetSettings") ??
+                                throw new InvalidOperationException("GetSettings method missing on RedisCacheService.");
 
-        var settings = getSettingsMethod.Invoke(redisCacheService, null);
-        Assert.NotNull(settings);
+        var settings = getSettingsMethod.Invoke(redisCacheService, null) ??
+                       throw new InvalidOperationException("Expected cache settings instance.");
 
         var settingsType = settings.GetType();
-        var providerProperty = settingsType.GetProperty("Provider");
-        var ttlProperty = settingsType.GetProperty("TTL");
+        var providerProperty = settingsType.GetProperty("Provider") ??
+                               throw new InvalidOperationException("Provider property missing on settings type.");
+        var ttlProperty = settingsType.GetProperty("TTL") ??
+                          throw new InvalidOperationException("TTL property missing on settings type.");
 
-        Assert.Equal("Redis", providerProperty?.GetValue(settings));
-        Assert.Equal(300, ttlProperty?.GetValue(settings));
+        providerProperty.GetValue(settings).Should().Be("Redis");
+        ttlProperty.GetValue(settings).Should().Be(300);
 
         // Test Memory configuration - create new runtime context for different configuration
         var memoryConfigData = new Dictionary<string, string> { { "Cache:Provider", "Memory" } };
@@ -104,13 +105,13 @@ public partial class MemoryCacheService : ICacheService
         var memoryServiceProvider =
             SourceGeneratorTestHelper.BuildServiceProvider(memoryRuntimeContext, configuration: memoryConfiguration);
 
-        var memoryCacheServiceType2 = memoryRuntimeContext.Assembly.GetType("Test.MemoryCacheService");
-        var cacheServiceType2 = memoryRuntimeContext.Assembly.GetType("Test.ICacheService");
-        Assert.NotNull(memoryCacheServiceType2);
-        Assert.NotNull(cacheServiceType2);
+        var memoryCacheServiceType2 = memoryRuntimeContext.Assembly.GetType("Test.MemoryCacheService") ??
+                                      throw new InvalidOperationException("MemoryCacheService type not generated.");
+        var cacheServiceType2 = memoryRuntimeContext.Assembly.GetType("Test.ICacheService") ??
+                                throw new InvalidOperationException("ICacheService type not generated.");
 
         var memoryCacheService = memoryServiceProvider.GetRequiredService(cacheServiceType2);
-        Assert.IsType(memoryCacheServiceType2, memoryCacheService);
+        memoryCacheService.Should().BeOfType(memoryCacheServiceType2);
     }
 
     #endregion
@@ -141,22 +142,22 @@ public partial class ProductionService : ITestService
         });
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         var runtimeContext = SourceGeneratorTestHelper.CreateRuntimeContext(result);
         var serviceProvider = SourceGeneratorTestHelper.BuildServiceProvider(runtimeContext);
 
         // Assert - Service should not be available since condition doesn't match
-        var testServiceType = runtimeContext.Assembly.GetType("Test.ITestService");
-        Assert.NotNull(testServiceType);
+        var testServiceType = runtimeContext.Assembly.GetType("Test.ITestService") ??
+                              throw new InvalidOperationException("ITestService type not generated.");
 
         // ConditionalService should not register when environment doesn't match
-        Assert.Throws<InvalidOperationException>(() =>
-            serviceProvider.GetRequiredService(testServiceType));
+        FluentActions.Invoking(() =>
+            serviceProvider.GetRequiredService(testServiceType)).Should().Throw<InvalidOperationException>();
 
         // Optional resolution should return null
         var optionalService = serviceProvider.GetService(testServiceType);
-        Assert.Null(optionalService);
+        optionalService.Should().BeNull();
     }
 
     #endregion
@@ -220,42 +221,45 @@ public partial class DevelopmentApiService : IApiService
         });
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         var runtimeContext = SourceGeneratorTestHelper.CreateRuntimeContext(result);
         var serviceProvider =
             SourceGeneratorTestHelper.BuildServiceProvider(runtimeContext, configuration: configuration);
 
         // Verify Production service is selected
-        var apiServiceType = runtimeContext.Assembly.GetType("Test.IApiService");
-        var productionApiServiceType = runtimeContext.Assembly.GetType("Test.ProductionApiService");
-
-        Assert.NotNull(apiServiceType);
-        Assert.NotNull(productionApiServiceType);
+        var apiServiceType = runtimeContext.Assembly.GetType("Test.IApiService") ??
+                             throw new InvalidOperationException("IApiService type not generated.");
+        var productionApiServiceType = runtimeContext.Assembly.GetType("Test.ProductionApiService") ??
+                                       throw new InvalidOperationException("ProductionApiService type not generated.");
 
         var apiService = serviceProvider.GetRequiredService(apiServiceType);
-        Assert.IsType(productionApiServiceType, apiService);
+        apiService.Should().BeOfType(productionApiServiceType);
 
         // Verify configuration injection works with ConditionalService
-        var getSettingsMethod = productionApiServiceType.GetMethod("GetSettings");
-        var getEnvironmentMethod = productionApiServiceType.GetMethod("GetEnvironment");
+        var getSettingsMethod = productionApiServiceType.GetMethod("GetSettings") ??
+                                throw new InvalidOperationException("GetSettings missing on ProductionApiService.");
+        var getEnvironmentMethod = productionApiServiceType.GetMethod("GetEnvironment") ??
+                                   throw new InvalidOperationException(
+                                       "GetEnvironment missing on ProductionApiService.");
 
-        Assert.NotNull(getSettingsMethod);
-        Assert.NotNull(getEnvironmentMethod);
+        getEnvironmentMethod.Invoke(apiService, null).Should().Be("Production");
 
-        Assert.Equal("Production", getEnvironmentMethod.Invoke(apiService, null));
-
-        var settings = getSettingsMethod.Invoke(apiService, null);
-        Assert.NotNull(settings);
+        var settings = getSettingsMethod.Invoke(apiService, null) ??
+                       throw new InvalidOperationException("Expected configuration settings instance.");
 
         var settingsType = settings.GetType();
-        var urlProperty = settingsType.GetProperty("Url");
-        var apiKeyProperty = settingsType.GetProperty("ApiKey");
-        var enableLoggingProperty = settingsType.GetProperty("EnableLogging");
+        var urlProperty = settingsType.GetProperty("Url") ??
+                          throw new InvalidOperationException("Url property missing on settings type.");
+        var apiKeyProperty = settingsType.GetProperty("ApiKey") ??
+                             throw new InvalidOperationException("ApiKey property missing on settings type.");
+        var enableLoggingProperty = settingsType.GetProperty("EnableLogging") ??
+                                    throw new InvalidOperationException(
+                                        "EnableLogging property missing on settings type.");
 
-        Assert.Equal("https://api.production.com", urlProperty?.GetValue(settings));
-        Assert.Equal("prod-key-12345", apiKeyProperty?.GetValue(settings));
-        Assert.True((bool?)enableLoggingProperty?.GetValue(settings));
+        urlProperty.GetValue(settings).Should().Be("https://api.production.com");
+        apiKeyProperty.GetValue(settings).Should().Be("prod-key-12345");
+        ((bool?)enableLoggingProperty.GetValue(settings)).Should().BeTrue();
     }
 
     #endregion

@@ -56,31 +56,29 @@ public partial class MixedPatternService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - These patterns should work perfectly
-        Assert.False(result.HasErrors,
-            $"Supported patterns failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
+        result.HasErrors.Should()
+            .BeFalse(
+                $"Supported patterns failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
 
         // Verify basic service works
-        var basicConstructor = result.GetConstructorSource("BasicSupportedService");
-        Assert.NotNull(basicConstructor);
+        var basicConstructor = result.GetRequiredConstructorSource("BasicSupportedService");
 
-        Assert.Contains("ITestService service", basicConstructor.Content);
-        Assert.Contains("ILogger<BasicSupportedService> logger", basicConstructor.Content);
-        Assert.Contains("this._service = service;", basicConstructor.Content);
-        Assert.Contains("this._logger = logger;", basicConstructor.Content);
+        basicConstructor.Content.Should().Contain("ITestService service");
+        basicConstructor.Content.Should().Contain("ILogger<BasicSupportedService> logger");
+        basicConstructor.Content.Should().Contain("this._service = service;");
+        basicConstructor.Content.Should().Contain("this._logger = logger;");
 
         // Verify DependsOn alternative works
-        var dependsOnConstructor = result.GetConstructorSource("DependsOnAlternative");
-        Assert.NotNull(dependsOnConstructor);
-        Assert.Contains("ITestService testService", dependsOnConstructor.Content);
-        Assert.Contains("IAnotherService anotherService", dependsOnConstructor.Content);
+        var dependsOnConstructor = result.GetRequiredConstructorSource("DependsOnAlternative");
+        dependsOnConstructor.Content.Should().Contain("ITestService testService");
+        dependsOnConstructor.Content.Should().Contain("IAnotherService anotherService");
 
         // Verify mixed pattern works
-        var mixedConstructor = result.GetConstructorSource("MixedPatternService");
-        Assert.NotNull(mixedConstructor);
+        var mixedConstructor = result.GetRequiredConstructorSource("MixedPatternService");
 
-        Assert.Contains("IAnotherService anotherService", mixedConstructor.Content); // DependsOn first
-        Assert.Contains("ITestService injectField", mixedConstructor.Content); // Inject parameter uses field name
-        Assert.Contains("this._injectField = injectField;", mixedConstructor.Content);
+        mixedConstructor.Content.Should().Contain("IAnotherService anotherService"); // DependsOn first
+        mixedConstructor.Content.Should().Contain("ITestService injectField"); // Inject parameter uses field name
+        mixedConstructor.Content.Should().Contain("this._injectField = injectField;");
     }
 
     [Fact]
@@ -131,7 +129,7 @@ public partial class StaticFieldLimits
         if (complexConstructor != null)
         {
             // Private fields should work (this is supported)
-            Assert.Contains("_privateService", complexConstructor.Content);
+            complexConstructor.Content.Should().Contain("_privateService");
 
             // Document: Complex access modifiers are architectural limits
             // The generator may handle some but not all combinations reliably
@@ -146,15 +144,15 @@ public partial class StaticFieldLimits
         if (staticConstructor != null)
         {
             // Instance fields should work
-            Assert.Contains("ITestService instanceField", staticConstructor.Content);
-            Assert.Contains("this._instanceField = instanceField;", staticConstructor.Content);
+            staticConstructor.Content.Should().Contain("ITestService instanceField");
+            staticConstructor.Content.Should().Contain("this._instanceField = instanceField;");
 
             // Static fields should be ignored (cannot be constructor-injected)
-            Assert.DoesNotContain("staticField", staticConstructor.Content);
+            staticConstructor.Content.Should().NotContain("staticField");
         }
 
         // The key insight: Some patterns work, others don't, users should use alternatives
-        Assert.True(true, "Architectural limits documented - users should use supported patterns or alternatives");
+        true.Should().BeTrue("Architectural limits documented - users should use supported patterns or alternatives");
     }
 
     [Fact]
@@ -212,28 +210,26 @@ public class ManualConstructorService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - All workarounds should work perfectly
-        Assert.False(result.HasErrors,
-            $"Workarounds should work: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
+        result.HasErrors.Should()
+            .BeFalse(
+                $"Workarounds should work: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
 
         // Verify DependsOn workaround
-        var dependsOnWorkaround = result.GetConstructorSource("UsesDependsOnWorkaround");
-        Assert.NotNull(dependsOnWorkaround);
-        Assert.Contains("IComplexDependency complexDependency", dependsOnWorkaround.Content);
-        Assert.Contains("IProtectedDependency protectedDependency", dependsOnWorkaround.Content);
-        Assert.Contains("IInternalDependency internalDependency", dependsOnWorkaround.Content);
+        var dependsOnWorkaround = result.GetRequiredConstructorSource("UsesDependsOnWorkaround");
+        dependsOnWorkaround.Content.Should().Contain("IComplexDependency complexDependency");
+        dependsOnWorkaround.Content.Should().Contain("IProtectedDependency protectedDependency");
+        dependsOnWorkaround.Content.Should().Contain("IInternalDependency internalDependency");
 
         // Verify simplified field access works
-        var simplifiedConstructor = result.GetConstructorSource("SimplifiedFieldAccess");
-        Assert.NotNull(simplifiedConstructor);
-        Assert.Contains("IComplexDependency dependency1", simplifiedConstructor.Content);
-        Assert.Contains("this._dependency1 = dependency1;", simplifiedConstructor.Content);
+        var simplifiedConstructor = result.GetRequiredConstructorSource("SimplifiedFieldAccess");
+        simplifiedConstructor.Content.Should().Contain("IComplexDependency dependency1");
+        simplifiedConstructor.Content.Should().Contain("this._dependency1 = dependency1;");
 
         // Verify service registration includes workarounds
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("UsesDependsOnWorkaround", registrationSource.Content);
-        Assert.Contains("SimplifiedFieldAccess", registrationSource.Content);
-        Assert.Contains("ManualConstructorService", registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should().Contain("UsesDependsOnWorkaround");
+        registrationSource.Content.Should().Contain("SimplifiedFieldAccess");
+        registrationSource.Content.Should().Contain("ManualConstructorService");
     }
 
     [Fact]
@@ -288,18 +284,17 @@ public partial class SimplifiedDerived : SimplifiedBase
         {
             // This could be an architectural limit with complex inheritance + DependsOn
             // Verify service is still registered despite missing constructor
-            var registrationSource = result.GetServiceRegistrationSource();
-            Assert.NotNull(registrationSource);
-            Assert.Contains("SimplifiedDerived", registrationSource.Content);
+            var registrationSource = result.GetRequiredServiceRegistrationSource();
+            registrationSource.Content.Should().Contain("SimplifiedDerived");
 
             // Document this as a potential architectural limit
-            Assert.True(true, "POTENTIAL LIMIT: Multiple inheritance levels with DependsOn attributes");
+            true.Should().BeTrue("POTENTIAL LIMIT: Multiple inheritance levels with DependsOn attributes");
         }
         else
         {
             // If it does work, verify the expected structure
-            Assert.Contains("IBaseService baseService", simplifiedDerived.Content);
-            Assert.Contains("IDerivedService derivedService", simplifiedDerived.Content);
+            simplifiedDerived.Content.Should().Contain("IBaseService baseService");
+            simplifiedDerived.Content.Should().Contain("IDerivedService derivedService");
             // No field assignments since we're not using [Inject] fields
         }
 
@@ -312,7 +307,7 @@ public partial class SimplifiedDerived : SimplifiedBase
         }
 
         // Key message: Use simplified patterns for reliable behavior
-        Assert.True(true, "Inheritance limits documented - prefer simplified patterns");
+        true.Should().BeTrue("Inheritance limits documented - prefer simplified patterns");
     }
 
     [Fact]
@@ -352,33 +347,30 @@ public partial class ControlledPattern
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - These patterns must always work perfectly
-        Assert.False(result.HasErrors,
-            $"Gold standard patterns must work: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
+        result.HasErrors.Should()
+            .BeFalse(
+                $"Gold standard patterns must work: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
 
-        var goldStandardConstructor = result.GetConstructorSource("GoldStandardPattern");
-        var controlledConstructor = result.GetConstructorSource("ControlledPattern");
-
-        Assert.NotNull(goldStandardConstructor);
-        Assert.NotNull(controlledConstructor);
+        var goldStandardConstructor = result.GetConstructorSourceText("GoldStandardPattern");
+        var controlledConstructor = result.GetConstructorSourceText("ControlledPattern");
 
         // Verify gold standard has all fields properly injected
-        Assert.Contains("IService1 service1", goldStandardConstructor.Content);
-        Assert.Contains("IService2 service2", goldStandardConstructor.Content);
-        Assert.Contains("IService3 service3", goldStandardConstructor.Content);
-        Assert.Contains("this._service1 = service1;", goldStandardConstructor.Content);
-        Assert.Contains("this._service2 = service2;", goldStandardConstructor.Content);
-        Assert.Contains("this._service3 = service3;", goldStandardConstructor.Content);
+        goldStandardConstructor.Should().Contain("IService1 service1");
+        goldStandardConstructor.Should().Contain("IService2 service2");
+        goldStandardConstructor.Should().Contain("IService3 service3");
+        goldStandardConstructor.Should().Contain("this._service1 = service1;");
+        goldStandardConstructor.Should().Contain("this._service2 = service2;");
+        goldStandardConstructor.Should().Contain("this._service3 = service3;");
 
         // Verify controlled pattern has proper parameter ordering
-        Assert.Contains("IService1 service1", controlledConstructor.Content);
-        Assert.Contains("IService2 service2", controlledConstructor.Content);
-        Assert.Contains("IService3 service3", controlledConstructor.Content);
+        controlledConstructor.Should().Contain("IService1 service1");
+        controlledConstructor.Should().Contain("IService2 service2");
+        controlledConstructor.Should().Contain("IService3 service3");
 
         // Verify both services are registered
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("GoldStandardPattern", registrationSource.Content);
-        Assert.Contains("ControlledPattern", registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should().Contain("GoldStandardPattern");
+        registrationSource.Content.Should().Contain("ControlledPattern");
     }
 
     [Fact]
@@ -425,12 +417,12 @@ ARCHITECTURAL LIMITS SUMMARY:
 ";
 
         // Assert the documentation exists and is helpful
-        Assert.True(!string.IsNullOrEmpty(architecturalLimitsSummary));
-        Assert.Contains("ARCHITECTURAL LIMITS SUMMARY", architecturalLimitsSummary);
-        Assert.Contains("WORKAROUNDS (ALWAYS WORK)", architecturalLimitsSummary);
-        Assert.Contains("RECOMMENDED MIGRATION", architecturalLimitsSummary);
+        architecturalLimitsSummary.Should().NotBeNullOrEmpty();
+        architecturalLimitsSummary.Should().Contain("ARCHITECTURAL LIMITS SUMMARY");
+        architecturalLimitsSummary.Should().Contain("WORKAROUNDS (ALWAYS WORK)");
+        architecturalLimitsSummary.Should().Contain("RECOMMENDED MIGRATION");
 
         // This test passes to confirm the limits are documented
-        Assert.True(true, "Architectural limits clearly documented for developers");
+        true.Should().BeTrue("Architectural limits clearly documented for developers");
     }
 }

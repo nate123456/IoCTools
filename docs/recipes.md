@@ -21,8 +21,7 @@ public partial class CompositeNotifier : INotifier
 ## Register As Two Interfaces (Shared Instance)
 
 ```csharp
-[Scoped]
-[RegisterAs<IFoo, IBar>(InstanceSharing.Shared)]
+[RegisterAs<IFoo, IBar>(InstanceSharing.Shared)] // Scoped by default
 public partial class FooBar : IFoo, IBar { }
 ```
 
@@ -67,8 +66,7 @@ public partial class CleanupService : BackgroundService
 ## Prefer DependsOn over Inject
 
 ```csharp
-// Preferred — no fields, constructor parameter only
-[Scoped]
+// Preferred — no fields, constructor parameter only (defaults to Scoped)
 public partial class PaymentService : IPaymentService
 {
     [DependsOn<ILogger<PaymentService>>]
@@ -76,9 +74,48 @@ public partial class PaymentService : IPaymentService
 }
 
 // Last resort — field is needed across methods or for explicit naming
-[Scoped]
 public partial class PaymentAuditor
 {
     [Inject] private readonly ILogger<PaymentAuditor> _log; // stored and reused
 }
+
+```
+
+> 💡 **IOC035** enforces this guidance automatically. If your `[Inject]` field is just `_logger` or `_service`, delete it and add `[DependsOn<TDependency>]` so the generator emits the backing field. Keep `[Inject]` only for bespoke names like `_primaryLogger` or when the field must stay mutable.
+
+## Avoid Redundant Attribute Combinations
+
+```csharp
+// ❌ Triggers IOC033 – [Scoped] is redundant because DependsOn already implies a Scoped service
+[Scoped]
+[DependsOn<IMetricsCollector>]
+public partial class RedundantMetricsService : IMetricsService { }
+
+// ✅ Let the default Scoped lifetime kick in automatically
+[DependsOn<IMetricsCollector>]
+public partial class CleanMetricsService : IMetricsService { }
+
+// ❌ Triggers IOC034 – RegisterAsAll already covers every interface
+[RegisterAsAll]
+[RegisterAs<IIntegrationEventService>]
+public partial class ConflictingRegistration : IIntegrationEventService { }
+
+// ✅ Keep only the intent you need
+[RegisterAsAll]
+public partial class AllInterfacesRegistration : IIntegrationEventService, IAuditService { }
+
+// ❌ Triggers IOC036 – multiple lifetime attributes fight each other
+[Scoped]
+[Singleton]
+public partial class ConflictingLifetimeService : IService { }
+
+// ❌ Triggers IOC037 – SkipRegistration overrides the lifetime altogether
+[Scoped]
+[SkipRegistration]
+public partial class ManualRegistrationService : IService { }
+
+// ❌ Triggers IOC038 – SkipRegistration<IService> does nothing when RegisterAsAll is DirectOnly
+[RegisterAsAll(RegistrationMode.DirectOnly)]
+[SkipRegistration<IService>]
+public partial class DirectOnlyService : IService { }
 ```

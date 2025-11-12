@@ -40,29 +40,29 @@ public partial class ConfigurationService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert: Generated constructor should use standard .NET GetValue(key, defaultValue) pattern
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(e => e.ToString()))}");
+        result.HasErrors.Should()
+            .BeFalse(
+                $"Compilation errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(e => e.ToString()))}");
 
-        var constructorSource = result.GetConstructorSource("ConfigurationService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("ConfigurationService");
 
         var generatedCode = constructorSource.Content;
 
-        Assert.Contains("Cache:ExpirationMinutes", generatedCode);
-        Assert.Contains("Features:EnableLogging", generatedCode);
+        generatedCode.Should().Contain("Cache:ExpirationMinutes");
+        generatedCode.Should().Contain("Features:EnableLogging");
 
         // Should use standard .NET GetValue overload with default values (NOT null-coalescing)
         // GetValue<int>("key", defaultValue) is the correct .NET pattern for value types
-        Assert.Contains("GetValue<int>(\"Cache:ExpirationMinutes\", 60)", generatedCode);
-        Assert.Contains("GetValue<bool>(\"Features:EnableLogging\", true)", generatedCode);
+        generatedCode.Should().Contain("GetValue<int>(\"Cache:ExpirationMinutes\", 60)");
+        generatedCode.Should().Contain("GetValue<bool>(\"Features:EnableLogging\", true)");
 
         // Should NOT use null-coalescing operator for value types (doesn't work with GetValue<T>)
-        Assert.DoesNotContain("?? 60", generatedCode);
-        Assert.DoesNotContain("?? true", generatedCode);
+        generatedCode.Should().NotContain("?? 60");
+        generatedCode.Should().NotContain("?? true");
 
         // Should NOT use null-forgiving operator for fields with defaults
-        Assert.DoesNotContain("GetValue<int>(\"Cache:ExpirationMinutes\")!", generatedCode);
-        Assert.DoesNotContain("GetValue<bool>(\"Features:EnableLogging\")!", generatedCode);
+        generatedCode.Should().NotContain("GetValue<int>(\"Cache:ExpirationMinutes\")!");
+        generatedCode.Should().NotContain("GetValue<bool>(\"Features:EnableLogging\")!");
     }
 
     [Fact]
@@ -89,27 +89,27 @@ public partial class DatabaseService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert: Required config should generate proper validation using .NET patterns
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(e => e.ToString()))}");
+        result.HasErrors.Should()
+            .BeFalse(
+                $"Compilation errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(e => e.ToString()))}");
 
-        var constructorSource = result.GetConstructorSource("DatabaseService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("DatabaseService");
 
         var generatedCode = constructorSource.Content;
 
-        Assert.Contains("Database:ConnectionString", generatedCode);
-        Assert.Contains("Optional:Feature", generatedCode);
+        generatedCode.Should().Contain("Database:ConnectionString");
+        generatedCode.Should().Contain("Optional:Feature");
 
         // Required configuration should use null-coalescing with exception for reference types
         // This is the correct pattern for string types (unlike value types)
-        Assert.Contains("GetValue<string>(\"Database:ConnectionString\")", generatedCode);
-        Assert.Contains("?? throw new", generatedCode);
-        Assert.Contains("ArgumentException", generatedCode); // Use ArgumentException for missing required config
-        Assert.Contains("Required configuration", generatedCode);
-        Assert.Contains("Database:ConnectionString", generatedCode);
+        generatedCode.Should().Contain("GetValue<string>(\"Database:ConnectionString\")");
+        generatedCode.Should().Contain("?? throw new");
+        generatedCode.Should().Contain("ArgumentException"); // Use ArgumentException for missing required config
+        generatedCode.Should().Contain("Required configuration");
+        generatedCode.Should().Contain("Database:ConnectionString");
 
         // Optional configuration should not have validation
-        Assert.Contains("GetValue<string?>(\"Optional:Feature\")", generatedCode);
+        generatedCode.Should().Contain("GetValue<string?>(\"Optional:Feature\")");
     }
 
     [Fact]
@@ -139,25 +139,25 @@ public partial class ReloadableService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert: Should generate IOptionsSnapshot<T> or IOptionsMonitor<T> injection
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(e => e.ToString()))}");
+        result.HasErrors.Should()
+            .BeFalse(
+                $"Compilation errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(e => e.ToString()))}");
 
-        var constructorSource = result.GetConstructorSource("ReloadableService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("ReloadableService");
 
         var generatedCode = constructorSource.Content;
 
         // CRITICAL: Currently FAILS - SupportsReloading is ignored
         // Should generate IOptionsSnapshot<ReloadableSettings> injection instead of direct binding
 
-        Assert.Contains("ReloadableSettings", generatedCode);
+        generatedCode.Should().Contain("ReloadableSettings");
 
         // Should use Options pattern for reloadable configuration
         var usesOptionsPattern = generatedCode.Contains("IOptionsSnapshot") ||
                                  generatedCode.Contains("IOptionsMonitor") ||
                                  generatedCode.Contains("IOptions");
 
-        Assert.True(usesOptionsPattern, "SupportsReloading should use Options pattern");
+        usesOptionsPattern.Should().BeTrue("SupportsReloading should use Options pattern");
     }
 
     [Fact]
@@ -188,29 +188,29 @@ public partial class CollectionService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert: Should generate proper collection binding
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(e => e.ToString()))}");
+        result.HasErrors.Should()
+            .BeFalse(
+                $"Compilation errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(e => e.ToString()))}");
 
-        var constructorSource = result.GetConstructorSource("CollectionService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("CollectionService");
 
         var generatedCode = constructorSource.Content;
 
         // Core functionality checks
-        Assert.Contains("AllowedHosts", generatedCode);
-        Assert.Contains("TrustedPorts", generatedCode);
+        generatedCode.Should().Contain("AllowedHosts");
+        generatedCode.Should().Contain("TrustedPorts");
 
         // CRITICAL FIX VERIFICATION: Should use concrete type binding for interface collections
         // IReadOnlyList<string> should bind as List<string> with .AsReadOnly() conversion
-        Assert.Contains("List<string>", generatedCode);
-        Assert.Contains("AsReadOnly", generatedCode);
-        Assert.Contains("GetSection(\"AllowedHosts\").Get<List<string>>()?.AsReadOnly()!", generatedCode);
+        generatedCode.Should().Contain("List<string>");
+        generatedCode.Should().Contain("AsReadOnly");
+        generatedCode.Should().Contain("GetSection(\"AllowedHosts\").Get<List<string>>()?.AsReadOnly()!");
 
         // Arrays should work directly without conversion
-        Assert.Contains("int[]", generatedCode);
-        Assert.Contains("GetSection(\"TrustedPorts\").Get<int[]>()!", generatedCode);
+        generatedCode.Should().Contain("int[]");
+        generatedCode.Should().Contain("GetSection(\"TrustedPorts\").Get<int[]>()!");
 
         // Should NOT contain the problematic direct interface binding anymore
-        Assert.DoesNotContain("Get<IReadOnlyList<string>>()!", generatedCode);
+        generatedCode.Should().NotContain("Get<IReadOnlyList<string>>()!");
     }
 }

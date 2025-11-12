@@ -60,10 +60,9 @@ namespace TestNamespace
                 _output.WriteLine($"  {error.Id}: {error.GetMessage()}");
         }
 
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
         var generatedCode = registrationSource.Content;
 
         _output.WriteLine("Generated ServiceRegistrations:");
@@ -72,18 +71,19 @@ namespace TestNamespace
         // Verify no duplicate AddHostedService calls for same service
         var notificationServiceMatches = Regex.Matches(
             generatedCode, @"AddHostedService<[^>]*NotificationSchedulerService[^>]*>");
-        Assert.True(notificationServiceMatches.Count <= 1,
+        (notificationServiceMatches.Count <= 1).Should().BeTrue(
             $"NotificationSchedulerService should appear at most once in AddHostedService calls, found {notificationServiceMatches.Count}");
 
         var simpleBackgroundMatches = Regex.Matches(
             generatedCode, @"AddHostedService<[^>]*SimpleBackgroundWorker[^>]*>");
-        Assert.True(simpleBackgroundMatches.Count == 1,
+        (simpleBackgroundMatches.Count == 1).Should().BeTrue(
             $"SimpleBackgroundWorker should appear exactly once in AddHostedService calls, found {simpleBackgroundMatches.Count}");
 
         var dataCleanupMatches = Regex.Matches(
             generatedCode, @"AddHostedService<[^>]*DataCleanupService[^>]*>");
-        Assert.True(dataCleanupMatches.Count == 1,
-            $"DataCleanupService should appear exactly once in AddHostedService calls, found {dataCleanupMatches.Count}");
+        (dataCleanupMatches.Count == 1).Should()
+            .BeTrue(
+                $"DataCleanupService should appear exactly once in AddHostedService calls, found {dataCleanupMatches.Count}");
     }
 
     [Fact]
@@ -125,10 +125,9 @@ namespace TestNamespace
 }";
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
         var generatedCode = registrationSource.Content;
 
         _output.WriteLine("Generated ServiceRegistrations:");
@@ -137,14 +136,14 @@ namespace TestNamespace
         // Verify Configure<ApiSettings> appears only once
         var configureMatches = Regex.Matches(
             generatedCode, @"Configure<ApiSettings>");
-        Assert.True(configureMatches.Count == 1,
-            $"Configure<ApiSettings> should appear exactly once, found {configureMatches.Count}");
+        (configureMatches.Count == 1).Should()
+            .BeTrue($"Configure<ApiSettings> should appear exactly once, found {configureMatches.Count}");
 
         // Verify "Api" section binding appears only once
         var sectionMatches = Regex.Matches(
             generatedCode, @"GetSection\(""Api""\)");
-        Assert.True(sectionMatches.Count == 1,
-            $"GetSection(\"Api\") should appear exactly once, found {sectionMatches.Count}");
+        (sectionMatches.Count == 1).Should()
+            .BeTrue($"GetSection(\"Api\") should appear exactly once, found {sectionMatches.Count}");
     }
 
     [Fact]
@@ -168,10 +167,9 @@ namespace TestNamespace
 }";
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
         var generatedCode = registrationSource.Content;
 
         _output.WriteLine("Generated ServiceRegistrations:");
@@ -180,18 +178,18 @@ namespace TestNamespace
         // Verify PaymentProcessor is registered exactly once for each interface
         var paymentServiceMatches = Regex.Matches(
             generatedCode, @"AddScoped<[^>]*IPaymentService[^>]*>");
-        Assert.True(paymentServiceMatches.Count == 1,
-            $"IPaymentService registration should appear exactly once, found {paymentServiceMatches.Count}");
+        (paymentServiceMatches.Count == 1).Should()
+            .BeTrue($"IPaymentService registration should appear exactly once, found {paymentServiceMatches.Count}");
 
         var paymentValidatorMatches = Regex.Matches(
             generatedCode, @"AddScoped<[^>]*IPaymentValidator[^>]*>");
-        Assert.True(paymentValidatorMatches.Count == 1,
+        (paymentValidatorMatches.Count == 1).Should().BeTrue(
             $"IPaymentValidator registration should appear exactly once, found {paymentValidatorMatches.Count}");
 
         var paymentLoggerMatches = Regex.Matches(
             generatedCode, @"AddScoped<[^>]*IPaymentLogger[^>]*>");
-        Assert.True(paymentLoggerMatches.Count == 1,
-            $"IPaymentLogger registration should appear exactly once, found {paymentLoggerMatches.Count}");
+        (paymentLoggerMatches.Count == 1).Should()
+            .BeTrue($"IPaymentLogger registration should appear exactly once, found {paymentLoggerMatches.Count}");
     }
 
     [Fact]
@@ -219,10 +217,9 @@ namespace TestNamespace
 }";
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
         var generatedCode = registrationSource.Content;
 
         _output.WriteLine("Generated ServiceRegistrations:");
@@ -231,8 +228,8 @@ namespace TestNamespace
         // Verify environment variable is declared only once
         var environmentMatches = Regex.Matches(
             generatedCode, @"var currentEnvironment = Environment\.GetEnvironmentVariable");
-        Assert.True(environmentMatches.Count <= 1,
-            $"Environment variable declaration should appear at most once, found {environmentMatches.Count}");
+        (environmentMatches.Count <= 1).Should()
+            .BeTrue($"Environment variable declaration should appear at most once, found {environmentMatches.Count}");
     }
 
     [Fact]
@@ -260,10 +257,9 @@ namespace TestNamespace
 }";
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
         var generatedCode = registrationSource.Content;
 
         _output.WriteLine("Generated ServiceRegistrations:");
@@ -272,12 +268,12 @@ namespace TestNamespace
         // Verify both different implementations are registered
         var commonServiceMatches = Regex.Matches(
             generatedCode, @"AddScoped<[^>]*\.CommonService[^>]*>");
-        Assert.True(commonServiceMatches.Count == 2, // Once for concrete, once for interface
-            $"CommonService registrations should appear twice, found {commonServiceMatches.Count}");
+        (commonServiceMatches.Count == 2).Should()
+            .BeTrue($"CommonService registrations should appear twice, found {commonServiceMatches.Count}");
 
         var anotherCommonServiceMatches = Regex.Matches(
             generatedCode, @"AddScoped<[^>]*\.AnotherCommonService[^>]*>");
-        Assert.True(anotherCommonServiceMatches.Count == 2, // Once for concrete, once for interface
+        (anotherCommonServiceMatches.Count == 2).Should().BeTrue(
             $"AnotherCommonService registrations should appear twice, found {anotherCommonServiceMatches.Count}");
     }
 
@@ -302,10 +298,9 @@ namespace TestNamespace
 }";
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
         var generatedCode = registrationSource.Content;
 
         _output.WriteLine("Generated ServiceRegistrations:");
@@ -316,7 +311,7 @@ namespace TestNamespace
             generatedCode, @"AddScoped<[^>]*ServiceImpl[^>]*>");
 
         // Count should be reasonable - not excessive duplicates
-        Assert.True(serviceImplMatches.Count <= 2,
-            $"ServiceImpl should not have excessive duplicate registrations, found {serviceImplMatches.Count}");
+        (serviceImplMatches.Count <= 2).Should()
+            .BeTrue($"ServiceImpl should not have excessive duplicate registrations, found {serviceImplMatches.Count}");
     }
 }

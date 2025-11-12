@@ -49,21 +49,20 @@ public partial class EntityService : GenericBase<Entity>
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Check EntityService constructor
-        var entityConstructorSource = result.GetConstructorSource("EntityService");
-        Assert.NotNull(entityConstructorSource);
+        var entityConstructorSource = result.GetRequiredConstructorSource("EntityService");
 
         // CRITICAL: Should NOT be empty
-        Assert.DoesNotContain("public EntityService() { }", entityConstructorSource.Content);
+        entityConstructorSource.Content.Should().NotContain("public EntityService() { }");
 
         // CRITICAL: Should contain base constructor call
-        Assert.Contains("base(", entityConstructorSource.Content);
+        entityConstructorSource.Content.Should().Contain("base(");
 
         // CRITICAL: Should contain derived dependencies
-        Assert.Contains("IRepository<Entity>", entityConstructorSource.Content);
-        Assert.Contains("ICache<Entity>", entityConstructorSource.Content);
+        entityConstructorSource.Content.Should().Contain("IRepository<Entity>");
+        entityConstructorSource.Content.Should().Contain("ICache<Entity>");
     }
 
     #endregion
@@ -94,15 +93,15 @@ public partial class GreetingService : IGreetingService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - Should NOT be empty (the bug was empty constructor)
-        Assert.False(result.HasErrors,
-            $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
+        result.HasErrors.Should()
+            .BeFalse(
+                $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
 
-        var constructorSource = result.GetConstructorSource("GreetingService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("GreetingService");
 
         // CRITICAL: Should NOT contain empty constructor
-        Assert.DoesNotContain("public GreetingService() { }", constructorSource.Content);
-        Assert.DoesNotContain("public GreetingService()\n    {", constructorSource.Content);
+        constructorSource.Content.Should().NotContain("public GreetingService() { }");
+        constructorSource.Content.Should().NotContain("public GreetingService()\n    {");
 
         // CRITICAL: Should contain constructor with parameter
         var hasParameterizedConstructor =
@@ -110,11 +109,11 @@ public partial class GreetingService : IGreetingService
             constructorSource.Content.Contains(
                 "public GreetingService(Microsoft.Extensions.Logging.ILogger<GreetingService> logger)");
 
-        Assert.True(hasParameterizedConstructor,
-            $"Should generate constructor with parameter. Generated content: {constructorSource.Content}");
+        hasParameterizedConstructor.Should()
+            .BeTrue($"Should generate constructor with parameter. Generated content: {constructorSource.Content}");
 
         // CRITICAL: Should contain field assignment
-        Assert.Contains("this._logger = logger;", constructorSource.Content);
+        constructorSource.Content.Should().Contain("this._logger = logger;");
     }
 
     /// <summary>
@@ -144,23 +143,22 @@ public partial class ComplexService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("ComplexService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("ComplexService");
 
         // CRITICAL: Should NOT be empty constructor
-        Assert.DoesNotContain("public ComplexService() { }", constructorSource.Content);
+        constructorSource.Content.Should().NotContain("public ComplexService() { }");
 
         // CRITICAL: Should contain all three parameters
-        Assert.Contains("ILogger<ComplexService>", constructorSource.Content);
-        Assert.Contains("IRepository", constructorSource.Content);
-        Assert.Contains("ICache", constructorSource.Content);
+        constructorSource.Content.Should().Contain("ILogger<ComplexService>");
+        constructorSource.Content.Should().Contain("IRepository");
+        constructorSource.Content.Should().Contain("ICache");
 
         // CRITICAL: Should contain all field assignments
-        Assert.Contains("this._logger = logger;", constructorSource.Content);
-        Assert.Contains("this._repository = repository;", constructorSource.Content);
-        Assert.Contains("this._cache = cache;", constructorSource.Content);
+        constructorSource.Content.Should().Contain("this._logger = logger;");
+        constructorSource.Content.Should().Contain("this._repository = repository;");
+        constructorSource.Content.Should().Contain("this._cache = cache;");
     }
 
     #endregion
@@ -191,20 +189,19 @@ public partial class TemplateTestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("TemplateTestService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("TemplateTestService");
 
         // CRITICAL: Should not contain template placeholders or empty constructors
-        Assert.DoesNotContain("{PARAMETERS}", constructorSource.Content);
-        Assert.DoesNotContain("{ASSIGNMENTS}", constructorSource.Content);
-        Assert.DoesNotContain("{BASE_CALL}", constructorSource.Content);
-        Assert.DoesNotContain("public TemplateTestService() { }", constructorSource.Content);
+        constructorSource.Content.Should().NotContain("{PARAMETERS}");
+        constructorSource.Content.Should().NotContain("{ASSIGNMENTS}");
+        constructorSource.Content.Should().NotContain("{BASE_CALL}");
+        constructorSource.Content.Should().NotContain("public TemplateTestService() { }");
 
         // CRITICAL: Should contain properly resolved template
-        Assert.Contains("IEnumerable<IDataService> services", constructorSource.Content);
-        Assert.Contains("this._services = services;", constructorSource.Content);
+        constructorSource.Content.Should().Contain("IEnumerable<IDataService> services");
+        constructorSource.Content.Should().Contain("this._services = services;");
     }
 
     /// <summary>
@@ -235,21 +232,20 @@ public partial class DerivedService : BaseService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var derivedConstructorSource = result.GetConstructorSource("DerivedService");
-        Assert.NotNull(derivedConstructorSource);
+        var derivedConstructorSource = result.GetRequiredConstructorSource("DerivedService");
 
         // CRITICAL: Should not contain template placeholders
-        Assert.DoesNotContain("{PARAMETERS}", derivedConstructorSource.Content);
-        Assert.DoesNotContain("{ASSIGNMENTS}", derivedConstructorSource.Content);
-        Assert.DoesNotContain("{BASE_CALL}", derivedConstructorSource.Content);
+        derivedConstructorSource.Content.Should().NotContain("{PARAMETERS}");
+        derivedConstructorSource.Content.Should().NotContain("{ASSIGNMENTS}");
+        derivedConstructorSource.Content.Should().NotContain("{BASE_CALL}");
 
         // CRITICAL: Should contain base constructor call
-        Assert.Contains("base(", derivedConstructorSource.Content);
+        derivedConstructorSource.Content.Should().Contain("base(");
 
         // CRITICAL: Should contain derived field assignment
-        Assert.Contains("this._derivedService = derivedService;", derivedConstructorSource.Content);
+        derivedConstructorSource.Content.Should().Contain("this._derivedService = derivedService;");
     }
 
     #endregion
@@ -290,19 +286,18 @@ public partial class PartialService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // CRITICAL: Should detect fields across partial declarations and generate constructor
-        var constructorSource = result.GetConstructorSource("PartialService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("PartialService");
 
         // CRITICAL: Should contain both injected dependencies
-        Assert.Contains("ILogger<PartialService>", constructorSource.Content);
-        Assert.Contains("IRepository", constructorSource.Content);
+        constructorSource.Content.Should().Contain("ILogger<PartialService>");
+        constructorSource.Content.Should().Contain("IRepository");
 
         // CRITICAL: Should contain both field assignments
-        Assert.Contains("this._logger = logger;", constructorSource.Content);
-        Assert.Contains("this._repository = repository;", constructorSource.Content);
+        constructorSource.Content.Should().Contain("this._logger = logger;");
+        constructorSource.Content.Should().Contain("this._repository = repository;");
     }
 
     /// <summary>
@@ -344,19 +339,18 @@ public partial class SplitService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert  
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // CRITICAL: Should generate constructor despite split across parts
-        var constructorSource = result.GetConstructorSource("SplitService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("SplitService");
 
         // CRITICAL: Should detect and inject both dependencies
-        Assert.Contains("ILogger<SplitService>", constructorSource.Content);
-        Assert.Contains("IDataAccess", constructorSource.Content);
+        constructorSource.Content.Should().Contain("ILogger<SplitService>");
+        constructorSource.Content.Should().Contain("IDataAccess");
 
         // CRITICAL: Should assign to private fields correctly
-        Assert.Contains("this._logger = logger;", constructorSource.Content);
-        Assert.Contains("this._dataAccess = dataAccess;", constructorSource.Content);
+        constructorSource.Content.Should().Contain("this._logger = logger;");
+        constructorSource.Content.Should().Contain("this._dataAccess = dataAccess;");
     }
 
     #endregion
@@ -388,15 +382,14 @@ public partial class NullableService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("NullableService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("NullableService");
 
         // CRITICAL: Should handle nullable types correctly
-        Assert.DoesNotContain("public NullableService() { }", constructorSource.Content);
-        Assert.Contains("IOptionalService?", constructorSource.Content);
-        Assert.Contains("string?", constructorSource.Content);
+        constructorSource.Content.Should().NotContain("public NullableService() { }");
+        constructorSource.Content.Should().Contain("IOptionalService?");
+        constructorSource.Content.Should().Contain("string?");
     }
 
     /// <summary>
@@ -424,18 +417,17 @@ public partial class ServiceWithStatics
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("ServiceWithStatics");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("ServiceWithStatics");
 
         // CRITICAL: Should only include non-static [Inject] fields
-        Assert.Contains("IRepository", constructorSource.Content);
-        Assert.DoesNotContain("ILogger<ServiceWithStatics>", constructorSource.Content); // Static field ignored
+        constructorSource.Content.Should().Contain("IRepository");
+        constructorSource.Content.Should().NotContain("ILogger<ServiceWithStatics>"); // Static field ignored
 
         // Should contain assignment for non-static field only
-        Assert.Contains("this._repository = repository;", constructorSource.Content);
-        Assert.DoesNotContain("_staticLogger", constructorSource.Content);
+        constructorSource.Content.Should().Contain("this._repository = repository;");
+        constructorSource.Content.Should().NotContain("_staticLogger");
     }
 
     #endregion

@@ -37,24 +37,24 @@ using Microsoft.Extensions.Logging;
 
 using Services;
 
-using AppSettings = Configuration.AppSettings;
-using DataCleanupSettings = Configuration.DataCleanupSettings;
-using EmailProcessorSettings = Configuration.EmailProcessorSettings;
-using FileWatcherSettings = Configuration.FileWatcherSettings;
-using HealthMonitorSettings = Configuration.HealthMonitorSettings;
-using HotReloadSettings = Configuration.HotReloadSettings;
-using IAuditService = Services.IAuditService;
-using IDataTransformer = Services.IDataTransformer;
-using IEmailValidator = Services.IEmailValidator;
-using IInventoryService = Services.IInventoryService;
-using IPaymentService = Services.IPaymentService;
-using IReportGenerator = Services.IReportGenerator;
-using IRequestProcessor = Services.IRequestProcessor;
-using ISecurityService = Services.ISecurityService;
-using Order = Services.Order;
-using Payment = Services.Payment;
-using ProcessingRequest = Services.ProcessingRequest;
-using ValidationSettings = Configuration.ValidationSettings;
+using AppSettings = AppSettings;
+using DataCleanupSettings = DataCleanupSettings;
+using EmailProcessorSettings = EmailProcessorSettings;
+using FileWatcherSettings = FileWatcherSettings;
+using HealthMonitorSettings = HealthMonitorSettings;
+using HotReloadSettings = HotReloadSettings;
+using IAuditService = IAuditService;
+using IDataTransformer = IDataTransformer;
+using IEmailValidator = IEmailValidator;
+using IInventoryService = IInventoryService;
+using IPaymentService = IPaymentService;
+using IReportGenerator = IReportGenerator;
+using IRequestProcessor = IRequestProcessor;
+using ISecurityService = ISecurityService;
+using Order = Order;
+using Payment = Payment;
+using ProcessingRequest = ProcessingRequest;
+using ValidationSettings = ValidationSettings;
 
 /// <summary>
 ///     Comprehensive demonstration program for IoCTools features
@@ -1555,6 +1555,15 @@ internal class Program
         Console.WriteLine("  - IOC008: ConflictingDependenciesService has duplicate types in single DependsOn");
         Console.WriteLine(
             "  - IOC009: RedundantSkipRegistrationService skips interface not registered by RegisterAsAll");
+        Console.WriteLine();
+
+        Console.WriteLine("Redundant Configuration Diagnostics (IOC032-IOC034):");
+        Console.WriteLine(
+            "  - IOC032: RedundantRegisterAsService uses [RegisterAs] even though every interface is already inferred");
+        Console.WriteLine(
+            "  - IOC033: RedundantScopedWithDependsOnService keeps [Scoped] even though [DependsOn] implies Scoped by default");
+        Console.WriteLine(
+            "  - IOC034: RegisterAsAllConflictService combines [RegisterAsAll] with [RegisterAs<...>] causing redundant declarations");
         Console.WriteLine();
 
         Console.WriteLine("Background Service Diagnostics (IOC011, IOC014):");

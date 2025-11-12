@@ -52,11 +52,11 @@ public partial class ConfigFieldsService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should NOT generate IOC001 diagnostics for configuration fields
         var ioc001Diagnostics = result.GetDiagnosticsByCode("IOC001");
-        Assert.Empty(ioc001Diagnostics);
+        ioc001Diagnostics.Should().BeEmpty();
     }
 
     #endregion
@@ -96,26 +96,25 @@ public partial class RuntimeConfigService
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         var runtimeContext = SourceGeneratorTestHelper.CreateRuntimeContext(result);
         var serviceProvider =
             SourceGeneratorTestHelper.BuildServiceProvider(runtimeContext, configuration: configuration);
 
         // Assert
-        var serviceType = runtimeContext.Assembly.GetType("Test.RuntimeConfigService");
-        Assert.NotNull(serviceType);
-        var service = serviceProvider.GetRequiredService(serviceType!);
-        Assert.NotNull(service);
+        var serviceType = runtimeContext.Assembly.GetType("Test.RuntimeConfigService") ??
+                          throw new InvalidOperationException("RuntimeConfigService was not generated.");
+        var service = serviceProvider.GetRequiredService(serviceType);
 
         // Use reflection to access properties
-        var connectionStringProperty = serviceType.GetProperty("ConnectionString");
-        var timeoutProperty = serviceType.GetProperty("Timeout");
-        Assert.NotNull(connectionStringProperty);
-        Assert.NotNull(timeoutProperty);
+        var connectionStringProperty = serviceType.GetProperty("ConnectionString") ??
+                                       throw new InvalidOperationException("Expected ConnectionString property.");
+        var timeoutProperty = serviceType.GetProperty("Timeout") ??
+                              throw new InvalidOperationException("Expected Timeout property.");
 
-        Assert.Equal("Server=localhost;Database=Test", connectionStringProperty.GetValue(service));
-        Assert.Equal(30, timeoutProperty.GetValue(service));
+        connectionStringProperty.GetValue(service).Should().Be("Server=localhost;Database=Test");
+        timeoutProperty.GetValue(service).Should().Be(30);
     }
 
     // Removed: complex type runtime binding is out of scope for this generator's responsibilities.
@@ -124,73 +123,11 @@ public partial class RuntimeConfigService
     // Keeping this test caused perpetual skip; it is now removed to keep the suite meaningful.
     // (See git history if future work adds complex binding support.)
     /*
-    [Fact]
-    public void ConfigurationInjection_ComplexTypesRuntime_BindsCorrectly()
-    {
-
-        // Arrange
-        var source = @"
-using IoCTools.Abstractions.Annotations;
-using Microsoft.Extensions.Configuration;
-
-namespace Test;
-
-public class DatabaseSettings
-{
-    public string ConnectionString { get; set; } = """";
-    public int Timeout { get; set; }
-    public bool EnableRetry { get; set; }
-}
-[Scoped]
-public partial class ComplexConfigService
-{
-    [InjectConfiguration(""Database"")]
-    private readonly DatabaseSettings _databaseSettings;
-
-    public DatabaseSettings DatabaseSettings => _databaseSettings;
-}";
-
-        var configJson = @"
-{
-  ""Database"": {
-    ""ConnectionString"": ""Server=localhost;Database=Complex"",
-    ""Timeout"": 60,
-    ""EnableRetry"": true
-  }
-}";
-
-        var configuration = SourceGeneratorTestHelper.CreateConfigurationFromJson(configJson);
-
-        // Act
-        var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-        Assert.False(result.HasErrors);
-
-        var runtimeContext = SourceGeneratorTestHelper.CreateRuntimeContext(result);
-        var serviceProvider =
-            SourceGeneratorTestHelper.BuildServiceProvider(runtimeContext, configuration: configuration);
-
-        // Assert
-        var serviceType = runtimeContext.Assembly.GetType("Test.ComplexConfigService");
-        Assert.NotNull(serviceType);
-        var service = serviceProvider.GetRequiredService(serviceType!);
-        Assert.NotNull(service);
-
-        // Use reflection to access properties
-        var databaseSettingsProperty = serviceType.GetProperty("DatabaseSettings");
-        Assert.NotNull(databaseSettingsProperty);
-        var databaseSettings = databaseSettingsProperty.GetValue(service);
-        Assert.NotNull(databaseSettings);
-
-        var settingsType = databaseSettings!.GetType();
-        var connectionStringProperty = settingsType.GetProperty("ConnectionString");
-        var timeoutProperty = settingsType.GetProperty("Timeout");
-        var enableRetryProperty = settingsType.GetProperty("EnableRetry");
-
-        Assert.Equal("Server=localhost;Database=Complex", connectionStringProperty?.GetValue(databaseSettings));
-        Assert.Equal(60, timeoutProperty?.GetValue(databaseSettings));
-        Assert.True((bool?)enableRetryProperty?.GetValue(databaseSettings));
-    }
-    */
+     * Legacy runtime-binding test intentionally removed:
+     * - It covered configuration binding semantics rather than DI code generation.
+     * - The generator tests now focus strictly on emitted source validity.
+     * - See git history prior to 2024-01 for the full end-to-end scenario if it needs to return.
+     */
 
     #endregion
 
@@ -218,15 +155,14 @@ public partial class ConfigService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("ConfigService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("ConfigService");
 
         // Should add IConfiguration parameter to constructor (modern generator patterns)
-        Assert.Contains("IConfiguration configuration", constructorSource.Content);
-        Assert.Contains("this._connectionString = configuration.GetValue<string>(\"Database:ConnectionString\")",
-            constructorSource.Content);
+        constructorSource.Content.Should().Contain("IConfiguration configuration");
+        constructorSource.Content.Should()
+            .Contain("this._connectionString = configuration.GetValue<string>(\"Database:ConnectionString\")");
     }
 
     [Fact]
@@ -257,22 +193,21 @@ public partial class MultiConfigService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("MultiConfigService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("MultiConfigService");
 
         // Should have only ONE IConfiguration parameter (not multiple)
         var configParamCount = Regex.Matches(
             constructorSource.Content, @"IConfiguration\s+configuration").Count;
-        Assert.Equal(1, configParamCount);
+        configParamCount.Should().Be(1);
 
         // Should use configuration for all fields (modern generator patterns)
-        Assert.Contains("this._connectionString = configuration.GetValue<string>(\"Database:ConnectionString\")",
-            constructorSource.Content);
-        Assert.Contains("this._timeout = configuration.GetValue<int>(\"Database:Timeout\")", constructorSource.Content);
-        Assert.Contains("this._cacheEnabled = configuration.GetValue<bool>(\"Cache:Enabled\")",
-            constructorSource.Content);
+        constructorSource.Content.Should()
+            .Contain("this._connectionString = configuration.GetValue<string>(\"Database:ConnectionString\")");
+        constructorSource.Content.Should().Contain("this._timeout = configuration.GetValue<int>(\"Database:Timeout\")");
+        constructorSource.Content.Should()
+            .Contain("this._cacheEnabled = configuration.GetValue<bool>(\"Cache:Enabled\")");
     }
 
     #endregion
@@ -309,30 +244,29 @@ public partial class PrimitiveTypesService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("PrimitiveTypesService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("PrimitiveTypesService");
 
         // Verify each primitive type uses correct GetValue<T> call (modern generator patterns)
-        Assert.Contains("this._stringValue = configuration.GetValue<string>(\"String:Value\")",
-            constructorSource.Content);
-        Assert.Contains("this._intValue = configuration.GetValue<int>(\"Int:Value\")", constructorSource.Content);
-        Assert.Contains("this._boolValue = configuration.GetValue<bool>(\"Bool:Value\")", constructorSource.Content);
-        Assert.Contains("this._doubleValue = configuration.GetValue<double>(\"Double:Value\")",
-            constructorSource.Content);
-        Assert.Contains("this._decimalValue = configuration.GetValue<decimal>(\"Decimal:Value\")",
-            constructorSource.Content);
-        Assert.Contains("this._longValue = configuration.GetValue<long>(\"Long:Value\")", constructorSource.Content);
+        constructorSource.Content.Should()
+            .Contain("this._stringValue = configuration.GetValue<string>(\"String:Value\")");
+        constructorSource.Content.Should().Contain("this._intValue = configuration.GetValue<int>(\"Int:Value\")");
+        constructorSource.Content.Should().Contain("this._boolValue = configuration.GetValue<bool>(\"Bool:Value\")");
+        constructorSource.Content.Should()
+            .Contain("this._doubleValue = configuration.GetValue<double>(\"Double:Value\")");
+        constructorSource.Content.Should()
+            .Contain("this._decimalValue = configuration.GetValue<decimal>(\"Decimal:Value\")");
+        constructorSource.Content.Should().Contain("this._longValue = configuration.GetValue<long>(\"Long:Value\")");
         // More flexible check for DateTime - could be System.DateTime or global::System.DateTime
-        Assert.True(constructorSource.Content.Contains("this._dateTimeValue = configuration.GetValue<") &&
-                    constructorSource.Content.Contains("DateTime") &&
-                    constructorSource.Content.Contains("DateTime:Value"),
-            $"Expected DateTime configuration binding, but found: {constructorSource.Content}");
-        Assert.Contains("this._timeSpanValue = configuration.GetValue<global::System.TimeSpan>(\"TimeSpan:Value\")",
-            constructorSource.Content);
-        Assert.Contains("this._guidValue = configuration.GetValue<global::System.Guid>(\"Guid:Value\")",
-            constructorSource.Content);
+        (constructorSource.Content.Contains("this._dateTimeValue = configuration.GetValue<") &&
+         constructorSource.Content.Contains("DateTime") &&
+         constructorSource.Content.Contains("DateTime:Value")).Should()
+            .BeTrue($"Expected DateTime configuration binding, but found: {constructorSource.Content}");
+        constructorSource.Content.Should()
+            .Contain("this._timeSpanValue = configuration.GetValue<global::System.TimeSpan>(\"TimeSpan:Value\")");
+        constructorSource.Content.Should()
+            .Contain("this._guidValue = configuration.GetValue<global::System.Guid>(\"Guid:Value\")");
     }
 
     [Fact]
@@ -360,19 +294,18 @@ public partial class NullablePrimitiveService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("NullablePrimitiveService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("NullablePrimitiveService");
 
         // Nullable types should use proper generic syntax (modern generator patterns)
-        Assert.Contains("this._nullableInt = configuration.GetValue<int?>(\"Int:Value\")", constructorSource.Content);
-        Assert.Contains("this._nullableBool = configuration.GetValue<bool?>(\"Bool:Value\")",
-            constructorSource.Content);
-        Assert.Contains("this._nullableDateTime = configuration.GetValue<global::System.DateTime?>(\"DateTime:Value\")",
-            constructorSource.Content);
-        Assert.Contains("this._nullableGuid = configuration.GetValue<global::System.Guid?>(\"Guid:Value\")",
-            constructorSource.Content);
+        constructorSource.Content.Should().Contain("this._nullableInt = configuration.GetValue<int?>(\"Int:Value\")");
+        constructorSource.Content.Should()
+            .Contain("this._nullableBool = configuration.GetValue<bool?>(\"Bool:Value\")");
+        constructorSource.Content.Should()
+            .Contain("this._nullableDateTime = configuration.GetValue<global::System.DateTime?>(\"DateTime:Value\")");
+        constructorSource.Content.Should()
+            .Contain("this._nullableGuid = configuration.GetValue<global::System.Guid?>(\"Guid:Value\")");
     }
 
     #endregion
@@ -417,16 +350,15 @@ public partial class ComplexTypeService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("ComplexTypeService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("ComplexTypeService");
 
         // Complex types should use GetSection().Get<T>() pattern
-        Assert.Contains("_databaseSettings = configuration.GetSection(\"Database\").Get<DatabaseSettings>()",
-            constructorSource.Content);
-        Assert.Contains("_cacheSettings = configuration.GetSection(\"Cache\").Get<CacheSettings>()",
-            constructorSource.Content);
+        constructorSource.Content.Should()
+            .Contain("_databaseSettings = configuration.GetSection(\"Database\").Get<DatabaseSettings>()");
+        constructorSource.Content.Should()
+            .Contain("_cacheSettings = configuration.GetSection(\"Cache\").Get<CacheSettings>()");
     }
 
     [Fact]
@@ -462,14 +394,14 @@ public partial class NestedComplexService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
+        result.HasErrors.Should()
+            .BeFalse(
+                $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
 
-        var constructorSource = result.GetConstructorSource("NestedComplexService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("NestedComplexService");
 
-        Assert.Contains("_loggingSettings = configuration.GetSection(\"Logging\").Get<LoggingSettings>()",
-            constructorSource.Content);
+        constructorSource.Content.Should()
+            .Contain("_loggingSettings = configuration.GetSection(\"Logging\").Get<LoggingSettings>()");
     }
 
     #endregion
@@ -500,14 +432,13 @@ public partial class ArrayService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("ArrayService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("ArrayService");
 
         // Arrays should use GetSection().Get<T[]>() pattern
-        Assert.Contains("_servers = configuration.GetSection(\"Servers\").Get<string[]>()", constructorSource.Content);
-        Assert.Contains("_ports = configuration.GetSection(\"Ports\").Get<int[]>()", constructorSource.Content);
+        constructorSource.Content.Should().Contain("_servers = configuration.GetSection(\"Servers\").Get<string[]>()");
+        constructorSource.Content.Should().Contain("_ports = configuration.GetSection(\"Ports\").Get<int[]>()");
     }
 
     [Fact]
@@ -538,18 +469,17 @@ public partial class ListService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("ListService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("ListService");
 
         // Collections should use GetSection().Get<T>() pattern - use the same format as the working test
-        Assert.Contains("_servers = configuration.GetSection(\"Servers\").Get<List<string>>()",
-            constructorSource.Content);
-        Assert.Contains("_endpoints = configuration.GetSection(\"Endpoints\").Get<IList<string>>()",
-            constructorSource.Content);
-        Assert.Contains("_settings = configuration.GetSection(\"Settings\").Get<IEnumerable<string>>()",
-            constructorSource.Content);
+        constructorSource.Content.Should()
+            .Contain("_servers = configuration.GetSection(\"Servers\").Get<List<string>>()");
+        constructorSource.Content.Should()
+            .Contain("_endpoints = configuration.GetSection(\"Endpoints\").Get<IList<string>>()");
+        constructorSource.Content.Should()
+            .Contain("_settings = configuration.GetSection(\"Settings\").Get<IEnumerable<string>>()");
     }
 
     [Fact]
@@ -584,15 +514,14 @@ public partial class ComplexCollectionService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("ComplexCollectionService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("ComplexCollectionService");
 
-        Assert.Contains("_endpoints = configuration.GetSection(\"Endpoints\").Get<List<EndpointConfig>>()",
-            constructorSource.Content);
-        Assert.Contains("_serverConfig = configuration.GetSection(\"ServerConfig\").Get<Dictionary<string, string>>()",
-            constructorSource.Content);
+        constructorSource.Content.Should()
+            .Contain("_endpoints = configuration.GetSection(\"Endpoints\").Get<List<EndpointConfig>>()");
+        constructorSource.Content.Should()
+            .Contain("_serverConfig = configuration.GetSection(\"ServerConfig\").Get<Dictionary<string, string>>()");
     }
 
     #endregion
@@ -631,20 +560,20 @@ public partial class OptionsPatternService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+        result.HasErrors.Should()
+            .BeFalse(
+                $"Compilation errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
 
         // Should generate service registrations for Options pattern
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         Console.WriteLine("Generated Code:");
         Console.WriteLine(registrationSource.Content);
 
         // Should register Configure<AppSettings> call (modern generator pattern)
         // Note: Using "App" section since that's what's explicitly specified in [InjectConfiguration("App")]
-        Assert.Contains("services.Configure<AppSettings>(options => configuration.GetSection(\"App\").Bind(options))",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.Configure<AppSettings>(options => configuration.GetSection(\"App\").Bind(options))");
     }
 
     [Fact]
@@ -690,20 +619,18 @@ public partial class MultiOptionsService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should register both options types with correct section names
         // The test uses [InjectConfiguration("Database")] and [InjectConfiguration("Cache")]
         // so the generated code should use those section names
-        Assert.Contains(
-            "services.Configure<DatabaseOptions>(options => configuration.GetSection(\"Database\").Bind(options))",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.Configure<CacheOptions>(options => configuration.GetSection(\"Cache\").Bind(options))",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain(
+                "services.Configure<DatabaseOptions>(options => configuration.GetSection(\"Database\").Bind(options))");
+        registrationSource.Content.Should()
+            .Contain("services.Configure<CacheOptions>(options => configuration.GetSection(\"Cache\").Bind(options))");
     }
 
     #endregion
@@ -742,22 +669,21 @@ public partial class DefaultValueService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("DefaultValueService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("DefaultValueService");
 
         // Should use GetValue with default values (modern generator patterns with correct TimeSpan handling)
-        Assert.Contains("this._timeout = configuration.GetValue<int>(\"Database:Timeout\", 30)",
-            constructorSource.Content);
-        Assert.Contains("this._appName = configuration.GetValue<string>(\"App:Name\", \"DefaultApp\")",
-            constructorSource.Content);
-        Assert.Contains("this._debugEnabled = configuration.GetValue<bool>(\"Features:Debug\", false)",
-            constructorSource.Content);
+        constructorSource.Content.Should()
+            .Contain("this._timeout = configuration.GetValue<int>(\"Database:Timeout\", 30)");
+        constructorSource.Content.Should()
+            .Contain("this._appName = configuration.GetValue<string>(\"App:Name\", \"DefaultApp\")");
+        constructorSource.Content.Should()
+            .Contain("this._debugEnabled = configuration.GetValue<bool>(\"Features:Debug\", false)");
         // TimeSpan default values are handled with proper parsing
-        Assert.Contains(
-            "this._cacheTtl = configuration.GetValue<global::System.TimeSpan>(\"Cache:TTL\", global::System.TimeSpan.Parse(\"00:05:00\"))",
-            constructorSource.Content);
+        constructorSource.Content.Should()
+            .Contain(
+                "this._cacheTtl = configuration.GetValue<global::System.TimeSpan>(\"Cache:TTL\", global::System.TimeSpan.Parse(\"00:05:00\"))");
     }
 
     [Fact]
@@ -788,22 +714,21 @@ public partial class RequiredConfigService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("RequiredConfigService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("RequiredConfigService");
 
         // Should add validation for required fields (modern generator patterns)
-        Assert.Contains("this._connectionString = configuration.GetValue<string>(\"Database:ConnectionString\")",
-            constructorSource.Content);
-        Assert.Contains(
-            "throw new global::System.ArgumentException(\"Required configuration 'Database:ConnectionString' is missing\", \"Database:ConnectionString\")",
-            constructorSource.Content);
+        constructorSource.Content.Should()
+            .Contain("this._connectionString = configuration.GetValue<string>(\"Database:ConnectionString\")");
+        constructorSource.Content.Should()
+            .Contain(
+                "throw new global::System.ArgumentException(\"Required configuration 'Database:ConnectionString' is missing\", \"Database:ConnectionString\")");
 
-        Assert.Contains("this._apiKey = configuration.GetValue<string>(\"Api:Key\")", constructorSource.Content);
-        Assert.Contains(
-            "throw new global::System.ArgumentException(\"Required configuration 'Api:Key' is missing\", \"Api:Key\")",
-            constructorSource.Content);
+        constructorSource.Content.Should().Contain("this._apiKey = configuration.GetValue<string>(\"Api:Key\")");
+        constructorSource.Content.Should()
+            .Contain(
+                "throw new global::System.ArgumentException(\"Required configuration 'Api:Key' is missing\", \"Api:Key\")");
     }
 
     #endregion

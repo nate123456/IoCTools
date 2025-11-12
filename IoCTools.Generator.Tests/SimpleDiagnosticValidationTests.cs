@@ -36,7 +36,7 @@ public partial class TestBackgroundService : BackgroundService
         var ioc014Diagnostics = result.GetDiagnosticsByCode("IOC014");
 
         // No IOC014 errors for hosted services - their lifetime is managed by AddHostedService()
-        Assert.Empty(ioc014Diagnostics);
+        ioc014Diagnostics.Should().BeEmpty();
     }
 
     /// <summary>
@@ -46,11 +46,13 @@ public partial class TestBackgroundService : BackgroundService
     public void IOC010_ShouldBeDeprecatedWithMessage()
     {
         // We're testing the descriptor directly since IOC010 usage is removed from code
+#pragma warning disable CS0618 // Intentional usage to verify deprecation surface
         var descriptor = DiagnosticDescriptors.BackgroundServiceLifetimeConflict;
+#pragma warning restore CS0618
 
-        Assert.Equal("IOC010", descriptor.Id);
-        Assert.Contains("deprecated", descriptor.Title.ToString());
-        Assert.Contains("IOC014", descriptor.Description.ToString());
+        descriptor.Id.Should().Be("IOC010");
+        descriptor.Title.ToString().Should().Contain("deprecated");
+        descriptor.Description.ToString().Should().Contain("IOC014");
     }
 
     /// <summary>
@@ -73,12 +75,12 @@ public interface IUnknownService { }";
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var ioc001Diagnostics = result.GetDiagnosticsByCode("IOC001");
 
-        Assert.Single(ioc001Diagnostics);
+        ioc001Diagnostics.Should().ContainSingle();
         var helpText = ioc001Diagnostics[0].Descriptor.Description.ToString();
-        Assert.Contains("Fix options:", helpText);
-        Assert.Contains("1)", helpText);
-        Assert.Contains("2)", helpText);
-        Assert.Contains("3)", helpText);
+        helpText.Should().Contain("Fix options:");
+        helpText.Should().Contain("1)");
+        helpText.Should().Contain("2)");
+        helpText.Should().Contain("3)");
     }
 
     /// <summary>
@@ -99,7 +101,7 @@ public interface IUnknownService { }";
             if (diagnostic.Id == "IOC010") continue; // Skip deprecated diagnostic
 
             var helpText = diagnostic.Description.ToString();
-            Assert.True(!string.IsNullOrWhiteSpace(helpText),
+            helpText.Should().NotBeNullOrWhiteSpace(
                 $"Diagnostic {diagnostic.Id} should have help text");
 
             // Should contain action words or numbered options
@@ -107,7 +109,7 @@ public interface IUnknownService { }";
                                        helpText.Contains("Add") || helpText.Contains("Change") ||
                                        helpText.Contains("options:");
 
-            Assert.True(hasActionableContent,
+            hasActionableContent.Should().BeTrue(
                 $"Diagnostic {diagnostic.Id} should have actionable fix suggestions. Help text: {helpText}");
         }
     }
@@ -119,19 +121,19 @@ public interface IUnknownService { }";
     public void DiagnosticSeverityLevels_ShouldBeAppropriate()
     {
         // Error severity for critical issues
-        Assert.Equal(DiagnosticSeverity.Error,
-            DiagnosticDescriptors.SingletonDependsOnScoped.DefaultSeverity);
-        Assert.Equal(DiagnosticSeverity.Error,
-            DiagnosticDescriptors.BackgroundServiceLifetimeValidation.DefaultSeverity);
-        Assert.Equal(DiagnosticSeverity.Error,
-            DiagnosticDescriptors.BackgroundServiceNotPartial.DefaultSeverity);
+        DiagnosticDescriptors.SingletonDependsOnScoped.DefaultSeverity.Should()
+            .Be(DiagnosticSeverity.Error);
+        DiagnosticDescriptors.BackgroundServiceLifetimeValidation.DefaultSeverity.Should()
+            .Be(DiagnosticSeverity.Error);
+        DiagnosticDescriptors.BackgroundServiceNotPartial.DefaultSeverity.Should()
+            .Be(DiagnosticSeverity.Error);
 
         // Warning severity for best practices
-        Assert.Equal(DiagnosticSeverity.Warning,
-            DiagnosticDescriptors.NoImplementationFound.DefaultSeverity);
-        Assert.Equal(DiagnosticSeverity.Warning,
-            DiagnosticDescriptors.ImplementationNotRegistered.DefaultSeverity);
-        Assert.Equal(DiagnosticSeverity.Warning,
-            DiagnosticDescriptors.SingletonDependsOnTransient.DefaultSeverity);
+        DiagnosticDescriptors.NoImplementationFound.DefaultSeverity.Should()
+            .Be(DiagnosticSeverity.Warning);
+        DiagnosticDescriptors.ImplementationNotRegistered.DefaultSeverity.Should()
+            .Be(DiagnosticSeverity.Warning);
+        DiagnosticDescriptors.SingletonDependsOnTransient.DefaultSeverity.Should()
+            .Be(DiagnosticSeverity.Warning);
     }
 }

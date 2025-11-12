@@ -20,13 +20,12 @@ namespace Test
 }
 ";
         var result = SourceGeneratorTestHelper.CompileWithGenerator(code, analyzerBuildProperties: null);
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
         var reg = result.GetServiceRegistrationSource();
-        if (reg != null) Assert.DoesNotContain("UsersController", reg.Content);
-        var ctor = result.GetConstructorSource("UsersController");
-        Assert.NotNull(ctor);
-        Assert.Contains("public UsersController(", ctor!.Content);
-        Assert.Contains("ILogger<UsersController> logger", ctor.Content);
+        if (reg != null) reg.Content.Should().NotContain("UsersController");
+        var ctor = result.GetRequiredConstructorSource("UsersController");
+        ctor!.Content.Should().Contain("public UsersController(");
+        ctor.Content.Should().Contain("ILogger<UsersController> logger");
     }
 
     [Fact]
@@ -46,10 +45,9 @@ namespace Test
 }
 ";
         var result = SourceGeneratorTestHelper.CompileWithGenerator(code);
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
         var reg = result.GetServiceRegistrationSource();
-        Assert.NotNull(reg);
-        Assert.Contains("CreateUserHandler", reg!.Content);
+        reg!.Content.Should().Contain("CreateUserHandler");
     }
 
     [Fact]
@@ -69,10 +67,9 @@ namespace Test
 }
 ";
         var result = SourceGeneratorTestHelper.CompileWithGenerator(code);
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
         var reg = result.GetServiceRegistrationSource();
-        Assert.NotNull(reg);
-        Assert.Contains("CreateUserHandler", reg!.Content);
+        reg!.Content.Should().Contain("CreateUserHandler");
     }
 
     [Fact]
@@ -92,9 +89,9 @@ namespace Test
 namespace IoCTools.Generator.Configuration { public static class GeneratorOptions { public const string SkipAssignableTypesAdd = ""Lib.CustomFrameworkBase""; } }
 ";
         var result = SourceGeneratorTestHelper.CompileWithGenerator(code);
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
         var reg = result.GetServiceRegistrationSource();
-        if (reg != null) Assert.DoesNotContain("Concrete", reg.Content);
+        if (reg != null) reg.Content.Should().NotContain("Concrete");
     }
 
     [Fact]
@@ -116,10 +113,9 @@ namespace Test
 namespace IoCTools.Generator.Configuration { public static class GeneratorOptions { public const string SkipAssignableTypesRemove = ""Microsoft.AspNetCore.Mvc.ControllerBase""; } }
 ";
         var result = SourceGeneratorTestHelper.CompileWithGenerator(code);
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
         var reg = result.GetServiceRegistrationSource();
-        Assert.NotNull(reg);
-        Assert.Contains("ProductsController", reg!.Content);
+        reg!.Content.Should().Contain("ProductsController");
     }
 
     [Fact]
@@ -141,10 +137,9 @@ namespace Test
 namespace IoCTools.Generator.Configuration { public static class GeneratorOptions { public const string SkipAssignableExceptions = ""Test.AdminController""; } }
 ";
         var result = SourceGeneratorTestHelper.CompileWithGenerator(code);
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
         var reg = result.GetServiceRegistrationSource();
-        Assert.NotNull(reg);
-        Assert.Contains("AdminController", reg!.Content);
+        reg!.Content.Should().Contain("AdminController");
     }
 
     [Fact]
@@ -167,9 +162,9 @@ namespace Test
 namespace IoCTools.Generator.Configuration { public static class GeneratorOptions { public const string SkipAssignableTypesAdd = ""Mediator.*""; } }
 ";
         var result = SourceGeneratorTestHelper.CompileWithGenerator(code);
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
         var reg = result.GetServiceRegistrationSource();
-        if (reg != null) Assert.DoesNotContain("CmdHandler", reg.Content);
+        if (reg != null) reg.Content.Should().NotContain("CmdHandler");
     }
 
     [Fact]
@@ -200,10 +195,9 @@ namespace Test.Other
 namespace IoCTools.Generator.Configuration { public static class GeneratorOptions { public const string SkipAssignableExceptions = ""Test.Controllers.*""; } }
 ";
         var result = SourceGeneratorTestHelper.CompileWithGenerator(code);
-        Assert.False(result.HasErrors);
-        var reg = result.GetServiceRegistrationSource();
-        Assert.NotNull(reg);
-        Assert.Contains("AdminController", reg!.Content);
-        Assert.DoesNotContain("OtherController", reg.Content);
+        result.HasErrors.Should().BeFalse();
+        var reg = result.GetRequiredServiceRegistrationSource();
+        reg!.Content.Should().Contain("AdminController");
+        reg.Content.Should().NotContain("OtherController");
     }
 }

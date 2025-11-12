@@ -44,11 +44,11 @@ public partial class CacheService
         var ioc012Diagnostics = result.GetDiagnosticsByCode("IOC012");
         var ioc013Diagnostics = result.GetDiagnosticsByCode("IOC013");
 
-        Assert.Single(ioc012Diagnostics); // Singleton → Scoped error
-        Assert.Single(ioc013Diagnostics); // Singleton → Transient warning
+        ioc012Diagnostics.Should().ContainSingle(); // Singleton → Scoped error
+        ioc013Diagnostics.Should().ContainSingle(); // Singleton → Transient warning
 
-        Assert.Equal(DiagnosticSeverity.Error, ioc012Diagnostics[0].Severity);
-        Assert.Equal(DiagnosticSeverity.Warning, ioc013Diagnostics[0].Severity);
+        ioc012Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Error);
+        ioc013Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Warning);
     }
 
     #endregion
@@ -78,11 +78,11 @@ public partial class CacheService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.Single(diagnostics);
-        Assert.Equal(DiagnosticSeverity.Error, diagnostics[0].Severity);
-        Assert.Contains("CacheService", diagnostics[0].GetMessage());
-        Assert.Contains("DatabaseContext", diagnostics[0].GetMessage());
-        Assert.Contains("Singleton services cannot capture shorter-lived dependencies", diagnostics[0].GetMessage());
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Error);
+        diagnostics[0].GetMessage().Should().Contain("CacheService");
+        diagnostics[0].GetMessage().Should().Contain("DatabaseContext");
+        diagnostics[0].GetMessage().Should().Contain("Singleton services cannot capture shorter-lived dependencies");
     }
 
     [Fact]
@@ -108,10 +108,10 @@ public partial class CacheService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.Single(diagnostics);
-        Assert.Equal(DiagnosticSeverity.Error, diagnostics[0].Severity);
-        Assert.Contains("CacheService", diagnostics[0].GetMessage());
-        Assert.Contains("DatabaseContext", diagnostics[0].GetMessage());
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Error);
+        diagnostics[0].GetMessage().Should().Contain("CacheService");
+        diagnostics[0].GetMessage().Should().Contain("DatabaseContext");
     }
 
     [Fact]
@@ -143,8 +143,8 @@ public partial class CacheService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.Equal(2, diagnostics.Count);
-        Assert.All(diagnostics, d => Assert.Equal(DiagnosticSeverity.Error, d.Severity));
+        diagnostics.Count.Should().Be(2);
+        diagnostics.Should().AllSatisfy(d => d.Severity.Should().Be(DiagnosticSeverity.Error));
     }
 
     [Fact]
@@ -175,8 +175,8 @@ public partial class DerivedService : BaseService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.Single(diagnostics);
-        Assert.Equal(DiagnosticSeverity.Error, diagnostics[0].Severity);
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Error);
     }
 
     #endregion
@@ -206,11 +206,11 @@ public partial class CacheService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC013");
 
-        Assert.Single(diagnostics);
-        Assert.Equal(DiagnosticSeverity.Warning, diagnostics[0].Severity);
-        Assert.Contains("CacheService", diagnostics[0].GetMessage());
-        Assert.Contains("HelperService", diagnostics[0].GetMessage());
-        Assert.Contains("Consider if this transient should be Singleton", diagnostics[0].GetMessage());
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Warning);
+        diagnostics[0].GetMessage().Should().Contain("CacheService");
+        diagnostics[0].GetMessage().Should().Contain("HelperService");
+        diagnostics[0].GetMessage().Should().Contain("Consider if this transient should be Singleton");
     }
 
     [Fact]
@@ -236,8 +236,8 @@ public partial class CacheService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC013");
 
-        Assert.Single(diagnostics);
-        Assert.Equal(DiagnosticSeverity.Warning, diagnostics[0].Severity);
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Warning);
     }
 
     [Fact]
@@ -269,8 +269,8 @@ public partial class CacheService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC013");
 
-        Assert.Equal(2, diagnostics.Count);
-        Assert.All(diagnostics, d => Assert.Equal(DiagnosticSeverity.Warning, d.Severity));
+        diagnostics.Count.Should().Be(2);
+        diagnostics.Should().AllSatisfy(d => d.Severity.Should().Be(DiagnosticSeverity.Warning));
     }
 
     #endregion
@@ -309,7 +309,7 @@ public partial class EmailBackgroundService : BackgroundService
         var diagnostics = result.GetDiagnosticsByCode("IOC014");
 
         // No IOC014 errors for hosted services - their lifetime is managed by AddHostedService()
-        Assert.Empty(diagnostics);
+        diagnostics.Should().BeEmpty();
     }
 
     [Fact]
@@ -344,7 +344,7 @@ public partial class EmailBackgroundService : BackgroundService
         var diagnostics = result.GetDiagnosticsByCode("IOC014");
 
         // No IOC014 errors for hosted services - their lifetime is managed by AddHostedService()
-        Assert.Empty(diagnostics);
+        diagnostics.Should().BeEmpty();
     }
 
     [Fact]
@@ -371,7 +371,7 @@ public partial class EmailBackgroundService : BackgroundService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC014");
 
-        Assert.Empty(diagnostics);
+        diagnostics.Should().BeEmpty();
     }
 
     #endregion
@@ -416,11 +416,11 @@ public partial class FinalService : Level3Service
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC015");
 
-        Assert.Single(diagnostics);
-        Assert.Equal(DiagnosticSeverity.Error, diagnostics[0].Severity);
-        Assert.Contains("FinalService", diagnostics[0].GetMessage());
-        Assert.Contains("Singleton", diagnostics[0].GetMessage());
-        Assert.Contains("Scoped", diagnostics[0].GetMessage());
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Error);
+        diagnostics[0].GetMessage().Should().Contain("FinalService");
+        diagnostics[0].GetMessage().Should().Contain("Singleton");
+        diagnostics[0].GetMessage().Should().Contain("Scoped");
     }
 
     [Fact]
@@ -451,7 +451,7 @@ public partial class DerivedService : BaseService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC015");
 
-        Assert.Empty(diagnostics);
+        diagnostics.Should().BeEmpty();
     }
 
     #endregion
@@ -485,7 +485,7 @@ public partial class DatabaseService
             .Concat(result.GetDiagnosticsByCode("IOC015"))
             .ToList();
 
-        Assert.Empty(lifetimeDiagnostics);
+        lifetimeDiagnostics.Should().BeEmpty();
     }
 
     [Fact]
@@ -515,7 +515,7 @@ public partial class ProcessorService
             .Concat(result.GetDiagnosticsByCode("IOC015"))
             .ToList();
 
-        Assert.Empty(lifetimeDiagnostics);
+        lifetimeDiagnostics.Should().BeEmpty();
     }
 
     [Fact]
@@ -545,7 +545,7 @@ public partial class ProcessorService
             .Concat(result.GetDiagnosticsByCode("IOC015"))
             .ToList();
 
-        Assert.Empty(lifetimeDiagnostics);
+        lifetimeDiagnostics.Should().BeEmpty();
     }
 
     #endregion
@@ -576,7 +576,7 @@ public partial class CacheService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.Empty(diagnostics);
+        diagnostics.Should().BeEmpty();
     }
 
     [Fact]
@@ -604,7 +604,7 @@ public partial class CacheService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.Empty(diagnostics);
+        diagnostics.Should().BeEmpty();
     }
 
     #endregion
@@ -638,10 +638,10 @@ public partial class CacheService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.Single(diagnostics);
-        Assert.Equal(DiagnosticSeverity.Error, diagnostics[0].Severity);
-        Assert.Contains("CacheService", diagnostics[0].GetMessage());
-        Assert.Contains("Repository", diagnostics[0].GetMessage());
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Error);
+        diagnostics[0].GetMessage().Should().Contain("CacheService");
+        diagnostics[0].GetMessage().Should().Contain("Repository");
     }
 
     [Fact]
@@ -679,8 +679,8 @@ public partial class CacheService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC013");
 
-        Assert.Single(diagnostics); // Singleton → Transient warning
-        Assert.Equal(DiagnosticSeverity.Warning, diagnostics[0].Severity);
+        diagnostics.Should().ContainSingle(); // Singleton → Transient warning
+        diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Warning);
     }
 
     #endregion
@@ -709,14 +709,14 @@ public partial class ServiceA : IServiceA
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Should not cause stack overflow or infinite loop
-        Assert.NotNull(result);
+        result.Should().NotBeNull();
 
         // Self-reference should not report lifetime violations
         var diagnostics = result.GetDiagnosticsByCode("IOC012")
             .Concat(result.GetDiagnosticsByCode("IOC013"))
             .ToList();
 
-        Assert.Empty(diagnostics);
+        diagnostics.Should().BeEmpty();
     }
 
     [Fact]
@@ -752,9 +752,9 @@ public partial class ServiceB : IServiceB
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
 
         // Should report IOC012 for Singleton → Scoped dependency
-        Assert.Single(diagnostics);
-        Assert.Contains("ServiceA", diagnostics[0].GetMessage());
-        Assert.Contains("ServiceB", diagnostics[0].GetMessage());
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].GetMessage().Should().Contain("ServiceA");
+        diagnostics[0].GetMessage().Should().Contain("ServiceB");
     }
 
     [Fact]
@@ -790,9 +790,9 @@ public partial class ConcreteProcessor : MiddleProcessor<string>
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC015");
 
-        Assert.Single(diagnostics);
-        Assert.Equal(DiagnosticSeverity.Error, diagnostics[0].Severity);
-        Assert.Contains("ConcreteProcessor", diagnostics[0].GetMessage());
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Error);
+        diagnostics[0].GetMessage().Should().Contain("ConcreteProcessor");
     }
 
     #endregion
@@ -826,7 +826,7 @@ public partial class CacheService
 
         // With lifetime validation disabled, should not report IOC012
         // This test demonstrates the intended behavior
-        Assert.True(result.Compilation != null);
+        (result.Compilation != null).Should().BeTrue();
     }
 
     [Fact]
@@ -856,7 +856,7 @@ public partial class CacheService
 
         // With custom severity, IOC012 should use Warning instead of Error
         // This test demonstrates the intended behavior
-        Assert.True(result.Compilation != null);
+        (result.Compilation != null).Should().BeTrue();
     }
 
     #endregion
@@ -886,15 +886,15 @@ public partial class CacheService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.Single(diagnostics);
+        diagnostics.Should().ContainSingle();
         var message = diagnostics[0].GetMessage();
 
         // Verify message contains all required elements
-        Assert.Contains("Singleton service", message);
-        Assert.Contains("CacheService", message);
-        Assert.Contains("Scoped service", message);
-        Assert.Contains("DatabaseContext", message);
-        Assert.Contains("cannot capture shorter-lived dependencies", message);
+        message.Should().Contain("Singleton service");
+        message.Should().Contain("CacheService");
+        message.Should().Contain("Scoped service");
+        message.Should().Contain("DatabaseContext");
+        message.Should().Contain("cannot capture shorter-lived dependencies");
     }
 
     [Fact]
@@ -920,15 +920,15 @@ public partial class CacheService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC013");
 
-        Assert.Single(diagnostics);
+        diagnostics.Should().ContainSingle();
         var message = diagnostics[0].GetMessage();
 
         // Verify message contains all required elements
-        Assert.Contains("Singleton service", message);
-        Assert.Contains("CacheService", message);
-        Assert.Contains("Transient service", message);
-        Assert.Contains("HelperService", message);
-        Assert.Contains("Consider if this transient should be Singleton", message);
+        message.Should().Contain("Singleton service");
+        message.Should().Contain("CacheService");
+        message.Should().Contain("Transient service");
+        message.Should().Contain("HelperService");
+        message.Should().Contain("Consider if this transient should be Singleton");
     }
 
     [Fact]
@@ -963,7 +963,7 @@ public partial class EmailBackgroundService : BackgroundService
         var diagnostics = result.GetDiagnosticsByCode("IOC014");
 
         // No IOC014 errors for hosted services - their lifetime is managed by AddHostedService()
-        Assert.Empty(diagnostics);
+        diagnostics.Should().BeEmpty();
     }
 
     [Fact]
@@ -994,15 +994,15 @@ public partial class DerivedService : BaseService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC015");
 
-        Assert.Single(diagnostics);
+        diagnostics.Should().ContainSingle();
         var message = diagnostics[0].GetMessage();
 
         // Verify message contains all required elements
-        Assert.Contains("Service lifetime mismatch", message);
-        Assert.Contains("inheritance chain", message);
-        Assert.Contains("DerivedService", message);
-        Assert.Contains("Singleton", message);
-        Assert.Contains("Scoped", message);
+        message.Should().Contain("Service lifetime mismatch");
+        message.Should().Contain("inheritance chain");
+        message.Should().Contain("DerivedService");
+        message.Should().Contain("Singleton");
+        message.Should().Contain("Scoped");
     }
 
     #endregion
@@ -1053,12 +1053,12 @@ public partial class FinalService : Level49Service
         stopwatch.Stop();
 
         // Should complete in under 30 seconds even with large hierarchy
-        Assert.True(stopwatch.ElapsedMilliseconds < 30000,
-            $"Large inheritance hierarchy validation took {stopwatch.ElapsedMilliseconds}ms");
+        (stopwatch.ElapsedMilliseconds < 30000).Should()
+            .BeTrue($"Large inheritance hierarchy validation took {stopwatch.ElapsedMilliseconds}ms");
 
         // Should still detect lifetime violations
         var diagnostics = result.GetDiagnosticsByCode("IOC015");
-        Assert.Single(diagnostics);
+        diagnostics.Should().ContainSingle();
     }
 
     [Fact]
@@ -1108,11 +1108,11 @@ public partial class SingletonService{i}
         stopwatch.Stop();
 
         // Should complete in under 30 seconds even with many services
-        Assert.True(stopwatch.ElapsedMilliseconds < 30000,
-            $"Many services validation took {stopwatch.ElapsedMilliseconds}ms");
+        (stopwatch.ElapsedMilliseconds < 30000).Should()
+            .BeTrue($"Many services validation took {stopwatch.ElapsedMilliseconds}ms");
 
         // Should detect appropriate violations based on service lifetimes
-        Assert.True(result.Compilation != null);
+        (result.Compilation != null).Should().BeTrue();
     }
 
     #endregion
@@ -1147,11 +1147,11 @@ public partial class SingletonConsumer
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.Single(diagnostics);
-        Assert.Equal(DiagnosticSeverity.Error, diagnostics[0].Severity);
-        Assert.Contains("SingletonConsumer", diagnostics[0].GetMessage());
-        Assert.Contains("ScopedServiceImpl", diagnostics[0].GetMessage());
-        Assert.Contains("Singleton services cannot capture shorter-lived dependencies", diagnostics[0].GetMessage());
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Error);
+        diagnostics[0].GetMessage().Should().Contain("SingletonConsumer");
+        diagnostics[0].GetMessage().Should().Contain("ScopedServiceImpl");
+        diagnostics[0].GetMessage().Should().Contain("Singleton services cannot capture shorter-lived dependencies");
     }
 
     [Fact]
@@ -1182,11 +1182,11 @@ public partial class SingletonConsumer
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC013");
 
-        Assert.Single(diagnostics);
-        Assert.Equal(DiagnosticSeverity.Warning, diagnostics[0].Severity);
-        Assert.Contains("SingletonConsumer", diagnostics[0].GetMessage());
-        Assert.Contains("TransientServiceImpl", diagnostics[0].GetMessage());
-        Assert.Contains("Consider if this transient should be Singleton", diagnostics[0].GetMessage());
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Warning);
+        diagnostics[0].GetMessage().Should().Contain("SingletonConsumer");
+        diagnostics[0].GetMessage().Should().Contain("TransientServiceImpl");
+        diagnostics[0].GetMessage().Should().Contain("Consider if this transient should be Singleton");
     }
 
     [Fact]
@@ -1229,11 +1229,11 @@ public partial class SingletonConsumer
         var ioc012Diagnostics = result.GetDiagnosticsByCode("IOC012");
         var ioc013Diagnostics = result.GetDiagnosticsByCode("IOC013");
 
-        Assert.Single(ioc012Diagnostics); // Singleton → IEnumerable<Scoped> error
-        Assert.Single(ioc013Diagnostics); // Singleton → IEnumerable<Transient> warning
+        ioc012Diagnostics.Should().ContainSingle(); // Singleton → IEnumerable<Scoped> error
+        ioc013Diagnostics.Should().ContainSingle(); // Singleton → IEnumerable<Transient> warning
 
-        Assert.Equal(DiagnosticSeverity.Error, ioc012Diagnostics[0].Severity);
-        Assert.Equal(DiagnosticSeverity.Warning, ioc013Diagnostics[0].Severity);
+        ioc012Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Error);
+        ioc013Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Warning);
     }
 
     [Fact]
@@ -1276,12 +1276,12 @@ public partial class NotificationManager
         var ioc012Diagnostics = result.GetDiagnosticsByCode("IOC012");
         var ioc013Diagnostics = result.GetDiagnosticsByCode("IOC013");
 
-        Assert.Single(ioc012Diagnostics); // Singleton → EmailNotificationService (Scoped) error
-        Assert.Single(ioc013Diagnostics); // Singleton → SmsNotificationService (Transient) warning
+        ioc012Diagnostics.Should().ContainSingle(); // Singleton → EmailNotificationService (Scoped) error
+        ioc013Diagnostics.Should().ContainSingle(); // Singleton → SmsNotificationService (Transient) warning
         // PushNotificationService (Singleton) should not cause any violations
 
-        Assert.Equal(DiagnosticSeverity.Error, ioc012Diagnostics[0].Severity);
-        Assert.Equal(DiagnosticSeverity.Warning, ioc013Diagnostics[0].Severity);
+        ioc012Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Error);
+        ioc013Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Warning);
     }
 
     [Fact]
@@ -1315,10 +1315,10 @@ public partial class RepositoryManager
 
         // The generic repository scenario may detect multiple violations per collection
         // since it validates each implementation separately
-        Assert.True(diagnostics.Count >= 2, $"Expected at least 2 violations but got {diagnostics.Count}");
-        Assert.All(diagnostics, d => Assert.Equal(DiagnosticSeverity.Error, d.Severity));
-        Assert.All(diagnostics, d => Assert.Contains("RepositoryManager", d.GetMessage()));
-        Assert.All(diagnostics, d => Assert.Contains("Repository", d.GetMessage()));
+        (diagnostics.Count >= 2).Should().BeTrue($"Expected at least 2 violations but got {diagnostics.Count}");
+        diagnostics.Should().AllSatisfy(d => d.Severity.Should().Be(DiagnosticSeverity.Error));
+        diagnostics.Should().AllSatisfy(d => d.GetMessage().Should().Contain("RepositoryManager"));
+        diagnostics.Should().AllSatisfy(d => d.GetMessage().Should().Contain("Repository"));
     }
 
     [Fact]
@@ -1365,9 +1365,9 @@ public partial class ProcessingBackgroundService : BackgroundService
         var ioc013Diagnostics = result.GetDiagnosticsByCode("IOC013");
         var ioc014Diagnostics = result.GetDiagnosticsByCode("IOC014");
 
-        Assert.Single(ioc012Diagnostics); // Singleton BackgroundService → ScopedProcessor error
-        Assert.Single(ioc013Diagnostics); // Singleton BackgroundService → TransientProcessor warning
-        Assert.Empty(ioc014Diagnostics); // Background service is correctly Singleton
+        ioc012Diagnostics.Should().ContainSingle(); // Singleton BackgroundService → ScopedProcessor error
+        ioc013Diagnostics.Should().ContainSingle(); // Singleton BackgroundService → TransientProcessor warning
+        ioc014Diagnostics.Should().BeEmpty(); // Background service is correctly Singleton
     }
 
     [Fact]
@@ -1408,11 +1408,11 @@ public partial class FinalProcessor : MiddleProcessor
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC015");
 
-        Assert.Single(diagnostics);
-        Assert.Equal(DiagnosticSeverity.Error, diagnostics[0].Severity);
-        Assert.Contains("FinalProcessor", diagnostics[0].GetMessage());
-        Assert.Contains("Singleton", diagnostics[0].GetMessage());
-        Assert.Contains("Scoped", diagnostics[0].GetMessage());
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Error);
+        diagnostics[0].GetMessage().Should().Contain("FinalProcessor");
+        diagnostics[0].GetMessage().Should().Contain("Singleton");
+        diagnostics[0].GetMessage().Should().Contain("Scoped");
     }
 
     [Fact]
@@ -1448,14 +1448,14 @@ public partial class NestedCollectionConsumer
         if (diagnostics.Count == 0)
         {
             // Skip the assertion for now - nested collection validation might not be fully implemented
-            Assert.True(true, "Nested collection validation may need enhancement");
+            true.Should().BeTrue("Nested collection validation may need enhancement");
         }
         else
         {
-            Assert.True(diagnostics.Count >= 1, $"Expected at least 1 violation but got {diagnostics.Count}");
-            Assert.All(diagnostics, d => Assert.Equal(DiagnosticSeverity.Error, d.Severity));
-            Assert.All(diagnostics, d => Assert.Contains("NestedCollectionConsumer", d.GetMessage()));
-            Assert.All(diagnostics, d => Assert.Contains("NestedServiceImpl", d.GetMessage()));
+            (diagnostics.Count >= 1).Should().BeTrue($"Expected at least 1 violation but got {diagnostics.Count}");
+            diagnostics.Should().AllSatisfy(d => d.Severity.Should().Be(DiagnosticSeverity.Error));
+            diagnostics.Should().AllSatisfy(d => d.GetMessage().Should().Contain("NestedCollectionConsumer"));
+            diagnostics.Should().AllSatisfy(d => d.GetMessage().Should().Contain("NestedServiceImpl"));
         }
     }
 
@@ -1488,10 +1488,10 @@ public partial class LazyCollectionConsumer
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.Single(diagnostics);
-        Assert.Equal(DiagnosticSeverity.Error, diagnostics[0].Severity);
-        Assert.Contains("LazyCollectionConsumer", diagnostics[0].GetMessage());
-        Assert.Contains("LazyServiceImpl", diagnostics[0].GetMessage());
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Error);
+        diagnostics[0].GetMessage().Should().Contain("LazyCollectionConsumer");
+        diagnostics[0].GetMessage().Should().Contain("LazyServiceImpl");
     }
 
     [Fact]
@@ -1522,10 +1522,10 @@ public partial class DependsOnCollectionConsumer
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.Single(diagnostics);
-        Assert.Equal(DiagnosticSeverity.Error, diagnostics[0].Severity);
-        Assert.Contains("DependsOnCollectionConsumer", diagnostics[0].GetMessage());
-        Assert.Contains("DependsOnServiceImpl", diagnostics[0].GetMessage());
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Error);
+        diagnostics[0].GetMessage().Should().Contain("DependsOnCollectionConsumer");
+        diagnostics[0].GetMessage().Should().Contain("DependsOnServiceImpl");
     }
 
     [Fact]
@@ -1577,7 +1577,7 @@ public partial class TransientConsumer
             .Concat(result.GetDiagnosticsByCode("IOC015"))
             .ToList();
 
-        Assert.Empty(lifetimeDiagnostics);
+        lifetimeDiagnostics.Should().BeEmpty();
     }
 
     [Fact]
@@ -1609,7 +1609,7 @@ public partial class ExternalCollectionConsumer
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.Empty(diagnostics);
+        diagnostics.Should().BeEmpty();
     }
 
     [Fact]
@@ -1642,7 +1642,7 @@ public partial class FieldExternalConsumer
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.Empty(diagnostics);
+        diagnostics.Should().BeEmpty();
     }
 
     [Fact]
@@ -1682,10 +1682,10 @@ public partial class ConstrainedRepositoryManager
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
 
         // The constrained repository scenario may detect duplicate violations for the same dependency
-        Assert.True(diagnostics.Count >= 1, $"Expected at least 1 violation but got {diagnostics.Count}");
-        Assert.All(diagnostics, d => Assert.Equal(DiagnosticSeverity.Error, d.Severity));
-        Assert.All(diagnostics, d => Assert.Contains("ConstrainedRepositoryManager", d.GetMessage()));
-        Assert.All(diagnostics, d => Assert.Contains("ConstrainedRepository", d.GetMessage()));
+        (diagnostics.Count >= 1).Should().BeTrue($"Expected at least 1 violation but got {diagnostics.Count}");
+        diagnostics.Should().AllSatisfy(d => d.Severity.Should().Be(DiagnosticSeverity.Error));
+        diagnostics.Should().AllSatisfy(d => d.GetMessage().Should().Contain("ConstrainedRepositoryManager"));
+        diagnostics.Should().AllSatisfy(d => d.GetMessage().Should().Contain("ConstrainedRepository"));
     }
 
     [Fact]
@@ -1730,12 +1730,12 @@ public partial class MassiveCollectionConsumer
         stopwatch.Stop();
 
         // Should complete in under 30 seconds even with many collection dependencies
-        Assert.True(stopwatch.ElapsedMilliseconds < 30000,
-            $"Large collection dependencies validation took {stopwatch.ElapsedMilliseconds}ms");
+        (stopwatch.ElapsedMilliseconds < 30000).Should()
+            .BeTrue($"Large collection dependencies validation took {stopwatch.ElapsedMilliseconds}ms");
 
         // Should detect 50 violations (one for each IEnumerable<IScopedService>)
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
-        Assert.Equal(50, diagnostics.Count);
+        diagnostics.Count.Should().Be(50);
     }
 
     #endregion

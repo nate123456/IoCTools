@@ -29,20 +29,17 @@ namespace TestApp
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-
+        var registrationContent = result.GetServiceRegistrationText();
         // TODO: GENERATOR BUG - The generator is still registering concrete class even without Lifetime attribute
         // Expected: RegisterAs without Lifetime should only register interfaces
         // Actual: Concrete class is being registered too
-        // Skip this assertion for now and continue with other test fixes
-        // Assert.DoesNotContain("services.AddScoped<global::TestApp.DatabaseContext, global::TestApp.DatabaseContext>", registrationSource.Content);
+        // Skip the concrete-registration verification for now and continue with other test fixes
 
         // Should register specified interfaces
-        Assert.Contains("services.AddScoped<global::TestApp.ITransactionService, global::TestApp.DatabaseContext>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::TestApp.IRepository, global::TestApp.DatabaseContext>",
-            registrationSource.Content);
+        registrationContent.Should()
+            .Contain("services.AddScoped<global::TestApp.ITransactionService, global::TestApp.DatabaseContext>");
+        registrationContent.Should()
+            .Contain("services.AddScoped<global::TestApp.IRepository, global::TestApp.DatabaseContext>");
     }
 
     #endregion
@@ -78,12 +75,10 @@ namespace TestApp
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-
+        var registrationContent = result.GetServiceRegistrationText();
         // Should use factory pattern for services with configuration injection
-        Assert.Contains("provider => provider.GetRequiredService<global::TestApp.ConfigurableService>()",
-            registrationSource.Content);
+        registrationContent.Should()
+            .Contain("provider => provider.GetRequiredService<global::TestApp.ConfigurableService>()");
     }
 
     #endregion
@@ -117,18 +112,16 @@ namespace TestApp
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-
+        var registrationContent = result.GetServiceRegistrationText();
         // Should generate registrations with correct lifetimes
-        Assert.Contains("services.AddSingleton<global::TestApp.SingletonService, global::TestApp.SingletonService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddSingleton<global::TestApp.ISingletonService, global::TestApp.SingletonService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddTransient<global::TestApp.TransientService, global::TestApp.TransientService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddTransient<global::TestApp.ITransientService, global::TestApp.TransientService>",
-            registrationSource.Content);
+        registrationContent.Should()
+            .Contain("services.AddSingleton<global::TestApp.SingletonService, global::TestApp.SingletonService>");
+        registrationContent.Should()
+            .Contain("services.AddSingleton<global::TestApp.ISingletonService, global::TestApp.SingletonService>");
+        registrationContent.Should()
+            .Contain("services.AddTransient<global::TestApp.TransientService, global::TestApp.TransientService>");
+        registrationContent.Should()
+            .Contain("services.AddTransient<global::TestApp.ITransientService, global::TestApp.TransientService>");
     }
 
     #endregion
@@ -166,32 +159,16 @@ namespace TestApp
             throw new Exception($"Compilation has errors:\n{errors}");
         }
 
-        var registrationSource = result.GetServiceRegistrationSource();
+        var registrationContent = result.GetServiceRegistrationText();
 
-        // Debug: Show what was actually generated
-        if (registrationSource == null)
-        {
-            var generatedContent = string.Join("\n\n",
-                result.GeneratedSources.Select(gs => $"--- {gs.Hint} ---\n{gs.Content}"));
-            throw new Exception(
-                $"No service registration source found. Generated {result.GeneratedSources.Count} sources:\n{generatedContent}");
-        }
-
-        Assert.NotNull(registrationSource);
-
-        // Should register concrete class
-        Assert.Contains("services.AddScoped<global::TestApp.UserService, global::TestApp.UserService>",
-            registrationSource.Content);
-
-        // Should register only the specified interface
-        Assert.Contains("services.AddScoped<global::TestApp.IUserService, global::TestApp.UserService>",
-            registrationSource.Content);
-
-        // Should NOT register interfaces not specified in RegisterAs
-        Assert.DoesNotContain("services.AddScoped<global::TestApp.IEmailService, global::TestApp.UserService>",
-            registrationSource.Content);
-        Assert.DoesNotContain("services.AddScoped<global::TestApp.IValidationService, global::TestApp.UserService>",
-            registrationSource.Content);
+        registrationContent.Should().Contain(
+            "services.AddScoped<global::TestApp.UserService, global::TestApp.UserService>");
+        registrationContent.Should().Contain(
+            "services.AddScoped<global::TestApp.IUserService, global::TestApp.UserService>");
+        registrationContent.Should().NotContain(
+            "services.AddScoped<global::TestApp.IEmailService, global::TestApp.UserService>");
+        registrationContent.Should().NotContain(
+            "services.AddScoped<global::TestApp.IValidationService, global::TestApp.UserService>");
     }
 
     [Fact]
@@ -216,21 +193,16 @@ namespace TestApp
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationContent = result.GetServiceRegistrationText();
+        registrationContent.Should().Contain(
+            "services.AddScoped<global::TestApp.UserEmailService, global::TestApp.UserEmailService>");
+        registrationContent.Should().Contain(
+            "services.AddScoped<global::TestApp.IUserService, global::TestApp.UserEmailService>");
+        registrationContent.Should().Contain(
+            "services.AddScoped<global::TestApp.IEmailService, global::TestApp.UserEmailService>");
 
-        // Should register concrete class and specified interfaces only
-        Assert.Contains("services.AddScoped<global::TestApp.UserEmailService, global::TestApp.UserEmailService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::TestApp.IUserService, global::TestApp.UserEmailService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::TestApp.IEmailService, global::TestApp.UserEmailService>",
-            registrationSource.Content);
-
-        // Should NOT register interfaces not specified in RegisterAs
-        Assert.DoesNotContain(
-            "services.AddScoped<global::TestApp.IValidationService, global::TestApp.UserEmailService>",
-            registrationSource.Content);
+        registrationContent.Should().NotContain(
+            "services.AddScoped<global::TestApp.IValidationService, global::TestApp.UserEmailService>");
     }
 
     [Fact]
@@ -256,22 +228,20 @@ namespace TestApp
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-
+        var registrationContent = result.GetServiceRegistrationText();
         // Should register concrete class and first 3 interfaces
-        Assert.Contains("services.AddScoped<global::TestApp.MultiService, global::TestApp.MultiService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::TestApp.IService1, global::TestApp.MultiService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::TestApp.IService2, global::TestApp.MultiService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::TestApp.IService3, global::TestApp.MultiService>",
-            registrationSource.Content);
+        registrationContent.Should()
+            .Contain("services.AddScoped<global::TestApp.MultiService, global::TestApp.MultiService>");
+        registrationContent.Should()
+            .Contain("services.AddScoped<global::TestApp.IService1, global::TestApp.MultiService>");
+        registrationContent.Should()
+            .Contain("services.AddScoped<global::TestApp.IService2, global::TestApp.MultiService>");
+        registrationContent.Should()
+            .Contain("services.AddScoped<global::TestApp.IService3, global::TestApp.MultiService>");
 
         // Should NOT register interfaces not specified in RegisterAs
-        Assert.DoesNotContain("services.AddScoped<global::TestApp.IService4, global::TestApp.MultiService>",
-            registrationSource.Content);
+        registrationContent.Should().NotContain(
+            "services.AddScoped<global::TestApp.IService4, global::TestApp.MultiService>");
     }
 
     [Fact]
@@ -302,19 +272,17 @@ namespace TestApp
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-
+        var registrationContent = result.GetServiceRegistrationText();
         // Should register concrete class and all 8 specified interfaces
-        Assert.Contains("services.AddScoped<global::TestApp.MaxInterfaceService, global::TestApp.MaxInterfaceService>",
-            registrationSource.Content);
+        registrationContent.Should()
+            .Contain("services.AddScoped<global::TestApp.MaxInterfaceService, global::TestApp.MaxInterfaceService>");
         for (var i = 1; i <= 8; i++)
-            Assert.Contains($"services.AddScoped<global::TestApp.I{i}, global::TestApp.MaxInterfaceService>",
-                registrationSource.Content);
+            registrationContent.Should().Contain(
+                $"services.AddScoped<global::TestApp.I{i}, global::TestApp.MaxInterfaceService>");
 
         // Should NOT register interfaces not specified in RegisterAs
-        Assert.DoesNotContain("services.AddScoped<global::TestApp.I9, global::TestApp.MaxInterfaceService>",
-            registrationSource.Content);
+        registrationContent.Should().NotContain(
+            "services.AddScoped<global::TestApp.I9, global::TestApp.MaxInterfaceService>");
     }
 
     #endregion
@@ -342,16 +310,14 @@ namespace TestApp
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // With intelligent inference, this should now work without requiring explicit Service attribute
-        Assert.False(result.Diagnostics.Any(d => d.Id == "IOC028"));
+        result.Diagnostics.Any(d => d.Id == "IOC028").Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-
+        var registrationContent = result.GetServiceRegistrationText();
         // Should register both concrete class and interface
-        Assert.Contains("services.AddScoped<global::TestApp.SmartService, global::TestApp.SmartService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::TestApp.IService, global::TestApp.SmartService>",
-            registrationSource.Content);
+        registrationContent.Should()
+            .Contain("services.AddScoped<global::TestApp.SmartService, global::TestApp.SmartService>");
+        registrationContent.Should()
+            .Contain("services.AddScoped<global::TestApp.IService, global::TestApp.SmartService>");
     }
 
     [Fact]
@@ -376,7 +342,7 @@ namespace TestApp
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Should report IOC029 diagnostic for not implemented interface
-        Assert.True(result.Diagnostics.Any(d => d.Id == "IOC029"));
+        result.Diagnostics.Any(d => d.Id == "IOC029").Should().BeTrue();
     }
 
     [Fact]
@@ -400,7 +366,7 @@ namespace TestApp
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Should report IOC030 diagnostic for duplicate interface
-        Assert.True(result.Diagnostics.Any(d => d.Id == "IOC030"));
+        result.Diagnostics.Any(d => d.Id == "IOC030").Should().BeTrue();
     }
 
     [Fact]
@@ -425,7 +391,7 @@ namespace TestApp
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Should report IOC031 diagnostic for non-interface type
-        Assert.True(result.Diagnostics.Any(d => d.Id == "IOC031"));
+        result.Diagnostics.Any(d => d.Id == "IOC031").Should().BeTrue();
     }
 
     #endregion
@@ -453,17 +419,15 @@ namespace TestApp
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Should generate IOC029 diagnostic since interface is not implemented
-        Assert.True(result.Diagnostics.Any(d => d.Id == "IOC029"));
+        result.Diagnostics.Any(d => d.Id == "IOC029").Should().BeTrue();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-
+        var registrationContent = result.GetServiceRegistrationText();
         // Should still register concrete class
-        Assert.Contains("services.AddScoped<global::TestApp.ConcreteOnlyService, global::TestApp.ConcreteOnlyService>",
-            registrationSource.Content);
+        registrationContent.Should()
+            .Contain("services.AddScoped<global::TestApp.ConcreteOnlyService, global::TestApp.ConcreteOnlyService>");
         // Should not register the unimplemented interface
         // This interface is not implemented by the class, so it should not be registered
-        Assert.DoesNotContain("services.AddScoped<global::TestApp.INeverUsedInterface", registrationSource.Content);
+        registrationContent.Should().NotContain("services.AddScoped<global::TestApp.INeverUsedInterface");
     }
 
     [Fact]
@@ -487,16 +451,14 @@ namespace TestApp
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-
+        var registrationContent = result.GetServiceRegistrationText();
         // Should handle generic interfaces correctly
-        Assert.Contains("services.AddScoped<global::TestApp.GenericService, global::TestApp.GenericService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::TestApp.IRepository<string>, global::TestApp.GenericService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::TestApp.IGenericService<int>, global::TestApp.GenericService>",
-            registrationSource.Content);
+        registrationContent.Should()
+            .Contain("services.AddScoped<global::TestApp.GenericService, global::TestApp.GenericService>");
+        registrationContent.Should()
+            .Contain("services.AddScoped<global::TestApp.IRepository<string>, global::TestApp.GenericService>");
+        registrationContent.Should()
+            .Contain("services.AddScoped<global::TestApp.IGenericService<int>, global::TestApp.GenericService>");
     }
 
     [Fact]
@@ -519,20 +481,16 @@ namespace TestApp
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // TODO: GENERATOR BUG - Same issue, generator is producing error diagnostics when it shouldn't
-        // Skip this assertion for now  
-        // Assert.False(result.Diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error));
+        // Skip the diagnostic verification for now (expected no errors).
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-
+        var registrationContent = result.GetServiceRegistrationText();
         // TODO: GENERATOR BUG - Same issue as above test
-        // Expected: RegisterAs without Lifetime should only register interfaces  
-        // Skip this assertion for now
-        // Assert.DoesNotContain("services.AddScoped<global::TestApp.SpecificRegistrationService, global::TestApp.SpecificRegistrationService>", registrationSource.Content);
+        // Expected: RegisterAs without Lifetime should only register interfaces
+        // Skip the concrete-registration check for now.
 
         // Should register the interface specified in RegisterAs
-        Assert.Contains("services.AddScoped<global::TestApp.IService, global::TestApp.SpecificRegistrationService>",
-            registrationSource.Content);
+        registrationContent.Should()
+            .Contain("services.AddScoped<global::TestApp.IService, global::TestApp.SpecificRegistrationService>");
     }
 
     #endregion
@@ -565,20 +523,18 @@ namespace TestApp
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-
+        var registrationContent = result.GetServiceRegistrationText();
         // Should register specified interfaces, including inherited ones
-        Assert.Contains("services.AddScoped<global::TestApp.DerivedService, global::TestApp.DerivedService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::TestApp.IBaseService, global::TestApp.DerivedService>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::TestApp.IDerivedService, global::TestApp.DerivedService>",
-            registrationSource.Content);
+        registrationContent.Should()
+            .Contain("services.AddScoped<global::TestApp.DerivedService, global::TestApp.DerivedService>");
+        registrationContent.Should()
+            .Contain("services.AddScoped<global::TestApp.IBaseService, global::TestApp.DerivedService>");
+        registrationContent.Should()
+            .Contain("services.AddScoped<global::TestApp.IDerivedService, global::TestApp.DerivedService>");
 
         // Should NOT register interfaces not specified in RegisterAs
-        Assert.DoesNotContain("services.AddScoped<global::TestApp.IUnusedService, global::TestApp.DerivedService>",
-            registrationSource.Content);
+        registrationContent.Should().NotContain(
+            "services.AddScoped<global::TestApp.IUnusedService, global::TestApp.DerivedService>");
     }
 
     [Fact]
@@ -612,19 +568,14 @@ namespace TestApp
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-
+        var registrationContent = result.GetServiceRegistrationText();
         // Should handle namespace-qualified interfaces
-        Assert.Contains(
-            "services.AddScoped<global::TestApp.CrossNamespaceService, global::TestApp.CrossNamespaceService>",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::TestApp.Services.ILocalService, global::TestApp.CrossNamespaceService>",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::TestApp.External.IExternalService, global::TestApp.CrossNamespaceService>",
-            registrationSource.Content);
+        registrationContent.Should().Contain(
+            "services.AddScoped<global::TestApp.CrossNamespaceService, global::TestApp.CrossNamespaceService>");
+        registrationContent.Should().Contain(
+            "services.AddScoped<global::TestApp.Services.ILocalService, global::TestApp.CrossNamespaceService>");
+        registrationContent.Should().Contain(
+            "services.AddScoped<global::TestApp.External.IExternalService, global::TestApp.CrossNamespaceService>");
     }
 
     #endregion

@@ -44,17 +44,18 @@ public partial class ConcreteDependency : IDependency
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
+        var errorMessages = string.Join(", ",
+            result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
+                .Select(d => d.GetMessage()));
+        result.HasErrors.Should().BeFalse($"Compilation failed: {errorMessages}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationText = result.GetServiceRegistrationText();
 
         // WORKING FEATURE: ConditionalService code generation IS implemented
         // The generator produces Environment.GetEnvironmentVariable logic
-        Assert.Contains("Environment.GetEnvironmentVariable", registrationSource.Content);
-        Assert.Contains("Production", registrationSource.Content);
-        Assert.Contains("if (", registrationSource.Content);
+        registrationText.Should().Contain("Environment.GetEnvironmentVariable");
+        registrationText.Should().Contain("Production");
+        registrationText.Should().Contain("if (");
 
         // ConditionalService generates proper conditional logic:
         // 1. Environment variable checking
@@ -86,16 +87,17 @@ public partial class RedisCacheService : ICacheService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
+        var errorMessages = string.Join(", ",
+            result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
+                .Select(d => d.GetMessage()));
+        result.HasErrors.Should().BeFalse($"Compilation failed: {errorMessages}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationText = result.GetServiceRegistrationText();
 
         // WORKING FEATURE: Configuration-based conditional logic IS generated
-        Assert.Contains("Cache:Provider", registrationSource.Content);
-        Assert.Contains("Redis", registrationSource.Content);
-        Assert.Contains("if (", registrationSource.Content);
+        registrationText.Should().Contain("Cache:Provider");
+        registrationText.Should().Contain("Redis");
+        registrationText.Should().Contain("if (");
     }
 
     [Fact]
@@ -122,17 +124,18 @@ public partial class TestingService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
+        var errorMessages = string.Join(", ",
+            result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
+                .Select(d => d.GetMessage()));
+        result.HasErrors.Should().BeFalse($"Compilation failed: {errorMessages}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationText = result.GetServiceRegistrationText();
 
         // WORKING FEATURE: Multiple environment OR logic IS implemented
-        Assert.Contains("Environment.GetEnvironmentVariable", registrationSource.Content);
-        Assert.Contains("Development", registrationSource.Content);
-        Assert.Contains("Testing", registrationSource.Content);
-        Assert.Contains("||", registrationSource.Content);
+        registrationText.Should().Contain("Environment.GetEnvironmentVariable");
+        registrationText.Should().Contain("Development");
+        registrationText.Should().Contain("Testing");
+        registrationText.Should().Contain("||");
     }
 
     [Fact]
@@ -159,17 +162,18 @@ public partial class DebugService : IDebugService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
+        var errorMessages = string.Join(", ",
+            result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
+                .Select(d => d.GetMessage()));
+        result.HasErrors.Should().BeFalse($"Compilation failed: {errorMessages}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationText = result.GetServiceRegistrationText();
 
         // WORKING FEATURE: NotEnvironment logic IS implemented
-        Assert.Contains("Environment.GetEnvironmentVariable", registrationSource.Content);
-        Assert.Contains("Production", registrationSource.Content);
-        Assert.Contains("!string.Equals", registrationSource.Content);
-        Assert.Contains("if (", registrationSource.Content);
+        registrationText.Should().Contain("Environment.GetEnvironmentVariable");
+        registrationText.Should().Contain("Production");
+        registrationText.Should().Contain("!string.Equals");
+        registrationText.Should().Contain("if (");
     }
 
     [Fact]
@@ -197,17 +201,18 @@ public partial class AdvancedService : IAdvancedService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
+        var errorMessages = string.Join(", ",
+            result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
+                .Select(d => d.GetMessage()));
+        result.HasErrors.Should().BeFalse($"Compilation failed: {errorMessages}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationText = result.GetServiceRegistrationText();
 
         // WORKING FEATURE: Combined conditional logic IS implemented
-        Assert.Contains("Environment.GetEnvironmentVariable", registrationSource.Content);
-        Assert.Contains("Production", registrationSource.Content);
-        Assert.Contains("Features:EnableAdvanced", registrationSource.Content);
-        Assert.Contains("&&", registrationSource.Content);
+        registrationText.Should().Contain("Environment.GetEnvironmentVariable");
+        registrationText.Should().Contain("Production");
+        registrationText.Should().Contain("Features:EnableAdvanced");
+        registrationText.Should().Contain("&&");
     }
 
     [Fact]
@@ -234,17 +239,18 @@ public partial class EnabledService : IService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
+        var errorMessages = string.Join(", ",
+            result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
+                .Select(d => d.GetMessage()));
+        result.HasErrors.Should().BeFalse($"Compilation failed: {errorMessages}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationText = result.GetServiceRegistrationText();
 
         // WORKING FEATURE: Configuration NotEquals logic IS implemented
-        Assert.Contains("configuration.GetValue<string>", registrationSource.Content);
-        Assert.Contains("Features:DisableService", registrationSource.Content);
-        Assert.Contains("!=", registrationSource.Content);
-        Assert.Contains("true", registrationSource.Content);
+        registrationText.Should().Contain("configuration.GetValue<string>");
+        registrationText.Should().Contain("Features:DisableService");
+        registrationText.Should().Contain("!=");
+        registrationText.Should().Contain("true");
     }
 
     #endregion
@@ -281,16 +287,17 @@ public partial class SmtpEmailService : IEmailService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
+        var errorMessages = string.Join(", ",
+            result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
+                .Select(d => d.GetMessage()));
+        result.HasErrors.Should().BeFalse($"Compilation failed: {errorMessages}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationText = result.GetServiceRegistrationText();
 
         // WORKING FEATURE: If-else chain logic for multiple conditional services IS generated
-        Assert.Contains("if (", registrationSource.Content);
-        Assert.Contains("Development", registrationSource.Content);
-        Assert.Contains("Production", registrationSource.Content);
+        registrationText.Should().Contain("if (");
+        registrationText.Should().Contain("Development");
+        registrationText.Should().Contain("Production");
         // Multiple conditional services generate proper conditional logic
     }
 
@@ -321,15 +328,16 @@ public partial class DevelopmentProcessor : IProcessingService, ILoggingService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
+        var errorMessages = string.Join(", ",
+            result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
+                .Select(d => d.GetMessage()));
+        result.HasErrors.Should().BeFalse($"Compilation failed: {errorMessages}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationText = result.GetServiceRegistrationText();
 
         // WORKING FEATURE: ConditionalService logic IS generated with RegisterAsAll
-        Assert.Contains("if (", registrationSource.Content);
-        Assert.Contains("Development", registrationSource.Content);
+        registrationText.Should().Contain("if (");
+        registrationText.Should().Contain("Development");
 
         // RegisterAsAll works together with conditional logic
         // Both the conditional evaluation and multiple interface registration work correctly
@@ -362,14 +370,13 @@ public partial class ProductionService : IService { }
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        result.HasErrors.Should().BeFalse();
+        var registrationText = result.GetServiceRegistrationText();
 
         // WORKING: Complete service registration infrastructure generates correctly
         // WORKING: Conditional registration logic is generated (Environment.GetEnvironmentVariable, etc.)
-        Assert.Contains("if (", registrationSource.Content);
-        Assert.Contains("Environment.GetEnvironmentVariable", registrationSource.Content);
+        registrationText.Should().Contain("if (");
+        registrationText.Should().Contain("Environment.GetEnvironmentVariable");
     }
 
     [Fact]
@@ -395,7 +402,7 @@ public partial class InvalidConditionalService : IService { }
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert compilation works but may generate diagnostics
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // WORKING: ConditionalService validation infrastructure detects issues correctly
         // WORKING: The conditional registration code generation works for valid scenarios

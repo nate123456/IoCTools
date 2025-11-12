@@ -48,6 +48,14 @@ internal static class DiagnosticRules
             .ValidateConfigurationInjection(context, classDeclaration, classSymbol);
     }
 
+    public static void ValidateRedundantServiceConfigurations(SourceProductionContext context,
+        TypeDeclarationSyntax classDeclaration,
+        INamedTypeSymbol classSymbol)
+    {
+        RedundantConfigurationValidator
+            .Validate(context, classDeclaration, classSymbol);
+    }
+
     // IOC011: Validate HostedService requirements (partial class requirement)
     public static void ValidateHostedServiceRequirements(SourceProductionContext context,
         TypeDeclarationSyntax classDeclaration,
@@ -324,6 +332,11 @@ internal static class DiagnosticRules
         DependsOnValidator
             .ValidateUnnecessarySkipRegistration(context, classDeclaration, classSymbol);
     }
+
+    public static void ValidateInjectFieldPreferences(SourceProductionContext context,
+        TypeDeclarationSyntax classDeclaration,
+        INamedTypeSymbol classSymbol) =>
+        InjectUsageValidator.ValidatePreferDependsOn(context, classDeclaration, classSymbol);
 
     // IOC015: Validate inheritance chain lifetime violations (SourceProductionContext)
     public static void ValidateInheritanceChainLifetimesForSourceProduction(SourceProductionContext context,

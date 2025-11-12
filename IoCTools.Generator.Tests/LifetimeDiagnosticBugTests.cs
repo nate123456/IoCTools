@@ -46,14 +46,14 @@ public partial class CacheService
         // Assert - CRITICAL: IOC012 must be triggered
         var ioc012Diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.Single(ioc012Diagnostics); // Must have exactly one IOC012 error
-        Assert.Equal(DiagnosticSeverity.Error, ioc012Diagnostics[0].Severity); // Must be ERROR severity
+        ioc012Diagnostics.Should().ContainSingle(); // Must have exactly one IOC012 error
+        ioc012Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Error); // Must be ERROR severity
 
         var message = ioc012Diagnostics[0].GetMessage();
-        Assert.Contains("CacheService", message); // Should mention the singleton service
-        Assert.Contains("DatabaseContext", message); // Should mention the scoped dependency  
-        Assert.Contains("Singleton", message); // Should mention lifetime conflict
-        Assert.Contains("Scoped", message); // Should mention lifetime conflict
+        message.Should().Contain("CacheService"); // Should mention the singleton service
+        message.Should().Contain("DatabaseContext"); // Should mention the scoped dependency  
+        message.Should().Contain("Singleton"); // Should mention lifetime conflict
+        message.Should().Contain("Scoped"); // Should mention lifetime conflict
     }
 
     /// <summary>
@@ -86,12 +86,12 @@ public partial class SingletonService
         // Assert
         var ioc012Diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.Single(ioc012Diagnostics);
-        Assert.Equal(DiagnosticSeverity.Error, ioc012Diagnostics[0].Severity);
+        ioc012Diagnostics.Should().ContainSingle();
+        ioc012Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Error);
 
         var message = ioc012Diagnostics[0].GetMessage();
-        Assert.Contains("SingletonService", message);
-        Assert.Contains("DatabaseContext", message);
+        message.Should().Contain("SingletonService");
+        message.Should().Contain("DatabaseContext");
     }
 
     /// <summary>
@@ -130,8 +130,8 @@ public partial class DerivedService : BaseService
         // Assert - Both services should trigger IOC012
         var ioc012Diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.True(ioc012Diagnostics.Count >= 1, "Should have at least one IOC012 diagnostic");
-        Assert.All(ioc012Diagnostics, d => Assert.Equal(DiagnosticSeverity.Error, d.Severity));
+        (ioc012Diagnostics.Count >= 1).Should().BeTrue("Should have at least one IOC012 diagnostic");
+        ioc012Diagnostics.Should().AllSatisfy(d => d.Severity.Should().Be(DiagnosticSeverity.Error));
     }
 
     #endregion
@@ -170,14 +170,14 @@ public partial class CacheService
         // Assert - CRITICAL: IOC013 must be triggered
         var ioc013Diagnostics = result.GetDiagnosticsByCode("IOC013");
 
-        Assert.Single(ioc013Diagnostics); // Must have exactly one IOC013 warning
-        Assert.Equal(DiagnosticSeverity.Warning, ioc013Diagnostics[0].Severity); // Must be WARNING severity
+        ioc013Diagnostics.Should().ContainSingle(); // Must have exactly one IOC013 warning
+        ioc013Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Warning); // Must be WARNING severity
 
         var message = ioc013Diagnostics[0].GetMessage();
-        Assert.Contains("CacheService", message); // Should mention the singleton service
-        Assert.Contains("TransientLogger", message); // Should mention the transient dependency
-        Assert.Contains("Singleton", message); // Should mention lifetime conflict
-        Assert.Contains("Transient", message); // Should mention lifetime conflict
+        message.Should().Contain("CacheService"); // Should mention the singleton service
+        message.Should().Contain("TransientLogger"); // Should mention the transient dependency
+        message.Should().Contain("Singleton"); // Should mention lifetime conflict
+        message.Should().Contain("Transient"); // Should mention lifetime conflict
     }
 
     /// <summary>
@@ -216,8 +216,8 @@ public partial class SingletonService
         // Assert - Should have IOC013 for both dependencies
         var ioc013Diagnostics = result.GetDiagnosticsByCode("IOC013");
 
-        Assert.Equal(2, ioc013Diagnostics.Count); // Should have two warnings
-        Assert.All(ioc013Diagnostics, d => Assert.Equal(DiagnosticSeverity.Warning, d.Severity));
+        ioc013Diagnostics.Count.Should().Be(2); // Should have two warnings
+        ioc013Diagnostics.Should().AllSatisfy(d => d.Severity.Should().Be(DiagnosticSeverity.Warning));
     }
 
     /// <summary>
@@ -250,8 +250,8 @@ public partial class SingletonCache
         // Assert
         var ioc013Diagnostics = result.GetDiagnosticsByCode("IOC013");
 
-        Assert.Single(ioc013Diagnostics);
-        Assert.Equal(DiagnosticSeverity.Warning, ioc013Diagnostics[0].Severity);
+        ioc013Diagnostics.Should().ContainSingle();
+        ioc013Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Warning);
     }
 
     #endregion
@@ -297,11 +297,11 @@ public partial class SingletonService
         var ioc012Diagnostics = result.GetDiagnosticsByCode("IOC012"); // Singleton→Scoped ERROR
         var ioc013Diagnostics = result.GetDiagnosticsByCode("IOC013"); // Singleton→Transient WARNING
 
-        Assert.Single(ioc012Diagnostics); // Must detect Singleton→Scoped violation
-        Assert.Single(ioc013Diagnostics); // Must detect Singleton→Transient violation
+        ioc012Diagnostics.Should().ContainSingle(); // Must detect Singleton→Scoped violation
+        ioc013Diagnostics.Should().ContainSingle(); // Must detect Singleton→Transient violation
 
-        Assert.Equal(DiagnosticSeverity.Error, ioc012Diagnostics[0].Severity);
-        Assert.Equal(DiagnosticSeverity.Warning, ioc013Diagnostics[0].Severity);
+        ioc012Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Error);
+        ioc013Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Warning);
     }
 
     /// <summary>
@@ -341,9 +341,9 @@ public partial class TopLevelService
         // Assert - Should detect the direct Singleton→Scoped violation
         var ioc012Diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.Single(ioc012Diagnostics); // IntermediateService → ScopedDataAccess violation
-        Assert.Contains("IntermediateService", ioc012Diagnostics[0].GetMessage());
-        Assert.Contains("ScopedDataAccess", ioc012Diagnostics[0].GetMessage());
+        ioc012Diagnostics.Should().ContainSingle(); // IntermediateService → ScopedDataAccess violation
+        ioc012Diagnostics[0].GetMessage().Should().Contain("IntermediateService");
+        ioc012Diagnostics[0].GetMessage().Should().Contain("ScopedDataAccess");
     }
 
     #endregion
@@ -380,8 +380,8 @@ public partial class SingletonCache<T>
         // Assert
         var ioc012Diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.Single(ioc012Diagnostics);
-        Assert.Equal(DiagnosticSeverity.Error, ioc012Diagnostics[0].Severity);
+        ioc012Diagnostics.Should().ContainSingle();
+        ioc012Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Error);
     }
 
     /// <summary>
@@ -421,11 +421,11 @@ public partial class MixedService
         var ioc012Diagnostics = result.GetDiagnosticsByCode("IOC012");
         var ioc013Diagnostics = result.GetDiagnosticsByCode("IOC013");
 
-        Assert.Single(ioc012Diagnostics); // DependsOn violation
-        Assert.Single(ioc013Diagnostics); // Inject violation
+        ioc012Diagnostics.Should().ContainSingle(); // DependsOn violation
+        ioc013Diagnostics.Should().ContainSingle(); // Inject violation
 
-        Assert.Equal(DiagnosticSeverity.Error, ioc012Diagnostics[0].Severity);
-        Assert.Equal(DiagnosticSeverity.Warning, ioc013Diagnostics[0].Severity);
+        ioc012Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Error);
+        ioc013Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Warning);
     }
 
     #endregion
@@ -468,7 +468,7 @@ public partial class TopLayer : MiddleLayer
         var ioc012Diagnostics = result.GetDiagnosticsByCode("IOC012");
 
         // Should detect lifetime violation despite inheritance
-        Assert.True(ioc012Diagnostics.Count >= 1, "Should detect lifetime violations in inheritance hierarchy");
+        (ioc012Diagnostics.Count >= 1).Should().BeTrue("Should detect lifetime violations in inheritance hierarchy");
     }
 
     /// <summary>
@@ -503,7 +503,7 @@ public partial class SingletonService
             .Where(d => d.GetMessage().Contains("SingletonService") &&
                         d.GetMessage().Count(x => x.ToString().Contains("SingletonService")) > 1);
 
-        Assert.Empty(selfReferencingDiagnostics); // Should not trigger false positives for self-dependencies
+        selfReferencingDiagnostics.Should().BeEmpty(); // Should not trigger false positives for self-dependencies
     }
 
     #endregion

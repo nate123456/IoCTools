@@ -28,20 +28,18 @@ public partial class SharedUserNotificationService : IUserService, INotification
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Verify shared instance pattern: concrete class with single parameter registration, interfaces with factory lambdas
-        Assert.Contains("AddScoped<global::Test.SharedUserNotificationService>",
-            registrationSource.Content);
-        Assert.Contains(
-            "AddScoped<global::Test.IUserService>(provider => provider.GetRequiredService<global::Test.SharedUserNotificationService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "AddScoped<global::Test.INotificationService>(provider => provider.GetRequiredService<global::Test.SharedUserNotificationService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should().Contain("AddScoped<global::Test.SharedUserNotificationService>");
+        registrationSource.Content.Should()
+            .Contain(
+                "AddScoped<global::Test.IUserService>(provider => provider.GetRequiredService<global::Test.SharedUserNotificationService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "AddScoped<global::Test.INotificationService>(provider => provider.GetRequiredService<global::Test.SharedUserNotificationService>())");
     }
 
     [Fact]
@@ -67,17 +65,15 @@ public partial class SeparateUserNotificationService : IUserService, INotificati
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Verify separate instance pattern: direct registrations (generator correctly uses single parameter form)
-        Assert.Contains("AddScoped<global::Test.SeparateUserNotificationService>",
-            registrationSource.Content);
-        Assert.Contains("AddScoped<global::Test.IUserService, global::Test.SeparateUserNotificationService>",
-            registrationSource.Content);
-        Assert.Contains("AddScoped<global::Test.INotificationService, global::Test.SeparateUserNotificationService>",
-            registrationSource.Content);
+        registrationSource.Content.Should().Contain("AddScoped<global::Test.SeparateUserNotificationService>");
+        registrationSource.Content.Should()
+            .Contain("AddScoped<global::Test.IUserService, global::Test.SeparateUserNotificationService>");
+        registrationSource.Content.Should()
+            .Contain("AddScoped<global::Test.INotificationService, global::Test.SeparateUserNotificationService>");
     }
 }

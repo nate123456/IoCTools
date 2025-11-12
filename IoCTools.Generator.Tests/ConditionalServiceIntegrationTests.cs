@@ -60,13 +60,13 @@ public interface IScopedDependency { }";
 
         // If diagnostics are implemented, they should be present
         // If not, should at least not crash during compilation
-        Assert.False(result.HasErrors, "Should not have compilation errors even with conflicting configurations");
+        result.HasErrors.Should().BeFalse("Should not have compilation errors even with conflicting configurations");
 
-        var registrationSource = result.GetServiceRegistrationSource();
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
         if (registrationSource != null)
             // Should not generate impossible conditions
-            Assert.DoesNotContain("environment == \"Development\" && environment != \"Development\"",
-                registrationSource.Content);
+            registrationSource.Content.Should()
+                .NotContain("environment == \"Development\" && environment != \"Development\"");
     }
 
     #endregion
@@ -120,31 +120,29 @@ public partial class MemoryCacheService : ICacheService
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should use string.Equals for configuration-based conditionals (different pattern than environment-based)
-        Assert.Contains(
-            "string.Equals(configuration[\"Cache:Provider\"], \"Redis\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains(
-            "string.Equals(configuration[\"Cache:Provider\"], \"Memory\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("string.Equals(configuration[\"Cache:Provider\"], \"Redis\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should()
+            .Contain(
+                "string.Equals(configuration[\"Cache:Provider\"], \"Memory\", StringComparison.OrdinalIgnoreCase)");
 
         // Both services should be registered conditionally
         // Conditional services with configuration injection use factory patterns for interface registrations
-        Assert.Contains(
-            "AddScoped<global::Test.ICacheService>(provider => provider.GetRequiredService<global::Test.RedisCacheService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "AddScoped<global::Test.ICacheService>(provider => provider.GetRequiredService<global::Test.MemoryCacheService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain(
+                "AddScoped<global::Test.ICacheService>(provider => provider.GetRequiredService<global::Test.RedisCacheService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "AddScoped<global::Test.ICacheService>(provider => provider.GetRequiredService<global::Test.MemoryCacheService>())");
 
         // Concrete classes should also be registered directly
-        Assert.Contains("AddScoped<global::Test.RedisCacheService>", registrationSource.Content);
-        Assert.Contains("AddScoped<global::Test.MemoryCacheService>", registrationSource.Content);
+        registrationSource.Content.Should().Contain("AddScoped<global::Test.RedisCacheService>");
+        registrationSource.Content.Should().Contain("AddScoped<global::Test.MemoryCacheService>");
     }
 
     [Fact]
@@ -188,21 +186,20 @@ public partial class ProdEmailService : IEmailService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should generate constructors with both Options and configuration injection
         var devConstructorSource = result.GetConstructorSource("DevEmailService");
         var prodConstructorSource = result.GetConstructorSource("ProdEmailService");
-        Assert.NotNull(devConstructorSource);
-        Assert.NotNull(prodConstructorSource);
+        devConstructorSource.Should().NotBeNull();
+        prodConstructorSource.Should().NotBeNull();
 
         // Should generate environment-based conditional registration
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)");
     }
 
     #endregion
@@ -243,19 +240,18 @@ public partial class ProdSingletonService : IScopedService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should not produce lifetime validation warnings for valid dependencies
         var lifetimeWarnings = result.GetDiagnosticsByCode("IOC004");
-        Assert.Empty(lifetimeWarnings);
+        lifetimeWarnings.Should().BeEmpty();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("services.AddSingleton<Test.ISingletonService, Test.SingletonService>",
-            registrationSource.Content);
-        Assert.Contains("AddScoped<Test.IScopedService, Test.DevScopedService>", registrationSource.Content);
-        Assert.Contains("services.AddSingleton<Test.IScopedService, Test.ProdSingletonService>",
-            registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should()
+            .Contain("services.AddSingleton<Test.ISingletonService, Test.SingletonService>");
+        registrationSource.Content.Should().Contain("AddScoped<Test.IScopedService, Test.DevScopedService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddSingleton<Test.IScopedService, Test.ProdSingletonService>");
     }
 
     [Fact]
@@ -289,8 +285,8 @@ public partial class InvalidSingletonService : ISingletonService
         var lifetimeWarnings = result.GetDiagnosticsByCode("IOC004");
         if (lifetimeWarnings.Any())
         {
-            Assert.Contains("Singleton", lifetimeWarnings.First().GetMessage());
-            Assert.Contains("Scoped", lifetimeWarnings.First().GetMessage());
+            lifetimeWarnings.First().GetMessage().Should().Contain("Singleton");
+            lifetimeWarnings.First().GetMessage().Should().Contain("Scoped");
         }
     }
 
@@ -333,15 +329,14 @@ public partial class ConditionalBackgroundService : BackgroundService
         if (lifetimeWarnings.Any())
         {
             var warning = lifetimeWarnings.First().GetMessage();
-            Assert.True(warning.Contains("Singleton") || warning.Contains("Scoped"));
+            (warning.Contains("Singleton") || warning.Contains("Scoped")).Should().BeTrue();
         }
 
         // Should still register the background service conditionally
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("AddHostedService<Test.ConditionalBackgroundService>", registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should().Contain("AddHostedService<Test.ConditionalBackgroundService>");
     }
 
     #endregion
@@ -397,31 +392,28 @@ public interface IMetrics { }
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should generate constructors with proper inheritance
-        var devConstructorSource = result.GetConstructorSource("DevService");
-        Assert.NotNull(devConstructorSource);
-        Assert.Contains("DevService(ILogger logger, ICache cache)", devConstructorSource.Content);
-        Assert.Contains("base(logger)", devConstructorSource.Content);
+        var devConstructorSource = result.GetRequiredConstructorSource("DevService");
+        devConstructorSource.Content.Should().Contain("DevService(ILogger logger, ICache cache)");
+        devConstructorSource.Content.Should().Contain("base(logger)");
 
-        var prodConstructorSource = result.GetConstructorSource("ProdService");
-        Assert.NotNull(prodConstructorSource);
-        Assert.Contains("ProdService(ILogger logger, ICache cache, IMetrics metrics)", prodConstructorSource.Content);
-        Assert.Contains("base(logger)", prodConstructorSource.Content);
+        var prodConstructorSource = result.GetRequiredConstructorSource("ProdService");
+        prodConstructorSource.Content.Should().Contain("ProdService(ILogger logger, ICache cache, IMetrics metrics)");
+        prodConstructorSource.Content.Should().Contain("base(logger)");
 
         // Should generate conditional registration for derived classes only
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("AddScoped<Test.DevService, Test.DevService>", registrationSource.Content);
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("AddScoped<Test.ProdService, Test.ProdService>", registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should().Contain("AddScoped<Test.DevService, Test.DevService>");
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should().Contain("AddScoped<Test.ProdService, Test.ProdService>");
 
         // Base service should be registered unconditionally  
-        Assert.Contains("AddScoped<Test.BaseService, Test.BaseService>", registrationSource.Content);
+        registrationSource.Content.Should().Contain("AddScoped<Test.BaseService, Test.BaseService>");
     }
 
     [Fact]
@@ -469,23 +461,20 @@ public interface IDbContext { }
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should handle generic inheritance in conditional services
-        var inMemoryConstructorSource = result.GetConstructorSource("InMemoryUserRepository");
-        Assert.NotNull(inMemoryConstructorSource);
-        Assert.Contains("InMemoryUserRepository(ILogger logger)", inMemoryConstructorSource.Content);
+        var inMemoryConstructorSource = result.GetRequiredConstructorSource("InMemoryUserRepository");
+        inMemoryConstructorSource.Content.Should().Contain("InMemoryUserRepository(ILogger logger)");
 
-        var sqlConstructorSource = result.GetConstructorSource("SqlUserRepository");
-        Assert.NotNull(sqlConstructorSource);
-        Assert.Contains("SqlUserRepository(ILogger logger, IDbContext context)", sqlConstructorSource.Content);
+        var sqlConstructorSource = result.GetRequiredConstructorSource("SqlUserRepository");
+        sqlConstructorSource.Content.Should().Contain("SqlUserRepository(ILogger logger, IDbContext context)");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)");
     }
 
     #endregion
@@ -528,34 +517,33 @@ public partial class ProdMultiService : IPaymentProcessor, INotificationService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should register conditionally for all interfaces
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)");
 
         // CORRECTED: DevMultiService uses RegistrationMode.All with InstanceSharing.Separate,
         // so it should use factory patterns to ensure each interface gets its own instance
-        Assert.Contains("AddScoped<Test.DevMultiService>",
-            registrationSource.Content); // Self registration (single parameter form)
-        Assert.Contains(
-            "AddScoped<Test.IPaymentProcessor>(provider => provider.GetRequiredService<Test.DevMultiService>())",
-            registrationSource.Content);
-        Assert.Contains(
-            "AddScoped<Test.INotificationService>(provider => provider.GetRequiredService<Test.DevMultiService>())",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("AddScoped<Test.DevMultiService>"); // Self registration (single parameter form)
+        registrationSource.Content.Should()
+            .Contain(
+                "AddScoped<Test.IPaymentProcessor>(provider => provider.GetRequiredService<Test.DevMultiService>())");
+        registrationSource.Content.Should()
+            .Contain(
+                "AddScoped<Test.INotificationService>(provider => provider.GetRequiredService<Test.DevMultiService>())");
 
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)");
 
         // CORRECTED: ProdMultiService uses RegistrationMode.Exclusionary, so direct registrations
-        Assert.Contains("AddScoped<Test.IPaymentProcessor, Test.ProdMultiService>", registrationSource.Content);
-        Assert.Contains("AddScoped<Test.INotificationService, Test.ProdMultiService>", registrationSource.Content);
+        registrationSource.Content.Should().Contain("AddScoped<Test.IPaymentProcessor, Test.ProdMultiService>");
+        registrationSource.Content.Should().Contain("AddScoped<Test.INotificationService, Test.ProdMultiService>");
         // Should NOT include self registration for Exclusionary mode
-        Assert.DoesNotContain("AddScoped<Test.ProdMultiService, Test.ProdMultiService>", registrationSource.Content);
+        registrationSource.Content.Should().NotContain("AddScoped<Test.ProdMultiService, Test.ProdMultiService>");
     }
 
     [Fact]
@@ -589,18 +577,17 @@ public partial class ConditionalRegisteredService : IService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should NOT contain registration for skipped service
-        Assert.DoesNotContain("ConditionalSkippedService", registrationSource.Content);
+        registrationSource.Content.Should().NotContain("ConditionalSkippedService");
 
         // Should contain registration for non-skipped conditional service
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("AddScoped<Test.IService, Test.ConditionalRegisteredService>", registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should().Contain("AddScoped<Test.IService, Test.ConditionalRegisteredService>");
     }
 
     [Fact]
@@ -648,25 +635,23 @@ public partial class UserService : IUserService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should generate constructor for DependsOn service
-        var devConstructorSource = result.GetConstructorSource("DevPaymentService");
-        Assert.NotNull(devConstructorSource);
-        Assert.Contains("DevPaymentService(ILogger logger, IEmailService emailService)", devConstructorSource.Content);
+        var devConstructorSource = result.GetRequiredConstructorSource("DevPaymentService");
+        devConstructorSource.Content.Should().Contain("DevPaymentService(ILogger logger, IEmailService emailService)");
 
         // Should generate conditional registration
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("AddScoped<Test.IPaymentService, Test.DevPaymentService>", registrationSource.Content);
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("AddScoped<Test.IPaymentService, Test.ProdPaymentService>", registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should().Contain("AddScoped<Test.IPaymentService, Test.DevPaymentService>");
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should().Contain("AddScoped<Test.IPaymentService, Test.ProdPaymentService>");
 
         // UserService should be registered and depend on whichever IPaymentService is conditionally registered
-        Assert.Contains("AddScoped<Test.IUserService, Test.UserService>", registrationSource.Content);
+        registrationSource.Content.Should().Contain("AddScoped<Test.IUserService, Test.UserService>");
     }
 
     [Fact]
@@ -703,21 +688,20 @@ public partial class ProdPaymentService : IPaymentService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should not produce missing dependency warnings for external services
         var missingDependencyWarnings = result.GetDiagnosticsByCode("IOC002");
-        Assert.Empty(missingDependencyWarnings);
+        missingDependencyWarnings.Should().BeEmpty();
 
         // Should generate conditional registration for payment services
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("AddScoped<Test.IPaymentService, Test.DevPaymentService>", registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should().Contain("AddScoped<Test.IPaymentService, Test.DevPaymentService>");
 
         // Should NOT register external service
-        Assert.DoesNotContain("Test.ExternalApiService", registrationSource.Content);
+        registrationSource.Content.Should().NotContain("Test.ExternalApiService");
     }
 
     #endregion
@@ -772,27 +756,24 @@ public partial class DevelopmentBackgroundService : BackgroundService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should generate constructors for both background services
-        var prodConstructorSource = result.GetConstructorSource("ProductionBackgroundService");
-        Assert.NotNull(prodConstructorSource);
-        Assert.Contains("ProductionBackgroundService(IDataProcessor processor, IEmailService emailService)",
-            prodConstructorSource.Content);
+        var prodConstructorSource = result.GetRequiredConstructorSource("ProductionBackgroundService");
+        prodConstructorSource.Content.Should()
+            .Contain("ProductionBackgroundService(IDataProcessor processor, IEmailService emailService)");
 
-        var devConstructorSource = result.GetConstructorSource("DevelopmentBackgroundService");
-        Assert.NotNull(devConstructorSource);
-        Assert.Contains("DevelopmentBackgroundService(IDataProcessor processor)", devConstructorSource.Content);
+        var devConstructorSource = result.GetRequiredConstructorSource("DevelopmentBackgroundService");
+        devConstructorSource.Content.Should().Contain("DevelopmentBackgroundService(IDataProcessor processor)");
 
         // Should register background services conditionally as IHostedService
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("AddHostedService<Test.ProductionBackgroundService>", registrationSource.Content);
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("AddHostedService<Test.DevelopmentBackgroundService>", registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should().Contain("AddHostedService<Test.ProductionBackgroundService>");
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should().Contain("AddHostedService<Test.DevelopmentBackgroundService>");
     }
 
     [Fact]
@@ -833,10 +814,9 @@ public partial class DataProcessingBackgroundService : BackgroundService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // DEBUG: Print actual generated registration code
         Console.WriteLine("=== CONDITIONAL SERVICE REGISTRATION DEBUG ===");
@@ -844,15 +824,15 @@ public partial class DataProcessingBackgroundService : BackgroundService
         Console.WriteLine("=== END DEBUG ===");
 
         // Should register conditional data processors
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("AddScoped<Test.IDataProcessor, Test.MockDataProcessor>", registrationSource.Content);
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("AddScoped<Test.IDataProcessor, Test.RealDataProcessor>", registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should().Contain("AddScoped<Test.IDataProcessor, Test.MockDataProcessor>");
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should().Contain("AddScoped<Test.IDataProcessor, Test.RealDataProcessor>");
 
         // Should register background service unconditionally
-        Assert.Contains("AddHostedService<global::Test.DataProcessingBackgroundService>", registrationSource.Content);
+        registrationSource.Content.Should().Contain("AddHostedService<global::Test.DataProcessingBackgroundService>");
     }
 
     [Fact]
@@ -893,15 +873,14 @@ public partial class ConditionalHostedService : IHostedService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should register IHostedService conditionally
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("AddHostedService<Test.ConditionalHostedService>", registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should().Contain("AddHostedService<Test.ConditionalHostedService>");
     }
 
     #endregion
@@ -963,38 +942,35 @@ public partial class ProdPaymentService : IPaymentService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should generate constructors with IEnumerable dependencies
-        var devConstructorSource = result.GetConstructorSource("DevPaymentService");
-        Assert.NotNull(devConstructorSource);
-        Assert.Contains("IEnumerable<INotificationProvider> notificationProviders", devConstructorSource.Content);
+        var devConstructorSource = result.GetRequiredConstructorSource("DevPaymentService");
+        devConstructorSource.Content.Should().Contain("IEnumerable<INotificationProvider> notificationProviders");
 
-        var prodConstructorSource = result.GetConstructorSource("ProdPaymentService");
-        Assert.NotNull(prodConstructorSource);
-        Assert.Contains("IEnumerable<INotificationProvider> notificationProviders", prodConstructorSource.Content);
+        var prodConstructorSource = result.GetRequiredConstructorSource("ProdPaymentService");
+        prodConstructorSource.Content.Should().Contain("IEnumerable<INotificationProvider> notificationProviders");
 
         // Should register all notification providers (conditional and non-conditional)
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("AddScoped<Test.INotificationProvider, Test.EmailNotificationProvider>",
-            registrationSource.Content);
-        Assert.Contains("AddScoped<Test.INotificationProvider, Test.SmsNotificationProvider>",
-            registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should()
+            .Contain("AddScoped<Test.INotificationProvider, Test.EmailNotificationProvider>");
+        registrationSource.Content.Should()
+            .Contain("AddScoped<Test.INotificationProvider, Test.SmsNotificationProvider>");
 
         // Should register conditional notification providers conditionally
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("AddScoped<Test.INotificationProvider, Test.SlackNotificationProvider>",
-            registrationSource.Content);
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("AddScoped<Test.INotificationProvider, Test.PushNotificationProvider>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should()
+            .Contain("AddScoped<Test.INotificationProvider, Test.SlackNotificationProvider>");
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should()
+            .Contain("AddScoped<Test.INotificationProvider, Test.PushNotificationProvider>");
 
         // Should register payment services conditionally
-        Assert.Contains("AddScoped<Test.IPaymentService, Test.DevPaymentService>", registrationSource.Content);
-        Assert.Contains("AddScoped<Test.IPaymentService, Test.ProdPaymentService>", registrationSource.Content);
+        registrationSource.Content.Should().Contain("AddScoped<Test.IPaymentService, Test.DevPaymentService>");
+        registrationSource.Content.Should().Contain("AddScoped<Test.IPaymentService, Test.ProdPaymentService>");
     }
 
     [Fact]
@@ -1042,37 +1018,35 @@ public partial class ProcessingService : IService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
         // Should register base processor unconditionally
-        Assert.Contains("AddScoped<Test.IDataProcessor, Test.BaseDataProcessor>", registrationSource.Content);
+        registrationSource.Content.Should().Contain("AddScoped<Test.IDataProcessor, Test.BaseDataProcessor>");
 
         // Should register multiple Development conditional processors
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("AddScoped<Test.IDataProcessor, Test.MockDataProcessor>", registrationSource.Content);
-        Assert.Contains("AddScoped<Test.IDataProcessor, Test.DebugDataProcessor>", registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should().Contain("AddScoped<Test.IDataProcessor, Test.MockDataProcessor>");
+        registrationSource.Content.Should().Contain("AddScoped<Test.IDataProcessor, Test.DebugDataProcessor>");
 
         // Should register multiple Production conditional processors
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("AddScoped<Test.IDataProcessor, Test.OptimizedDataProcessor>", registrationSource.Content);
-        Assert.Contains("AddScoped<Test.IDataProcessor, Test.CachedDataProcessor>", registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should().Contain("AddScoped<Test.IDataProcessor, Test.OptimizedDataProcessor>");
+        registrationSource.Content.Should().Contain("AddScoped<Test.IDataProcessor, Test.CachedDataProcessor>");
 
         // Should register Testing conditional processor
-        Assert.Contains("string.Equals(environment, \"Testing\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("AddScoped<Test.IDataProcessor, Test.TestDataProcessor>", registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Testing\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should().Contain("AddScoped<Test.IDataProcessor, Test.TestDataProcessor>");
 
         // Service using IEnumerable should be registered unconditionally
-        Assert.Contains("AddScoped<Test.IService, Test.ProcessingService>", registrationSource.Content);
+        registrationSource.Content.Should().Contain("AddScoped<Test.IService, Test.ProcessingService>");
 
         // Should generate constructor with IEnumerable dependency
-        var constructorSource = result.GetConstructorSource("ProcessingService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("IEnumerable<IDataProcessor> processors", constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("ProcessingService");
+        constructorSource.Content.Should().Contain("IEnumerable<IDataProcessor> processors");
     }
 
     [Fact]
@@ -1127,35 +1101,34 @@ public partial class ValidationService : IService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should register base validators unconditionally with Singleton lifetime
-        Assert.Contains("services.AddSingleton<Test.IValidator, Test.BasicValidator>", registrationSource.Content);
-        Assert.Contains("services.AddSingleton<Test.IValidator, Test.RequiredValidator>", registrationSource.Content);
+        registrationSource.Content.Should().Contain("services.AddSingleton<Test.IValidator, Test.BasicValidator>");
+        registrationSource.Content.Should().Contain("services.AddSingleton<Test.IValidator, Test.RequiredValidator>");
 
         // Should register Development validators conditionally
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("services.AddSingleton<Test.IValidator, Test.DebugValidator>", registrationSource.Content);
-        Assert.Contains("services.AddSingleton<Test.IValidator, Test.VerboseValidator>", registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should().Contain("services.AddSingleton<Test.IValidator, Test.DebugValidator>");
+        registrationSource.Content.Should().Contain("services.AddSingleton<Test.IValidator, Test.VerboseValidator>");
 
         // Should register Production validators conditionally
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("services.AddSingleton<Test.IValidator, Test.PerformanceValidator>",
-            registrationSource.Content);
-        Assert.Contains("services.AddSingleton<Test.IValidator, Test.SecurityValidator>", registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should()
+            .Contain("services.AddSingleton<Test.IValidator, Test.PerformanceValidator>");
+        registrationSource.Content.Should().Contain("services.AddSingleton<Test.IValidator, Test.SecurityValidator>");
 
         // Should register Testing validators conditionally
-        Assert.Contains("string.Equals(environment, \"Testing\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("services.AddSingleton<Test.IValidator, Test.MockValidator>", registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Testing\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should().Contain("services.AddSingleton<Test.IValidator, Test.MockValidator>");
 
         // Validation service should be registered unconditionally
-        Assert.Contains("AddScoped<Test.IService, Test.ValidationService>", registrationSource.Content);
+        registrationSource.Content.Should().Contain("AddScoped<Test.IService, Test.ValidationService>");
     }
 
     [Fact]
@@ -1223,50 +1196,47 @@ public partial class DevMiddlewareService : IService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should register non-conditional middleware with correct lifetimes (using simplified naming)
-        Assert.Contains("services.AddSingleton<Test.IMiddleware, Test.AuthenticationMiddleware>",
-            registrationSource.Content);
-        Assert.Contains("AddScoped<Test.IMiddleware, Test.LoggingMiddleware>", registrationSource.Content);
-        Assert.Contains("AddTransient<Test.IMiddleware, Test.ValidationMiddleware>", registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddSingleton<Test.IMiddleware, Test.AuthenticationMiddleware>");
+        registrationSource.Content.Should().Contain("AddScoped<Test.IMiddleware, Test.LoggingMiddleware>");
+        registrationSource.Content.Should().Contain("AddTransient<Test.IMiddleware, Test.ValidationMiddleware>");
 
         // Should register Development conditional middleware
-        Assert.Contains("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("AddTransient<Test.IMiddleware, Test.DebugMiddleware>", registrationSource.Content);
-        Assert.Contains("services.AddSingleton<Test.IMiddleware, Test.DeveloperToolsMiddleware>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Development\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should().Contain("AddTransient<Test.IMiddleware, Test.DebugMiddleware>");
+        registrationSource.Content.Should()
+            .Contain("services.AddSingleton<Test.IMiddleware, Test.DeveloperToolsMiddleware>");
 
         // Should register Production conditional middleware
-        Assert.Contains("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("services.AddSingleton<Test.IMiddleware, Test.PerformanceMiddleware>",
-            registrationSource.Content);
-        Assert.Contains("AddScoped<Test.IMiddleware, Test.MetricsMiddleware>", registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("string.Equals(environment, \"Production\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should()
+            .Contain("services.AddSingleton<Test.IMiddleware, Test.PerformanceMiddleware>");
+        registrationSource.Content.Should().Contain("AddScoped<Test.IMiddleware, Test.MetricsMiddleware>");
 
         // Should register configuration-based conditional middleware  
-        Assert.Contains(
-            "string.Equals(configuration[\"Features:EnableCaching\"], \"true\", StringComparison.OrdinalIgnoreCase)",
-            registrationSource.Content);
-        Assert.Contains("services.AddSingleton<Test.IMiddleware, Test.CachingMiddleware>", registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain(
+                "string.Equals(configuration[\"Features:EnableCaching\"], \"true\", StringComparison.OrdinalIgnoreCase)");
+        registrationSource.Content.Should().Contain("services.AddSingleton<Test.IMiddleware, Test.CachingMiddleware>");
 
         // Should register services using middleware collections (using simplified naming)
-        Assert.Contains("AddScoped<Test.IService, Test.MiddlewareService>", registrationSource.Content);
-        Assert.Contains("AddScoped<Test.IService, Test.DevMiddlewareService>", registrationSource.Content);
+        registrationSource.Content.Should().Contain("AddScoped<Test.IService, Test.MiddlewareService>");
+        registrationSource.Content.Should().Contain("AddScoped<Test.IService, Test.DevMiddlewareService>");
 
         // Should generate constructors with IEnumerable dependencies
-        var serviceConstructorSource = result.GetConstructorSource("MiddlewareService");
-        Assert.NotNull(serviceConstructorSource);
-        Assert.Contains("IEnumerable<IMiddleware> middlewares", serviceConstructorSource.Content);
+        var serviceConstructorSource = result.GetRequiredConstructorSource("MiddlewareService");
+        serviceConstructorSource.Content.Should().Contain("IEnumerable<IMiddleware> middlewares");
 
-        var devServiceConstructorSource = result.GetConstructorSource("DevMiddlewareService");
-        Assert.NotNull(devServiceConstructorSource);
-        Assert.Contains("IEnumerable<IMiddleware> middlewares", devServiceConstructorSource.Content);
-        Assert.Contains("IList<IMiddleware> middlewareList", devServiceConstructorSource.Content);
+        var devServiceConstructorSource = result.GetRequiredConstructorSource("DevMiddlewareService");
+        devServiceConstructorSource.Content.Should().Contain("IEnumerable<IMiddleware> middlewares");
+        devServiceConstructorSource.Content.Should().Contain("IList<IMiddleware> middlewareList");
     }
 
     #endregion

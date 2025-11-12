@@ -1,4 +1,4 @@
-﻿namespace IoCTools.Abstractions.Annotations;
+namespace IoCTools.Abstractions.Annotations;
 
 using System;
 

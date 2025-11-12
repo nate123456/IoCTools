@@ -289,9 +289,9 @@ public partial class DirectValueService
         var result = CompileAndCreateServiceProvider(source);
 
         // Assert
-        Assert.False(result.GenerationResult.HasErrors);
-        Assert.NotNull(result.ServiceProvider);
-        Assert.NotNull(result.RuntimeContext);
+        result.GenerationResult.HasErrors.Should().BeFalse();
+        result.ServiceProvider.Should().NotBeNull();
+        result.RuntimeContext.Should().NotBeNull();
 
         // Test runtime behavior - resolve the service dynamically
         if (result.ServiceProvider != null && result.RuntimeContext != null)
@@ -301,12 +301,12 @@ public partial class DirectValueService
                 if (service != null)
                 {
                     // Verify configuration values are correctly injected
-                    Assert.Equal("Server=localhost;Database=TestDb;",
-                        InvokeServiceMethod(service, "GetConnectionString"));
-                    Assert.Equal(TimeSpan.FromMinutes(5), InvokeServiceMethod(service, "GetCacheTtl"));
-                    Assert.True((bool?)InvokeServiceMethod(service, "GetEnableSearch"));
-                    Assert.Equal(3, InvokeServiceMethod(service, "GetMaxRetries"));
-                    Assert.Equal(0.15m, InvokeServiceMethod(service, "GetDefaultDiscount"));
+                    InvokeServiceMethod(service, "GetConnectionString").Should()
+                        .Be("Server=localhost;Database=TestDb;");
+                    InvokeServiceMethod(service, "GetCacheTtl").Should().Be(TimeSpan.FromMinutes(5));
+                    ((bool?)InvokeServiceMethod(service, "GetEnableSearch")).Should().BeTrue();
+                    InvokeServiceMethod(service, "GetMaxRetries").Should().Be(3);
+                    InvokeServiceMethod(service, "GetDefaultDiscount").Should().Be(0.15m);
                 }
             }
             catch (Exception)
@@ -356,8 +356,8 @@ public partial class SectionBindingService
         var result = CompileAndCreateServiceProvider(source);
 
         // Assert
-        Assert.False(result.GenerationResult.HasErrors);
-        Assert.NotNull(result.ServiceProvider);
+        result.GenerationResult.HasErrors.Should().BeFalse();
+        result.ServiceProvider.Should().NotBeNull();
 
         if (result.ServiceProvider != null && result.RuntimeContext != null)
             try
@@ -370,27 +370,27 @@ public partial class SectionBindingService
                     var emailSettings = InvokeServiceMethod(service, "GetEmailSettings") as dynamic;
                     if (emailSettings != null)
                     {
-                        Assert.Equal("smtp.example.com", emailSettings.SmtpHost);
-                        Assert.Equal(587, emailSettings.SmtpPort);
-                        Assert.Equal("test-api-key-12345", emailSettings.ApiKey);
-                        Assert.True(emailSettings.EnableSsl);
+                        emailSettings.SmtpHost.Should().Be("smtp.example.com");
+                        emailSettings.SmtpPort.Should().Be(587);
+                        emailSettings.ApiKey.Should().Be("test-api-key-12345");
+                        emailSettings.EnableSsl.Should().BeTrue();
                     }
 
                     var databaseSettings = InvokeServiceMethod(service, "GetDatabaseSettings") as dynamic;
                     if (databaseSettings != null)
                     {
-                        Assert.Equal("Server=localhost;Database=TestDb;", databaseSettings.ConnectionString);
-                        Assert.Equal(30, databaseSettings.CommandTimeout);
-                        Assert.True(databaseSettings.EnableRetry);
-                        Assert.Equal(100, databaseSettings.MaxPoolSize);
+                        databaseSettings.ConnectionString.Should().Be("Server=localhost;Database=TestDb;");
+                        databaseSettings.CommandTimeout.Should().Be(30);
+                        databaseSettings.EnableRetry.Should().BeTrue();
+                        databaseSettings.MaxPoolSize.Should().Be(100);
                     }
 
                     var customEmailSettings = InvokeServiceMethod(service, "GetCustomEmailSettings") as dynamic;
                     if (customEmailSettings != null)
                     {
-                        Assert.Equal("custom-smtp.example.com", customEmailSettings.SmtpHost);
-                        Assert.Equal(25, customEmailSettings.SmtpPort);
-                        Assert.Equal("custom-api-key", customEmailSettings.ApiKey);
+                        customEmailSettings.SmtpHost.Should().Be("custom-smtp.example.com");
+                        customEmailSettings.SmtpPort.Should().Be(25);
+                        customEmailSettings.ApiKey.Should().Be("custom-api-key");
                     }
                 }
             }
@@ -439,8 +439,8 @@ public partial class OptionsPatternService
         var result = CompileAndCreateServiceProvider(source);
 
         // Assert
-        Assert.False(result.GenerationResult.HasErrors);
-        Assert.NotNull(result.ServiceProvider);
+        result.GenerationResult.HasErrors.Should().BeFalse();
+        result.ServiceProvider.Should().NotBeNull();
 
         if (result.ServiceProvider != null && result.RuntimeContext != null)
             try
@@ -453,19 +453,19 @@ public partial class OptionsPatternService
                     var emailSettings = InvokeServiceMethod(service, "GetEmailSettings") as dynamic;
                     if (emailSettings != null)
                     {
-                        Assert.Equal("smtp.example.com", emailSettings.SmtpHost);
-                        Assert.Equal(587, emailSettings.SmtpPort);
+                        emailSettings.SmtpHost.Should().Be("smtp.example.com");
+                        emailSettings.SmtpPort.Should().Be(587);
                     }
 
                     var databaseSettings = InvokeServiceMethod(service, "GetDatabaseSettings") as dynamic;
                     if (databaseSettings != null)
                     {
-                        Assert.Equal("Server=localhost;Database=TestDb;", databaseSettings.ConnectionString);
-                        Assert.Equal(30, databaseSettings.CommandTimeout);
+                        databaseSettings.ConnectionString.Should().Be("Server=localhost;Database=TestDb;");
+                        databaseSettings.CommandTimeout.Should().Be(30);
                     }
 
                     var monitoredSettings = InvokeServiceMethod(service, "GetMonitoredEmailSettings") as dynamic;
-                    if (monitoredSettings != null) Assert.Equal("smtp.example.com", monitoredSettings.SmtpHost);
+                    if (monitoredSettings != null) monitoredSettings.SmtpHost.Should().Be("smtp.example.com");
                 }
             }
             catch (Exception)

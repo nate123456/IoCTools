@@ -36,19 +36,17 @@ public interface IEmailService { }
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should generate constructor
-        var constructorSource = result.GetConstructorSource("EmailBackgroundService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("EmailBackgroundService(IEmailService emailService)", constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("EmailBackgroundService");
+        constructorSource.Content.Should().Contain("EmailBackgroundService(IEmailService emailService)");
 
         // Should register as IHostedService 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("services.AddHostedService<global::Test.EmailBackgroundService>", registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.EmailService, global::Test.EmailService>",
-            registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should().Contain("services.AddHostedService<global::Test.EmailBackgroundService>");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.EmailService, global::Test.EmailService>");
     }
 
     /// <summary>
@@ -83,11 +81,10 @@ public interface IDataProcessor { }
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("services.AddHostedService<global::Test.DataProcessingService>", registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should().Contain("services.AddHostedService<global::Test.DataProcessingService>");
     }
 
     /// <summary>
@@ -122,18 +119,16 @@ public interface IProcessor { }
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should still generate constructor
-        var constructorSource = result.GetConstructorSource("ManualBackgroundService");
-        Assert.NotNull(constructorSource);
+        _ = result.GetRequiredConstructorSource("ManualBackgroundService");
 
         // Should NOT register as IHostedService
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.DoesNotContain("ManualBackgroundService", registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.Processor, global::Test.Processor>",
-            registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should().NotContain("ManualBackgroundService");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.Processor, global::Test.Processor>");
     }
 
     /// <summary>
@@ -169,15 +164,14 @@ public interface IWorker { }
 
         // No IOC014 errors for hosted services - their lifetime is managed by AddHostedService()
         var warnings = result.GetDiagnosticsByCode("IOC014");
-        Assert.Empty(warnings);
+        warnings.Should().BeEmpty();
 
         // Should still register as IHostedService (not as regular service)
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("services.AddHostedService<global::Test.TransientBackgroundService>",
-            registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should()
+            .Contain("services.AddHostedService<global::Test.TransientBackgroundService>");
         // Should NOT contain regular service registration
-        Assert.DoesNotContain("services.AddTransient<TransientBackgroundService>", registrationSource.Content);
+        registrationSource.Content.Should().NotContain("services.AddTransient<TransientBackgroundService>");
     }
 
     /// <summary>
@@ -215,13 +209,12 @@ public interface IHandler { }
 
         // Should NOT have IOC014 warning (Singleton is recommended)
         var warnings = result.GetDiagnosticsByCode("IOC014");
-        Assert.Empty(warnings);
+        warnings.Should().BeEmpty();
 
         // Should still register as IHostedService
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("services.AddHostedService<global::Test.SingletonBackgroundService>",
-            registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should()
+            .Contain("services.AddHostedService<global::Test.SingletonBackgroundService>");
     }
 
     /// <summary>
@@ -257,9 +250,9 @@ public interface IService { }
 
         // Should have IOC011 error about not being partial
         var errors = result.GetDiagnosticsByCode("IOC011");
-        Assert.Single(errors);
-        Assert.Contains("NonPartialBackgroundService", errors[0].GetMessage());
-        Assert.Equal(DiagnosticSeverity.Error, errors[0].Severity);
+        errors.Should().ContainSingle();
+        errors[0].GetMessage().Should().Contain("NonPartialBackgroundService");
+        errors[0].Severity.Should().Be(DiagnosticSeverity.Error);
     }
 
     /// <summary>
@@ -301,19 +294,17 @@ public interface IDataRepository { }
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should generate constructor with all dependencies
-        var constructorSource = result.GetConstructorSource("ComplexBackgroundService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains(
-            "ComplexBackgroundService(ILogger logger, IEmailService emailService, IDataRepository repository)",
-            constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("ComplexBackgroundService");
+        constructorSource.Content.Should()
+            .Contain(
+                "ComplexBackgroundService(ILogger logger, IEmailService emailService, IDataRepository repository)");
 
         // Should register as IHostedService
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("services.AddHostedService<global::Test.ComplexBackgroundService>", registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should().Contain("services.AddHostedService<global::Test.ComplexBackgroundService>");
     }
 
     /// <summary>
@@ -354,15 +345,14 @@ public interface IMetrics { }
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         // Should generate constructor with DependsOn + Inject dependencies
-        var constructorSource = result.GetConstructorSource("MonitoringBackgroundService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("MonitoringBackgroundService");
         // DependsOn dependencies come first, then Inject dependencies
-        Assert.Contains(
-            "MonitoringBackgroundService(IConfigurationService configurationService, IMetrics metrics, ILogger logger)",
-            constructorSource.Content);
+        constructorSource.Content.Should()
+            .Contain(
+                "MonitoringBackgroundService(IConfigurationService configurationService, IMetrics metrics, ILogger logger)");
     }
 
     /// <summary>
@@ -397,20 +387,19 @@ public interface IEmailService { }
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Should contain the correct using statements
-        Assert.Contains("using Microsoft.Extensions.Hosting;", registrationSource.Content);
+        registrationSource.Content.Should().Contain("using Microsoft.Extensions.Hosting;");
 
         // Should register as IHostedService with Singleton lifetime
-        Assert.Contains("services.AddHostedService<global::Test.SimpleBackgroundService>", registrationSource.Content);
+        registrationSource.Content.Should().Contain("services.AddHostedService<global::Test.SimpleBackgroundService>");
 
         // Should also register the dependency service
-        Assert.Contains("services.AddScoped<global::Test.EmailService, global::Test.EmailService>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.EmailService, global::Test.EmailService>");
     }
 
     /// <summary>
@@ -443,6 +432,6 @@ public partial class EmailProcessorService : BackgroundService
 
         // No IOC014 errors for hosted services - their lifetime is managed by AddHostedService()
         var warnings = result.GetDiagnosticsByCode("IOC014");
-        Assert.Empty(warnings);
+        warnings.Should().BeEmpty();
     }
 }

@@ -59,7 +59,7 @@ public partial class NotificationService
         if (result.HasErrors)
         {
             var errors = result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
-            Assert.True(errors.Any(e => e.GetMessage().Contains("_emailService")),
+            errors.Any(e => e.GetMessage().Contains("_emailService")).Should().BeTrue(
                 "Expected compilation error about missing _emailService field, indicating DependsOn gap");
         }
         else
@@ -68,17 +68,19 @@ public partial class NotificationService
             var runtimeContext = SourceGeneratorTestHelper.CreateRuntimeContext(result);
             var serviceProvider = SourceGeneratorTestHelper.BuildServiceProvider(runtimeContext);
 
-            var notificationServiceType = runtimeContext.Assembly.GetType("Test.NotificationService");
-            Assert.NotNull(notificationServiceType);
+            var notificationServiceType = runtimeContext.Assembly.GetType("Test.NotificationService") ??
+                                          throw new InvalidOperationException(
+                                              "NotificationService type not generated.");
 
             var notificationService = serviceProvider.GetRequiredService(notificationServiceType);
-            Assert.NotNull(notificationService);
 
-            var sendNotificationMethod = notificationServiceType.GetMethod("SendNotification");
-            Assert.NotNull(sendNotificationMethod);
+            var sendNotificationMethod = notificationServiceType.GetMethod("SendNotification") ??
+                                         throw new InvalidOperationException("SendNotification method missing.");
 
-            var message = (string)sendNotificationMethod.Invoke(notificationService, new[] { "Hello World" })!;
-            Assert.Equal("Email: Hello World", message);
+            var message =
+                sendNotificationMethod.Invoke(notificationService, new object[] { "Hello World" }) as string ??
+                throw new InvalidOperationException("SendNotification should return string.");
+            message.Should().Be("Email: Hello World");
         }
     }
 
@@ -105,16 +107,15 @@ public partial class NotificationService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("NotificationService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("NotificationService");
 
         // Should add constructor parameter without namespace qualification
-        Assert.Contains("IEmailService emailService", constructorSource.Content);
+        constructorSource.Content.Should().Contain("IEmailService emailService");
 
         // Constructor should be generated
-        Assert.Contains("NotificationService(", constructorSource.Content);
+        constructorSource.Content.Should().Contain("NotificationService(");
     }
 
     [Fact]
@@ -140,18 +141,17 @@ public partial class CompositeNotificationService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("CompositeNotificationService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("CompositeNotificationService");
 
         // Should have all parameters in constructor without namespace
-        Assert.Contains("IEmailService emailService", constructorSource.Content);
-        Assert.Contains("ISmsService smsService", constructorSource.Content);
-        Assert.Contains("ILoggerService loggerService", constructorSource.Content);
+        constructorSource.Content.Should().Contain("IEmailService emailService");
+        constructorSource.Content.Should().Contain("ISmsService smsService");
+        constructorSource.Content.Should().Contain("ILoggerService loggerService");
 
         // Constructor should be generated
-        Assert.Contains("CompositeNotificationService(", constructorSource.Content);
+        constructorSource.Content.Should().Contain("CompositeNotificationService(");
     }
 
     #endregion
@@ -178,16 +178,15 @@ public partial class OrderService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("OrderService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("OrderService");
 
         // Should use camelCase naming for constructor parameter
-        Assert.Contains("IPaymentProcessor paymentProcessor", constructorSource.Content);
+        constructorSource.Content.Should().Contain("IPaymentProcessor paymentProcessor");
 
         // Constructor should be generated
-        Assert.Contains("OrderService(", constructorSource.Content);
+        constructorSource.Content.Should().Contain("OrderService(");
     }
 
     [Fact]
@@ -210,16 +209,15 @@ public partial class OrderService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("OrderService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("OrderService");
 
         // Should use camelCase naming for constructor parameter (C# convention)
-        Assert.Contains("IPaymentProcessor paymentProcessor", constructorSource.Content);
+        constructorSource.Content.Should().Contain("IPaymentProcessor paymentProcessor");
 
         // Constructor should be generated
-        Assert.Contains("OrderService(", constructorSource.Content);
+        constructorSource.Content.Should().Contain("OrderService(");
     }
 
     [Fact]
@@ -242,16 +240,15 @@ public partial class OrderService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("OrderService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("OrderService");
 
         // Should use camelCase naming for constructor parameter (C# convention)
-        Assert.Contains("IPaymentProcessor paymentProcessor", constructorSource.Content);
+        constructorSource.Content.Should().Contain("IPaymentProcessor paymentProcessor");
 
         // Constructor should be generated
-        Assert.Contains("OrderService(", constructorSource.Content);
+        constructorSource.Content.Should().Contain("OrderService(");
     }
 
     [Fact]
@@ -278,18 +275,17 @@ public partial class MixedNamingService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("MixedNamingService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("MixedNamingService");
 
         // Should use camelCase for all constructor parameters (C# convention)
-        Assert.Contains("IEmailService emailService", constructorSource.Content);
-        Assert.Contains("ISmsService smsService", constructorSource.Content);
-        Assert.Contains("ILoggerService loggerService", constructorSource.Content);
+        constructorSource.Content.Should().Contain("IEmailService emailService");
+        constructorSource.Content.Should().Contain("ISmsService smsService");
+        constructorSource.Content.Should().Contain("ILoggerService loggerService");
 
         // Constructor should be generated
-        Assert.Contains("MixedNamingService(", constructorSource.Content);
+        constructorSource.Content.Should().Contain("MixedNamingService(");
     }
 
     #endregion
@@ -317,17 +313,16 @@ public partial class ServiceWithStrippedI
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("ServiceWithStrippedI");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("ServiceWithStrippedI");
 
         // Should strip 'I' prefix from interface names for constructor parameters
-        Assert.Contains("IEmailService emailService", constructorSource.Content);
-        Assert.Contains("IPaymentProcessor paymentProcessor", constructorSource.Content);
+        constructorSource.Content.Should().Contain("IEmailService emailService");
+        constructorSource.Content.Should().Contain("IPaymentProcessor paymentProcessor");
 
         // Constructor should be generated
-        Assert.Contains("ServiceWithStrippedI(", constructorSource.Content);
+        constructorSource.Content.Should().Contain("ServiceWithStrippedI(");
     }
 
     [Fact]
@@ -349,17 +344,16 @@ public partial class ServiceWithoutStrippedI
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("ServiceWithoutStrippedI");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("ServiceWithoutStrippedI");
 
         // Should use semantic naming regardless of stripI setting for consistent constructor parameter naming
         // stripI parameter affects naming convention application, not semantic parameter naming
-        Assert.Contains("IEmailService emailService", constructorSource.Content);
+        constructorSource.Content.Should().Contain("IEmailService emailService");
 
         // Constructor should be generated
-        Assert.Contains("ServiceWithoutStrippedI(", constructorSource.Content);
+        constructorSource.Content.Should().Contain("ServiceWithoutStrippedI(");
     }
 
     [Fact]
@@ -381,16 +375,15 @@ public partial class NonInterfaceService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("NonInterfaceService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("NonInterfaceService");
 
         // Non-interface types should not be affected by StripI for constructor parameters
-        Assert.Contains("EmailService emailService", constructorSource.Content);
+        constructorSource.Content.Should().Contain("EmailService emailService");
 
         // Constructor should be generated
-        Assert.Contains("NonInterfaceService(", constructorSource.Content);
+        constructorSource.Content.Should().Contain("NonInterfaceService(");
     }
 
     #endregion
@@ -418,17 +411,16 @@ public partial class PrefixedService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("PrefixedService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("PrefixedService");
 
         // Should add custom prefixes to constructor parameter names
-        Assert.Contains("IEmailService injectedEmailService", constructorSource.Content);
-        Assert.Contains("IPaymentProcessor externalPaymentProcessor", constructorSource.Content);
+        constructorSource.Content.Should().Contain("IEmailService injectedEmailService");
+        constructorSource.Content.Should().Contain("IPaymentProcessor externalPaymentProcessor");
 
         // Constructor should be generated
-        Assert.Contains("PrefixedService(", constructorSource.Content);
+        constructorSource.Content.Should().Contain("PrefixedService(");
     }
 
     [Fact]
@@ -450,16 +442,15 @@ public partial class PrefixedStrippedService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("PrefixedStrippedService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("PrefixedStrippedService");
 
         // Should combine prefix with stripped interface name for constructor parameter
-        Assert.Contains("IEmailService injectedEmailService", constructorSource.Content);
+        constructorSource.Content.Should().Contain("IEmailService injectedEmailService");
 
         // Constructor should be generated
-        Assert.Contains("PrefixedStrippedService(", constructorSource.Content);
+        constructorSource.Content.Should().Contain("PrefixedStrippedService(");
     }
 
     [Fact]
@@ -482,16 +473,15 @@ public partial class CombinedOptionsService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("CombinedOptionsService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("CombinedOptionsService");
 
         // Should combine prefix, stripped interface name, and camelCase for constructor parameter
-        Assert.Contains("IPaymentProcessor externalPaymentProcessor", constructorSource.Content);
+        constructorSource.Content.Should().Contain("IPaymentProcessor externalPaymentProcessor");
 
         // Constructor should be generated
-        Assert.Contains("CombinedOptionsService(", constructorSource.Content);
+        constructorSource.Content.Should().Contain("CombinedOptionsService(");
     }
 
     #endregion
@@ -519,16 +509,15 @@ public partial class UserService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("UserService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("UserService");
 
         // Should handle generic types correctly for constructor parameters
-        Assert.Contains("IRepository<User> repository", constructorSource.Content);
+        constructorSource.Content.Should().Contain("IRepository<User> repository");
 
         // Constructor should be generated
-        Assert.Contains("UserService(", constructorSource.Content);
+        constructorSource.Content.Should().Contain("UserService(");
     }
 
     [Fact]
@@ -553,17 +542,16 @@ public partial class ComplexGenericService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("ComplexGenericService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("ComplexGenericService");
 
         // Should handle complex generic types for constructor parameters
-        Assert.Contains("IKeyValueStore<string, int> keyValueStore", constructorSource.Content);
-        Assert.Contains("IFactory<List<string>> factory", constructorSource.Content);
+        constructorSource.Content.Should().Contain("IKeyValueStore<string, int> keyValueStore");
+        constructorSource.Content.Should().Contain("IFactory<List<string>> factory");
 
         // Constructor should be generated
-        Assert.Contains("ComplexGenericService(", constructorSource.Content);
+        constructorSource.Content.Should().Contain("ComplexGenericService(");
     }
 
     #endregion
@@ -593,18 +581,17 @@ public partial class MixedDependencyService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("MixedDependencyService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("MixedDependencyService");
 
         // Constructor should have parameters for both DependsOn and Inject fields without namespace
-        Assert.Contains("IEmailService emailService", constructorSource.Content);
-        Assert.Contains("ILoggerService logger", constructorSource.Content);
-        Assert.Contains("ISmsService smsService", constructorSource.Content);
+        constructorSource.Content.Should().Contain("IEmailService emailService");
+        constructorSource.Content.Should().Contain("ILoggerService logger");
+        constructorSource.Content.Should().Contain("ISmsService smsService");
 
         // Constructor should be generated
-        Assert.Contains("MixedDependencyService(", constructorSource.Content);
+        constructorSource.Content.Should().Contain("MixedDependencyService(");
     }
 
     [Fact]
@@ -632,10 +619,9 @@ public partial class OrderedDependencyService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("OrderedDependencyService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("OrderedDependencyService");
 
         // Constructor parameters should be in proper order (DependsOn first, then Inject) without namespace
         var constructorText = constructorSource.Content;
@@ -644,13 +630,13 @@ public partial class OrderedDependencyService
         var loggerParamIndex = constructorText.IndexOf("ILoggerService logger");
         var auditParamIndex = constructorText.IndexOf("IAuditService audit");
 
-        Assert.True(emailParamIndex > 0);
-        Assert.True(paymentParamIndex > emailParamIndex);
-        Assert.True(loggerParamIndex > paymentParamIndex);
-        Assert.True(auditParamIndex > loggerParamIndex);
+        (emailParamIndex > 0).Should().BeTrue();
+        (paymentParamIndex > emailParamIndex).Should().BeTrue();
+        (loggerParamIndex > paymentParamIndex).Should().BeTrue();
+        (auditParamIndex > loggerParamIndex).Should().BeTrue();
 
         // Constructor should be generated
-        Assert.Contains("OrderedDependencyService(", constructorSource.Content);
+        constructorSource.Content.Should().Contain("OrderedDependencyService(");
     }
 
     #endregion
@@ -676,16 +662,15 @@ public partial class FieldModifierService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("FieldModifierService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("FieldModifierService");
 
         // Constructor parameter should be generated
-        Assert.Contains("IService service", constructorSource.Content);
+        constructorSource.Content.Should().Contain("IService service");
 
         // Constructor should be generated
-        Assert.Contains("FieldModifierService(", constructorSource.Content);
+        constructorSource.Content.Should().Contain("FieldModifierService(");
     }
 
     [Fact]
@@ -707,11 +692,10 @@ public partial class OnlyDependsOnService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("OnlyDependsOnService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("OnlyDependsOnService(", constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("OnlyDependsOnService");
+        constructorSource.Content.Should().Contain("OnlyDependsOnService(");
     }
 
     [Fact]
@@ -733,11 +717,10 @@ public partial class OnlyInjectService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("OnlyInjectService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("OnlyInjectService(", constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("OnlyInjectService");
+        constructorSource.Content.Should().Contain("OnlyInjectService(");
     }
 
     [Fact]
@@ -760,18 +743,17 @@ public partial class CollisionService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("CollisionService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("CollisionService");
 
         // The constructor should be generated with IService parameter
         // The existing [Inject] field should take precedence over [DependsOn]
-        Assert.Contains("CollisionService(", constructorSource.Content);
-        Assert.Contains("IService", constructorSource.Content);
+        constructorSource.Content.Should().Contain("CollisionService(");
+        constructorSource.Content.Should().Contain("IService");
 
         // Should use the existing field name, not generate a new field
-        Assert.Contains("_existingService = ", constructorSource.Content);
+        constructorSource.Content.Should().Contain("_existingService = ");
     }
 
     #endregion
@@ -799,8 +781,8 @@ public partial class ConflictingService
 
         // Assert
         var ioc007Diagnostics = result.GetDiagnosticsByCode("IOC007");
-        Assert.NotEmpty(ioc007Diagnostics);
-        Assert.Contains("DependsOn", ioc007Diagnostics[0].GetMessage());
+        ioc007Diagnostics.Should().NotBeEmpty();
+        ioc007Diagnostics[0].GetMessage().Should().Contain("DependsOn");
     }
 
     [Fact]
@@ -823,18 +805,17 @@ public partial class DuplicateService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("DuplicateService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("DuplicateService");
 
         // Should only have one parameter declaration despite duplicate attributes  
         var paramCount = Regex.Matches(
             constructorSource.Content, @"IService service").Count;
-        Assert.Equal(1, paramCount);
+        paramCount.Should().Be(1);
 
         // Constructor should be generated
-        Assert.Contains("DuplicateService(", constructorSource.Content);
+        constructorSource.Content.Should().Contain("DuplicateService(");
     }
 
     #endregion

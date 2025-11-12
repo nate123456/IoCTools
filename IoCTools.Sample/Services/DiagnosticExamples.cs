@@ -253,6 +253,76 @@ public partial class RedundantSkipRegistrationService : ICloneable
 }
 
 // ============================================
+// IOC032-IOC034: Redundant Attribute Combination Examples
+// ============================================
+
+/// <summary>
+///     IOC032: RegisterAs covers exactly the interfaces already implemented, so the attribute is redundant
+///     The analyzer suggests removing [RegisterAs] unless you need selective registration.
+/// </summary>
+[RegisterAs<IRedundantSerializer>]
+public partial class RedundantRegisterAsService : IRedundantSerializer
+{
+    [Inject] private readonly ILogger<RedundantRegisterAsService> _logger;
+
+    public void Serialize(string payload) => _logger.LogInformation("Serializing {Payload}", payload);
+}
+
+public interface IRedundantSerializer
+{
+    void Serialize(string payload);
+}
+
+/// <summary>
+///     IOC033: [Scoped] is redundant because DependsOn already implies service intent and uses Scoped by default.
+///     Removing [Scoped] keeps the behavior but avoids the analyzer warning.
+/// </summary>
+[Scoped]
+[DependsOn<IRedundantDependency>]
+public partial class RedundantScopedWithDependsOnService : IRedundantScopedWithDependsOnService
+{
+    [Inject] private readonly ILogger<RedundantScopedWithDependsOnService> _logger;
+
+    public void Execute() => _logger.LogInformation("Executing redundant scoped service");
+}
+
+public interface IRedundantScopedWithDependsOnService
+{
+    void Execute();
+}
+
+[Singleton]
+public partial class RedundantDependency : IRedundantDependency
+{
+    public void Run()
+    {
+    }
+}
+
+public interface IRedundantDependency
+{
+    void Run();
+}
+
+/// <summary>
+///     IOC034: RegisterAsAll already registers every implemented interface, so extra RegisterAs declarations are ignored.
+///     Keep either RegisterAsAll or specific RegisterAs attributes, but not both.
+/// </summary>
+[RegisterAsAll]
+[RegisterAs<IRedundantAllService>]
+public partial class RegisterAsAllConflictService : IRedundantAllService
+{
+    public void Execute()
+    {
+    }
+}
+
+public interface IRedundantAllService
+{
+    void Execute();
+}
+
+// ============================================
 // IOC014: Background Service Lifetime Examples
 // ============================================
 

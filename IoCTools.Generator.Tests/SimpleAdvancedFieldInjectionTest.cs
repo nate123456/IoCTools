@@ -28,13 +28,13 @@ public partial class CollectionService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Collection injection should work: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
+        result.HasErrors.Should()
+            .BeFalse(
+                $"Collection injection should work: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
 
-        var constructorSource = result.GetConstructorSource("CollectionService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("IEnumerable<ITestService> services", constructorSource.Content);
-        Assert.Contains("this._services = services;", constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("CollectionService");
+        constructorSource.Content.Should().Contain("IEnumerable<ITestService> services");
+        constructorSource.Content.Should().Contain("this._services = services;");
     }
 
     [Fact]
@@ -58,12 +58,11 @@ public partial class NullableService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("NullableService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("ITestService? optionalService", constructorSource.Content);
-        Assert.Contains("this._optionalService = optionalService;", constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("NullableService");
+        constructorSource.Content.Should().Contain("ITestService? optionalService");
+        constructorSource.Content.Should().Contain("this._optionalService = optionalService;");
     }
 
     [Fact]
@@ -87,12 +86,11 @@ public partial class FactoryService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("FactoryService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("Func<ITestService> factory", constructorSource.Content);
-        Assert.Contains("this._factory = factory;", constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("FactoryService");
+        constructorSource.Content.Should().Contain("Func<ITestService> factory");
+        constructorSource.Content.Should().Contain("this._factory = factory;");
     }
 
     [Fact]
@@ -114,12 +112,11 @@ public partial class ServiceProviderService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("ServiceProviderService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("IServiceProvider provider", constructorSource.Content);
-        Assert.Contains("this._provider = provider;", constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("ServiceProviderService");
+        constructorSource.Content.Should().Contain("IServiceProvider provider");
+        constructorSource.Content.Should().Contain("this._provider = provider;");
     }
 
     [Fact]
@@ -142,12 +139,11 @@ public partial class AccessModifierService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("AccessModifierService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("ITestService protectedService", constructorSource.Content);
-        Assert.Contains("this._protectedService = protectedService;", constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("AccessModifierService");
+        constructorSource.Content.Should().Contain("ITestService protectedService");
+        constructorSource.Content.Should().Contain("this._protectedService = protectedService;");
     }
 
     [Fact]
@@ -172,16 +168,15 @@ public partial class MixedService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("MixedService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("MixedService");
 
         // DependsOn parameter should come first
-        Assert.Contains("IDependsService dependsService", constructorSource.Content);
-        Assert.Contains("IInjectService injectService", constructorSource.Content);
-        Assert.Contains("this._dependsService = dependsService;", constructorSource.Content);
-        Assert.Contains("this._injectService = injectService;", constructorSource.Content);
+        constructorSource.Content.Should().Contain("IDependsService dependsService");
+        constructorSource.Content.Should().Contain("IInjectService injectService");
+        constructorSource.Content.Should().Contain("this._dependsService = dependsService;");
+        constructorSource.Content.Should().Contain("this._injectService = injectService;");
     }
 
     [Fact]
@@ -210,13 +205,13 @@ public partial class LazyService
         if (constructorSource != null && constructorSource.Content.Contains("Lazy<ITestService>"))
         {
             // If IoCTools supports Lazy<T> directly
-            Assert.Contains("Lazy<ITestService> lazyService", constructorSource.Content);
-            Assert.True(true, "Lazy<T> is directly supported by IoCTools");
+            constructorSource.Content.Should().Contain("Lazy<ITestService> lazyService");
+            true.Should().BeTrue("Lazy<T> is directly supported by IoCTools");
         }
         else
         {
             // If Lazy<T> requires manual setup
-            Assert.True(true, "Lazy<T> requires manual DI container setup - documented limitation");
+            true.Should().BeTrue("Lazy<T> requires manual DI container setup - documented limitation");
         }
     }
 }

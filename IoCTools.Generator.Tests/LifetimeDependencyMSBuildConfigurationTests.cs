@@ -69,13 +69,13 @@ public partial class CacheService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.Single(diagnostics);
+        diagnostics.Should().ContainSingle();
         // Default severity should be Error for IOC012
-        Assert.Equal(DiagnosticSeverity.Error, diagnostics[0].Severity);
-        Assert.Contains("Singleton service", diagnostics[0].GetMessage());
-        Assert.Contains("CacheService", diagnostics[0].GetMessage());
-        Assert.Contains("Scoped service", diagnostics[0].GetMessage());
-        Assert.Contains("DatabaseContext", diagnostics[0].GetMessage());
+        diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Error);
+        diagnostics[0].GetMessage().Should().Contain("Singleton service");
+        diagnostics[0].GetMessage().Should().Contain("CacheService");
+        diagnostics[0].GetMessage().Should().Contain("Scoped service");
+        diagnostics[0].GetMessage().Should().Contain("DatabaseContext");
     }
 
     [Fact]
@@ -102,13 +102,13 @@ public partial class CacheService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC013");
 
-        Assert.Single(diagnostics);
+        diagnostics.Should().ContainSingle();
         // Default severity should be Warning for IOC013
-        Assert.Equal(DiagnosticSeverity.Warning, diagnostics[0].Severity);
-        Assert.Contains("Singleton service", diagnostics[0].GetMessage());
-        Assert.Contains("CacheService", diagnostics[0].GetMessage());
-        Assert.Contains("Transient service", diagnostics[0].GetMessage());
-        Assert.Contains("HelperService", diagnostics[0].GetMessage());
+        diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Warning);
+        diagnostics[0].GetMessage().Should().Contain("Singleton service");
+        diagnostics[0].GetMessage().Should().Contain("CacheService");
+        diagnostics[0].GetMessage().Should().Contain("Transient service");
+        diagnostics[0].GetMessage().Should().Contain("HelperService");
     }
 
     #endregion
@@ -127,17 +127,17 @@ public partial class CacheService
         };
 
         // All properties should follow the build_property.IoCTools[Feature]Severity pattern
-        foreach (var property in expectedProperties) Assert.StartsWith("build_property.IoCTools", property);
+        foreach (var property in expectedProperties) property.Should().StartWith("build_property.IoCTools");
 
         // Verify severity properties use the Severity suffix
         var severityProperties = expectedProperties.Where(p => p.Contains("Severity"));
-        Assert.Equal(3, severityProperties.Count());
-        Assert.All(severityProperties, p => Assert.EndsWith("Severity", p));
+        severityProperties.Count().Should().Be(3);
+        severityProperties.Should().AllSatisfy(p => p.Should().EndWith("Severity"));
 
         // Verify disable properties use the Disable prefix  
         var disableProperties = expectedProperties.Where(p => p.Contains("Disable"));
-        Assert.Equal(2, disableProperties.Count());
-        Assert.All(disableProperties, p => Assert.Contains("Disable", p));
+        disableProperties.Count().Should().Be(2);
+        disableProperties.Should().AllSatisfy(p => p.Should().Contain("Disable"));
     }
 
     [Fact]
@@ -147,11 +147,11 @@ public partial class CacheService
         var expectedSeverityValues = new[] { "Error", "Warning", "Info", "Hidden" };
 
         // These should map to DiagnosticSeverity enum values
-        Assert.Equal(4, expectedSeverityValues.Length);
-        Assert.Contains("Error", expectedSeverityValues);
-        Assert.Contains("Warning", expectedSeverityValues);
-        Assert.Contains("Info", expectedSeverityValues);
-        Assert.Contains("Hidden", expectedSeverityValues);
+        expectedSeverityValues.Length.Should().Be(4);
+        expectedSeverityValues.Should().Contain("Error");
+        expectedSeverityValues.Should().Contain("Warning");
+        expectedSeverityValues.Should().Contain("Info");
+        expectedSeverityValues.Should().Contain("Hidden");
     }
 
     [Fact]
@@ -163,8 +163,8 @@ public partial class CacheService
         // Should be case-insensitive
         var caseVariants = new[] { "TRUE", "True", "true", "FALSE", "False", "false" };
 
-        Assert.Equal(2, expectedBooleanValues.Length);
-        Assert.Equal(6, caseVariants.Length);
+        expectedBooleanValues.Length.Should().Be(2);
+        caseVariants.Length.Should().Be(6);
     }
 
     #endregion
@@ -195,17 +195,17 @@ public partial class CacheService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.Single(diagnostics);
-        Assert.Equal("IOC012", diagnostics[0].Id);
-        Assert.Equal(DiagnosticSeverity.Error, diagnostics[0].Severity);
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].Id.Should().Be("IOC012");
+        diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Error);
 
         // Verify message content
         var message = diagnostics[0].GetMessage();
-        Assert.Contains("Singleton service", message);
-        Assert.Contains("CacheService", message);
-        Assert.Contains("Scoped service", message);
-        Assert.Contains("DatabaseContext", message);
-        Assert.Contains("cannot capture shorter-lived dependencies", message);
+        message.Should().Contain("Singleton service");
+        message.Should().Contain("CacheService");
+        message.Should().Contain("Scoped service");
+        message.Should().Contain("DatabaseContext");
+        message.Should().Contain("cannot capture shorter-lived dependencies");
     }
 
     [Fact]
@@ -232,17 +232,17 @@ public partial class CacheService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC013");
 
-        Assert.Single(diagnostics);
-        Assert.Equal("IOC013", diagnostics[0].Id);
-        Assert.Equal(DiagnosticSeverity.Warning, diagnostics[0].Severity);
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].Id.Should().Be("IOC013");
+        diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Warning);
 
         // Verify message content
         var message = diagnostics[0].GetMessage();
-        Assert.Contains("Singleton service", message);
-        Assert.Contains("CacheService", message);
-        Assert.Contains("Transient service", message);
-        Assert.Contains("HelperService", message);
-        Assert.Contains("Consider if this transient should be Singleton", message);
+        message.Should().Contain("Singleton service");
+        message.Should().Contain("CacheService");
+        message.Should().Contain("Transient service");
+        message.Should().Contain("HelperService");
+        message.Should().Contain("Consider if this transient should be Singleton");
     }
 
     [Fact]
@@ -271,7 +271,7 @@ public partial class EmailBackgroundService : BackgroundService
         var diagnostics = result.GetDiagnosticsByCode("IOC014");
 
         // No IOC014 errors for hosted services - their lifetime is managed by AddHostedService()
-        Assert.Empty(diagnostics);
+        diagnostics.Should().BeEmpty();
     }
 
     [Fact]
@@ -303,17 +303,17 @@ public partial class DerivedService : BaseService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC015");
 
-        Assert.Single(diagnostics);
-        Assert.Equal("IOC015", diagnostics[0].Id);
-        Assert.Equal(DiagnosticSeverity.Error, diagnostics[0].Severity);
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].Id.Should().Be("IOC015");
+        diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Error);
 
         // Verify message content
         var message = diagnostics[0].GetMessage();
-        Assert.Contains("Service lifetime mismatch", message);
-        Assert.Contains("inheritance chain", message);
-        Assert.Contains("DerivedService", message);
-        Assert.Contains("Singleton", message);
-        Assert.Contains("Scoped", message);
+        message.Should().Contain("Service lifetime mismatch");
+        message.Should().Contain("inheritance chain");
+        message.Should().Contain("DerivedService");
+        message.Should().Contain("Singleton");
+        message.Should().Contain("Scoped");
     }
 
     #endregion
@@ -332,11 +332,11 @@ public partial class DerivedService : BaseService
         var ioc013Diagnostics = result.GetDiagnosticsByCode("IOC013");
 
         // Should report both IOC012 (Singleton → Scoped) and IOC013 (Singleton → Transient)
-        Assert.Single(ioc012Diagnostics);
-        Assert.Single(ioc013Diagnostics);
+        ioc012Diagnostics.Should().ContainSingle();
+        ioc013Diagnostics.Should().ContainSingle();
 
-        Assert.Equal(DiagnosticSeverity.Error, ioc012Diagnostics[0].Severity);
-        Assert.Equal(DiagnosticSeverity.Warning, ioc013Diagnostics[0].Severity);
+        ioc012Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Error);
+        ioc013Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Warning);
     }
 
     [Fact]
@@ -376,7 +376,7 @@ public partial class ProcessorService
             .ToList();
 
         // No lifetime violations should be reported for valid combinations
-        Assert.Empty(lifetimeDiagnostics);
+        lifetimeDiagnostics.Should().BeEmpty();
     }
 
     #endregion
@@ -427,12 +427,12 @@ public partial class FinalService : Level9Service
         stopwatch.Stop();
 
         // Should complete in reasonable time
-        Assert.True(stopwatch.ElapsedMilliseconds < 10000,
-            $"Large inheritance hierarchy validation took {stopwatch.ElapsedMilliseconds}ms");
+        (stopwatch.ElapsedMilliseconds < 10000).Should()
+            .BeTrue($"Large inheritance hierarchy validation took {stopwatch.ElapsedMilliseconds}ms");
 
         // Should still detect lifetime violations
         var diagnostics = result.GetDiagnosticsByCode("IOC015");
-        Assert.Single(diagnostics);
+        diagnostics.Should().ContainSingle();
     }
 
     [Fact]
@@ -467,12 +467,12 @@ public partial class SingletonService{i}
         stopwatch.Stop();
 
         // Should complete in reasonable time
-        Assert.True(stopwatch.ElapsedMilliseconds < 15000,
-            $"Many services validation took {stopwatch.ElapsedMilliseconds}ms");
+        (stopwatch.ElapsedMilliseconds < 15000).Should()
+            .BeTrue($"Many services validation took {stopwatch.ElapsedMilliseconds}ms");
 
         // Should detect all violations
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
-        Assert.Equal(50, diagnostics.Count);
+        diagnostics.Count.Should().Be(50);
     }
 
     #endregion
@@ -515,7 +515,7 @@ public partial class SingletonService{i}
         // </PropertyGroup>
 
         // This test ensures the documentation examples are accurate
-        Assert.True(true, "MSBuild configuration examples documented");
+        true.Should().BeTrue("MSBuild configuration examples documented");
     }
 
     [Fact]
@@ -538,13 +538,13 @@ public partial class SingletonService{i}
         var sourceCode = GetStandardLifetimeViolationSource();
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
-        var ioc012 = result.GetDiagnosticsByCode("IOC012").FirstOrDefault();
-        var ioc013 = result.GetDiagnosticsByCode("IOC013").FirstOrDefault();
+        var ioc012 = result.GetDiagnosticsByCode("IOC012").FirstOrDefault() ??
+                     throw new InvalidOperationException("Expected IOC012 diagnostic.");
+        var ioc013 = result.GetDiagnosticsByCode("IOC013").FirstOrDefault() ??
+                     throw new InvalidOperationException("Expected IOC013 diagnostic.");
 
-        Assert.NotNull(ioc012);
-        Assert.NotNull(ioc013);
-        Assert.Equal(DiagnosticSeverity.Error, ioc012.Severity);
-        Assert.Equal(DiagnosticSeverity.Warning, ioc013.Severity);
+        ioc012.Severity.Should().Be(DiagnosticSeverity.Error);
+        ioc013.Severity.Should().Be(DiagnosticSeverity.Warning);
     }
 
     #endregion
@@ -577,8 +577,8 @@ public partial class CacheService
 
         // Should still detect lifetime violations even with conditional services
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
-        Assert.Single(diagnostics);
-        Assert.Equal(DiagnosticSeverity.Error, diagnostics[0].Severity);
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Error);
     }
 
     [Fact]
@@ -607,7 +607,7 @@ public partial class CacheService
 
         // Should not report lifetime violations for external services
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
-        Assert.Empty(diagnostics);
+        diagnostics.Should().BeEmpty();
     }
 
     #endregion

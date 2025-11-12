@@ -149,7 +149,7 @@ public partial class MyService : IUserService, INotificationService { }
 
 **InstanceSharing.Shared (Factory Pattern):**  
 ```csharp
-[Scoped]
+[Singleton] // Explicit non-default lifetime because state is shared
 [RegisterAs<IUserService, INotificationService>(InstanceSharing.Shared)]
 public partial class SharedService : IUserService, INotificationService { }
 // Generates: services.AddScoped<SharedService>();

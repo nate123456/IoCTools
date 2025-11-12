@@ -38,31 +38,31 @@ public partial class ConfigTestService
         var ioc001Diagnostics = result.GetDiagnosticsByCode("IOC001");
 
         // Should NOT have IOC001 errors for string or int (they should be configuration binding, not DI)
-        Assert.False(ioc001Diagnostics.Any(d => d.GetMessage().Contains("'string'")),
-            "String configuration field should not be treated as DI dependency");
-        Assert.False(ioc001Diagnostics.Any(d => d.GetMessage().Contains("'int'")),
-            "Int configuration field should not be treated as DI dependency");
+        ioc001Diagnostics.Any(d => d.GetMessage().Contains("'string'")).Should()
+            .BeFalse("String configuration field should not be treated as DI dependency");
+        ioc001Diagnostics.Any(d => d.GetMessage().Contains("'int'")).Should()
+            .BeFalse("Int configuration field should not be treated as DI dependency");
 
         // Should compile successfully
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(e => e.ToString()))}");
+        result.HasErrors.Should()
+            .BeFalse(
+                $"Compilation errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(e => e.ToString()))}");
 
         // Should generate constructor with IConfiguration parameter
-        var constructorSource = result.GetConstructorSource("ConfigTestService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("ConfigTestService");
 
         var generatedCode = constructorSource.Content;
 
         // Should have IConfiguration parameter
-        Assert.Contains("IConfiguration", generatedCode);
+        generatedCode.Should().Contain("IConfiguration");
 
         // Should NOT have primitive type parameters
-        Assert.DoesNotContain("string connectionString", generatedCode);
-        Assert.DoesNotContain("int cacheTtl", generatedCode);
+        generatedCode.Should().NotContain("string connectionString");
+        generatedCode.Should().NotContain("int cacheTtl");
 
         // Should have configuration binding in constructor body
-        Assert.Contains("GetValue", generatedCode);
-        Assert.Contains("Database:ConnectionString", generatedCode);
-        Assert.Contains("Cache:TTL", generatedCode);
+        generatedCode.Should().Contain("GetValue");
+        generatedCode.Should().Contain("Database:ConnectionString");
+        generatedCode.Should().Contain("Cache:TTL");
     }
 }

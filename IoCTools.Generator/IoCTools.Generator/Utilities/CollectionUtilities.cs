@@ -131,7 +131,7 @@ internal static class CollectionUtilities
         IEnumerable<string> namespacesForStripping)
     {
         if (fieldType is not INamedTypeSymbol namedType)
-            return (TypeDisplayUtilities.WithoutNamespaces(fieldType, namespacesForStripping, true), "");
+            return (TypeDisplayUtilities.WithoutNamespaces(fieldType, namespacesForStripping), "");
 
         var typeName = namedType.OriginalDefinition.ToDisplayString();
 
@@ -141,28 +141,28 @@ internal static class CollectionUtilities
             var elementType = namedType.TypeArguments.FirstOrDefault();
             if (elementType != null)
             {
-                var elementTypeName = TypeDisplayUtilities.WithoutNamespaces(elementType, namespacesForStripping, true);
+                var elementTypeName = TypeDisplayUtilities.WithoutNamespaces(elementType, namespacesForStripping);
                 return ($"List<{elementTypeName}>", "?.AsReadOnly()");
             }
         }
         else if (typeName.StartsWith("System.Collections.Generic.IEnumerable<", StringComparison.Ordinal))
         {
-            return (TypeDisplayUtilities.WithoutNamespaces(fieldType, namespacesForStripping, true), "");
+            return (TypeDisplayUtilities.WithoutNamespaces(fieldType, namespacesForStripping), "");
         }
         else if (typeName.StartsWith("System.Collections.Generic.IList<", StringComparison.Ordinal))
         {
-            return (TypeDisplayUtilities.WithoutNamespaces(fieldType, namespacesForStripping, true), "");
+            return (TypeDisplayUtilities.WithoutNamespaces(fieldType, namespacesForStripping), "");
         }
         else if (typeName.StartsWith("System.Collections.Generic.ICollection<", StringComparison.Ordinal))
         {
             var elementType = namedType.TypeArguments.FirstOrDefault();
             if (elementType != null)
             {
-                var elementTypeName = TypeDisplayUtilities.WithoutNamespaces(elementType, namespacesForStripping, true);
+                var elementTypeName = TypeDisplayUtilities.WithoutNamespaces(elementType, namespacesForStripping);
                 return ($"List<{elementTypeName}>", "");
             }
         }
 
-        return (TypeDisplayUtilities.WithoutNamespaces(fieldType, namespacesForStripping, true), "");
+        return (TypeDisplayUtilities.WithoutNamespaces(fieldType, namespacesForStripping), "");
     }
 }

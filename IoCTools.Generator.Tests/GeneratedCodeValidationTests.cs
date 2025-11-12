@@ -33,25 +33,24 @@ public partial class SimpleTestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("SimpleTestService");
-        Assert.NotNull(constructorSource);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetRequiredConstructorSource("SimpleTestService");
         var constructorCode = constructorSource.Content;
 
         // Verify namespace declaration
-        Assert.Contains("namespace TestProject;", constructorCode);
+        constructorCode.Should().Contain("namespace TestProject;");
 
         // Verify partial class declaration
-        Assert.Contains("public partial class SimpleTestService", constructorCode);
+        constructorCode.Should().Contain("public partial class SimpleTestService");
 
         // Verify field declaration is NOT generated (since it already exists in source)
-        Assert.DoesNotContain("private readonly ITestService _testService;", constructorCode);
+        constructorCode.Should().NotContain("private readonly ITestService _testService;");
 
         // Verify constructor signature
-        Assert.Contains("public SimpleTestService(ITestService testService)", constructorCode);
+        constructorCode.Should().Contain("public SimpleTestService(ITestService testService)");
 
         // Verify constructor body
-        Assert.Contains("this._testService = testService;", constructorCode);
+        constructorCode.Should().Contain("this._testService = testService;");
     }
 
     [Fact]
@@ -77,19 +76,18 @@ public partial class CollectionTestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("CollectionTestService");
-        Assert.NotNull(constructorSource);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetRequiredConstructorSource("CollectionTestService");
         var constructorCode = constructorSource.Content;
 
         // Verify using statements are present and correct
-        Assert.Contains("using System.Collections.Generic;", constructorCode);
+        constructorCode.Should().Contain("using System.Collections.Generic;");
         // Should NOT contain self-namespace (constructor is generated in TestProject namespace)
-        Assert.DoesNotContain("using TestProject;", constructorCode);
+        constructorCode.Should().NotContain("using TestProject;");
 
         // Verify constructor parameters use simplified type names
-        Assert.Contains("IEnumerable<ITestService> services", constructorCode);
-        Assert.Contains("IList<ITestService> serviceList", constructorCode);
+        constructorCode.Should().Contain("IEnumerable<ITestService> services");
+        constructorCode.Should().Contain("IList<ITestService> serviceList");
     }
 
     [Fact]
@@ -114,18 +112,17 @@ public partial class NestedGenericService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("NestedGenericService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("NestedGenericService");
 
         // Verify complex generic types are handled correctly
-        Assert.Contains("IEnumerable<IEnumerable<ITestService>> nestedServices", constructorSource.Content);
-        Assert.Contains("IList<IReadOnlyList<ITestService>> complexNested", constructorSource.Content);
+        constructorSource.Content.Should().Contain("IEnumerable<IEnumerable<ITestService>> nestedServices");
+        constructorSource.Content.Should().Contain("IList<IReadOnlyList<ITestService>> complexNested");
 
         // Verify assignments
-        Assert.Contains("this._nestedServices = nestedServices;", constructorSource.Content);
-        Assert.Contains("this._complexNested = complexNested;", constructorSource.Content);
+        constructorSource.Content.Should().Contain("this._nestedServices = nestedServices;");
+        constructorSource.Content.Should().Contain("this._complexNested = complexNested;");
     }
 
     [Fact]
@@ -164,21 +161,20 @@ namespace TestProject
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("MultiNamespaceService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("MultiNamespaceService");
         var constructorCode = constructorSource.Content;
 
         // Verify all necessary using statements are included
-        Assert.Contains("using System.Collections.Generic;", constructorCode);
-        Assert.Contains("using ServiceLayer;", constructorCode);
-        Assert.Contains("using DataLayer;", constructorCode);
+        constructorCode.Should().Contain("using System.Collections.Generic;");
+        constructorCode.Should().Contain("using ServiceLayer;");
+        constructorCode.Should().Contain("using DataLayer;");
 
         // Verify simplified type names are used
-        Assert.Contains("IBusinessService businessService", constructorCode);
-        Assert.Contains("IRepository repository", constructorCode);
-        Assert.Contains("IEnumerable<IBusinessService> businessServices", constructorCode);
+        constructorCode.Should().Contain("IBusinessService businessService");
+        constructorCode.Should().Contain("IRepository repository");
+        constructorCode.Should().Contain("IEnumerable<IBusinessService> businessServices");
     }
 
     [Fact]
@@ -203,18 +199,17 @@ public partial class GenericTestService<T> where T : class
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("GenericTestService");
-        Assert.NotNull(constructorSource);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetRequiredConstructorSource("GenericTestService");
         var constructorCode = constructorSource.Content;
 
         // Verify generic class declaration includes type parameters
-        Assert.Contains("public partial class GenericTestService<T>", constructorCode);
+        constructorCode.Should().Contain("public partial class GenericTestService<T>");
 
         // Verify constructor handles generic type parameters
-        Assert.Contains("public GenericTestService(", constructorCode);
-        Assert.Contains("ITestService<T> service", constructorCode);
-        Assert.Contains("IEnumerable<T> items", constructorCode);
+        constructorCode.Should().Contain("public GenericTestService(");
+        constructorCode.Should().Contain("ITestService<T> service");
+        constructorCode.Should().Contain("IEnumerable<T> items");
     }
 
     [Fact]
@@ -240,18 +235,17 @@ public partial class ConflictTestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("ConflictTestService");
-        Assert.NotNull(constructorSource);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetRequiredConstructorSource("ConflictTestService");
         var constructorCode = constructorSource.Content;
 
         // Should not generate duplicate field for _testService since it already exists in source
         var fieldOccurrences = GetFieldOccurrenceCount(constructorCode, "private readonly ITestService");
-        Assert.Equal(0, fieldOccurrences); // No additional field should be generated
+        fieldOccurrences.Should().Be(0); // No additional field should be generated
 
         // But constructor should still be generated
-        Assert.Contains("public ConflictTestService(ITestService testService)", constructorCode);
-        Assert.Contains("this._testService = testService;", constructorCode);
+        constructorCode.Should().Contain("public ConflictTestService(ITestService testService)");
+        constructorCode.Should().Contain("this._testService = testService;");
     }
 
     #region Cross-Assembly References
@@ -280,18 +274,17 @@ public partial class ExternalTypeService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("ExternalTypeService");
-        Assert.NotNull(constructorSource);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetRequiredConstructorSource("ExternalTypeService");
 
         // Verify proper using statements for external types
-        Assert.Contains("using System;", constructorSource.Content);
-        Assert.Contains("using System.IO;", constructorSource.Content);
+        constructorSource.Content.Should().Contain("using System;");
+        constructorSource.Content.Should().Contain("using System.IO;");
 
         // Verify parameter types are correct
-        Assert.Contains("IServiceProvider serviceProvider", constructorSource.Content);
-        Assert.Contains("TextWriter writer", constructorSource.Content);
-        Assert.Contains("Uri baseUri", constructorSource.Content);
+        constructorSource.Content.Should().Contain("IServiceProvider serviceProvider");
+        constructorSource.Content.Should().Contain("TextWriter writer");
+        constructorSource.Content.Should().Contain("Uri baseUri");
     }
 
     #endregion
@@ -341,11 +334,11 @@ public partial class DerivedService : BaseService, IDerivedService
                 constructorSource.Content.Contains("DerivedService(IDerivedService otherService)");
             if (hasInjectionConstructor)
                 // Should have proper base call if generator handles this
-                Assert.Contains("base(", constructorSource.Content);
+                constructorSource.Content.Should().Contain("base(");
         }
 
         // At minimum, should not crash the generator
-        Assert.NotNull(result.GeneratedSources);
+        result.GeneratedSources.Should().NotBeNull();
     }
 
     #endregion
@@ -374,17 +367,15 @@ public partial class ValidService : ITestService
 
         // Assert - Should NOT produce IOC004 error (intelligent inference allows RegisterAsAll standalone)
         var diagnostics = result.GetDiagnosticsByCode("IOC004");
-        Assert.Empty(diagnostics); // IOC004 diagnostic was removed with intelligent inference
+        diagnostics.Should().BeEmpty(); // IOC004 diagnostic was removed with intelligent inference
 
         // Verify service registration is generated correctly through intelligent inference
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("ValidService", registrationSource.Content);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
+        registrationSource.Content.Should().Contain("ValidService");
 
         // Verify constructor generation works
-        var constructorSource = result.GetConstructorSource("ValidService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("public ValidService(ITestService service)", constructorSource.Content);
+        var constructorSource = result.GetRequiredConstructorSource("ValidService");
+        constructorSource.Content.Should().Contain("public ValidService(ITestService service)");
     }
 
     [Fact]
@@ -413,8 +404,8 @@ public partial class ServiceB : IServiceB
 
         // Assert
         var circularDiagnostics = result.GetDiagnosticsByCode("IOC003");
-        Assert.NotEmpty(circularDiagnostics);
-        Assert.Contains(circularDiagnostics, d => d.Severity == DiagnosticSeverity.Warning);
+        circularDiagnostics.Should().NotBeEmpty();
+        circularDiagnostics.Should().Contain(d => d.Severity == DiagnosticSeverity.Warning);
     }
 
     [Fact]
@@ -438,9 +429,9 @@ public partial class TestService
 
         // Assert
         var diagnostics = result.GetDiagnosticsByCode("IOC001");
-        Assert.NotEmpty(diagnostics);
-        Assert.Contains(diagnostics, d => d.Severity == DiagnosticSeverity.Warning);
-        Assert.Contains(diagnostics, d => d.GetMessage().Contains("IMissingService"));
+        diagnostics.Should().NotBeEmpty();
+        diagnostics.Should().Contain(d => d.Severity == DiagnosticSeverity.Warning);
+        diagnostics.Any(d => d.GetMessage().Contains("IMissingService")).Should().BeTrue();
     }
 
     [Fact]
@@ -466,8 +457,8 @@ public partial class TestService
 
         // Assert
         var diagnostics = result.GetDiagnosticsByCode("IOC002");
-        Assert.NotEmpty(diagnostics);
-        Assert.Contains(diagnostics, d => d.Severity == DiagnosticSeverity.Warning);
+        diagnostics.Should().NotBeEmpty();
+        diagnostics.Should().Contain(d => d.Severity == DiagnosticSeverity.Warning);
     }
 
     [Fact]
@@ -490,10 +481,10 @@ public partial class TestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert - Should have compilation errors due to invalid constraints
-        Assert.True(result.HasErrors);
+        result.HasErrors.Should().BeTrue();
         var errors = result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
-        Assert.NotEmpty(errors);
-        Assert.Contains(errors, e => e.GetMessage().Contains("struct") || e.GetMessage().Contains("class"));
+        errors.Should().NotBeEmpty();
+        errors.Any(e => e.GetMessage().Contains("struct") || e.GetMessage().Contains("class")).Should().BeTrue();
     }
 
     [Fact]
@@ -517,11 +508,11 @@ public partial class TestService // Missing closing bracket on attribute
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert - Should have compilation errors
-        Assert.True(result.HasErrors);
+        result.HasErrors.Should().BeTrue();
         var syntaxErrors = result.CompilationDiagnostics.Where(d =>
             d.Severity == DiagnosticSeverity.Error &&
             (d.Id.StartsWith("CS") || d.GetMessage().ToLowerInvariant().Contains("syntax"))).ToList();
-        Assert.NotEmpty(syntaxErrors);
+        syntaxErrors.Should().NotBeEmpty();
     }
 
     #endregion
@@ -550,13 +541,12 @@ public partial class TestService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Verify singleton registration with fully qualified names
-        Assert.Contains("AddSingleton", registrationSource.Content);
-        Assert.Contains("global::TestProject.ITestService", registrationSource.Content);
-        Assert.Contains("global::TestProject.TestService", registrationSource.Content);
+        registrationSource.Content.Should().Contain("AddSingleton");
+        registrationSource.Content.Should().Contain("global::TestProject.ITestService");
+        registrationSource.Content.Should().Contain("global::TestProject.TestService");
     }
 
     [Fact]
@@ -581,13 +571,12 @@ public partial class TestService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Verify scoped registration with fully qualified names
-        Assert.Contains("AddScoped", registrationSource.Content);
-        Assert.Contains("global::TestProject.ITestService", registrationSource.Content);
-        Assert.Contains("global::TestProject.TestService", registrationSource.Content);
+        registrationSource.Content.Should().Contain("AddScoped");
+        registrationSource.Content.Should().Contain("global::TestProject.ITestService");
+        registrationSource.Content.Should().Contain("global::TestProject.TestService");
     }
 
     [Fact]
@@ -612,13 +601,12 @@ public partial class TestService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Verify transient registration with fully qualified names
-        Assert.Contains("AddTransient", registrationSource.Content);
-        Assert.Contains("global::TestProject.ITestService", registrationSource.Content);
-        Assert.Contains("global::TestProject.TestService", registrationSource.Content);
+        registrationSource.Content.Should().Contain("AddTransient");
+        registrationSource.Content.Should().Contain("global::TestProject.ITestService");
+        registrationSource.Content.Should().Contain("global::TestProject.TestService");
     }
 
     [Fact]
@@ -648,20 +636,19 @@ public partial class ServiceC : IServiceC { }";
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Verify all services are registered with correct lifetimes - using fully qualified names
-        Assert.Contains("AddSingleton<global::TestProject.IServiceA, global::TestProject.ServiceA>",
-            registrationSource.Content);
-        Assert.Contains("AddScoped<global::TestProject.IServiceB, global::TestProject.ServiceB>",
-            registrationSource.Content);
-        Assert.Contains("AddTransient<global::TestProject.IServiceC, global::TestProject.ServiceC>",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("AddSingleton<global::TestProject.IServiceA, global::TestProject.ServiceA>");
+        registrationSource.Content.Should()
+            .Contain("AddScoped<global::TestProject.IServiceB, global::TestProject.ServiceB>");
+        registrationSource.Content.Should()
+            .Contain("AddTransient<global::TestProject.IServiceC, global::TestProject.ServiceC>");
 
         // Verify extension method structure
-        Assert.Contains("public static IServiceCollection", registrationSource.Content);
-        Assert.Contains("return services;", registrationSource.Content);
+        registrationSource.Content.Should().Contain("public static IServiceCollection");
+        registrationSource.Content.Should().Contain("return services;");
     }
 
     [Fact]
@@ -681,12 +668,11 @@ public partial class TestService : ITestService { }";
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Verify consistent naming pattern for extension method
-        Assert.Matches(@"Add\w+RegisteredServices", registrationSource.Content);
-        Assert.Contains("IServiceCollection services", registrationSource.Content);
+        registrationSource.Content.Should().MatchRegex(@"Add\w+RegisteredServices");
+        registrationSource.Content.Should().Contain("IServiceCollection services");
     }
 
     #endregion
@@ -727,13 +713,12 @@ public partial class TestDep : ITestDep { }";
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Abstract class should not be registered
-        Assert.DoesNotContain("AbstractService", registrationSource.Content);
+        registrationSource.Content.Should().NotContain("AbstractService");
         // Concrete class should be registered
-        Assert.Contains("ConcreteService", registrationSource.Content);
+        registrationSource.Content.Should().Contain("ConcreteService");
     }
 
     [Fact]
@@ -756,10 +741,9 @@ public sealed partial class SealedService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("SealedService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("public partial class SealedService", constructorSource.Content);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetRequiredConstructorSource("SealedService");
+        constructorSource.Content.Should().Contain("public partial class SealedService");
     }
 
     [Fact]
@@ -786,13 +770,12 @@ public partial class TestService : ITestService { }";
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Static class should not be registered or have constructor generated
-        Assert.DoesNotContain("StaticUtility", registrationSource.Content);
+        registrationSource.Content.Should().NotContain("StaticUtility");
         var staticConstructor = result.GeneratedSources.FirstOrDefault(s => s.Content.Contains("StaticUtility"));
-        Assert.Null(staticConstructor);
+        staticConstructor.Should().BeNull();
     }
 
     [Fact]
@@ -820,11 +803,10 @@ public partial class OuterClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("NestedService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("OuterClass", constructorSource.Content);
-        Assert.Contains("NestedService", constructorSource.Content);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetRequiredConstructorSource("NestedService");
+        constructorSource.Content.Should().Contain("OuterClass");
+        constructorSource.Content.Should().Contain("NestedService");
     }
 
     [Fact]
@@ -847,11 +829,11 @@ internal partial class InternalService : IInternalService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
-        var constructorSource = result.GetConstructorSource("InternalService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("internal partial class InternalService", constructorSource.Content);
+        result.HasErrors.Should()
+            .BeFalse(
+                $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+        var constructorSource = result.GetRequiredConstructorSource("InternalService");
+        constructorSource.Content.Should().Contain("internal partial class InternalService");
     }
 
     [Fact]
@@ -888,8 +870,8 @@ public partial class ServiceWithConstructor : ITestService
         {
             // If generator creates another constructor, it should have different signature
             var hasInjectionConstructor = constructorSource.Content.Contains("ServiceWithConstructor(string config)");
-            Assert.True(hasInjectionConstructor || result.HasErrors,
-                "Generator should either create injection constructor or produce compilation error");
+            (hasInjectionConstructor || result.HasErrors).Should()
+                .BeTrue("Generator should either create injection constructor or produce compilation error");
         }
     }
 
@@ -917,10 +899,9 @@ public partial record TestRecord : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("TestRecord");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("public partial record TestRecord", constructorSource.Content);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetRequiredConstructorSource("TestRecord");
+        constructorSource.Content.Should().Contain("public partial record TestRecord");
     }
 
     [Fact]
@@ -945,9 +926,8 @@ public partial class ServiceWithInitProps : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("ServiceWithInitProps");
-        Assert.NotNull(constructorSource);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetRequiredConstructorSource("ServiceWithInitProps");
     }
 
     // NOTE: Nullable reference types test was removed because:
@@ -979,14 +959,14 @@ public partial class StandardService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation had errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+        result.HasErrors.Should()
+            .BeFalse(
+                $"Compilation had errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
 
-        var constructorSource = result.GetConstructorSource("StandardService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetRequiredConstructorSource("StandardService");
 
         // Verify service type is handled correctly
-        Assert.Contains("ITestService service", constructorSource.Content);
+        constructorSource.Content.Should().Contain("ITestService service");
     }
 
     [Fact]
@@ -1009,13 +989,12 @@ public partial class GenericService<T> where T : class, new()
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("GenericService");
-        Assert.NotNull(constructorSource);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetRequiredConstructorSource("GenericService");
 
         // Verify generic constraints are preserved
-        Assert.Contains("where T : class, new()", constructorSource.Content);
-        Assert.Contains("IRepository<T> repository", constructorSource.Content);
+        constructorSource.Content.Should().Contain("where T : class, new()");
+        constructorSource.Content.Should().Contain("IRepository<T> repository");
     }
 
     #endregion
@@ -1048,12 +1027,11 @@ public partial class CollectionService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors, $"Failed for collection type: {collectionType}");
-        var constructorSource = result.GetConstructorSource("CollectionService");
-        Assert.NotNull(constructorSource);
+        result.HasErrors.Should().BeFalse($"Failed for collection type: {collectionType}");
+        var constructorSource = result.GetRequiredConstructorSource("CollectionService");
 
         var parameterName = GetExpectedParameterName(collectionType);
-        Assert.Contains($"{collectionType} {parameterName}", constructorSource.Content);
+        constructorSource.Content.Should().Contain($"{collectionType} {parameterName}");
     }
 
     [Fact]
@@ -1081,14 +1059,13 @@ public partial class ComplexGenericService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("ComplexGenericService");
-        Assert.NotNull(constructorSource);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetRequiredConstructorSource("ComplexGenericService");
 
         // Verify complex generic types are handled
-        Assert.Contains("Func<Task<IEnumerable<ITestService>>> serviceFactory", constructorSource.Content);
-        Assert.Contains("IDictionary<string, IList<ITestService>> serviceMap", constructorSource.Content);
-        Assert.Contains("Lazy<IReadOnlyDictionary<int, ITestService>> lazyServices", constructorSource.Content);
+        constructorSource.Content.Should().Contain("Func<Task<IEnumerable<ITestService>>> serviceFactory");
+        constructorSource.Content.Should().Contain("IDictionary<string, IList<ITestService>> serviceMap");
+        constructorSource.Content.Should().Contain("Lazy<IReadOnlyDictionary<int, ITestService>> lazyServices");
     }
 
     #endregion
@@ -1115,27 +1092,27 @@ public partial class TestService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("TestService");
-        Assert.NotNull(constructorSource);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetRequiredConstructorSource("TestService");
 
         // Parse generated code to verify it's valid C#
         var syntaxTree = CSharpSyntaxTree.ParseText(constructorSource.Content);
         var root = syntaxTree.GetRoot();
 
-        Assert.IsType<CompilationUnitSyntax>(root);
+        root.Should().BeOfType<CompilationUnitSyntax>();
 
         // Verify structure contains expected elements (either file-scoped or regular namespace)
         var hasFileScopedNamespace = root.DescendantNodes().OfType<FileScopedNamespaceDeclarationSyntax>().Any();
         var hasRegularNamespace = root.DescendantNodes().OfType<NamespaceDeclarationSyntax>().Any();
-        Assert.True(hasFileScopedNamespace || hasRegularNamespace, "Should have at least one namespace declaration");
+        (hasFileScopedNamespace || hasRegularNamespace).Should()
+            .BeTrue("Should have at least one namespace declaration");
 
-        var classDecl = root.DescendantNodes().OfType<ClassDeclarationSyntax>().FirstOrDefault();
-        Assert.NotNull(classDecl);
-        Assert.Contains("partial", classDecl.Modifiers.ToString());
+        var classDecl = root.DescendantNodes().OfType<ClassDeclarationSyntax>().FirstOrDefault() ??
+                        throw new InvalidOperationException("Generated class declaration not found.");
+        classDecl.Modifiers.ToString().Should().Contain("partial");
 
-        var constructorDecl = root.DescendantNodes().OfType<ConstructorDeclarationSyntax>().FirstOrDefault();
-        Assert.NotNull(constructorDecl);
+        var constructorDecl = root.DescendantNodes().OfType<ConstructorDeclarationSyntax>().FirstOrDefault() ??
+                              throw new InvalidOperationException("Generated constructor not found.");
     }
 
     [Fact]
@@ -1159,9 +1136,8 @@ public partial class TestService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("TestService");
-        Assert.NotNull(constructorSource);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetRequiredConstructorSource("TestService");
 
         // Parse and validate using directives
         var syntaxTree = CSharpSyntaxTree.ParseText(constructorSource.Content);
@@ -1169,9 +1145,9 @@ public partial class TestService : ITestService
         var usingDirectives = root.DescendantNodes().OfType<UsingDirectiveSyntax>().ToList();
 
         var usingNames = usingDirectives.Select(u => u.Name?.ToString()).ToList();
-        Assert.Contains("System.Collections.Generic", usingNames);
+        usingNames.Should().Contain("System.Collections.Generic");
         // Should NOT contain self-namespace (constructor is generated in TestProject namespace)
-        Assert.DoesNotContain("TestProject", usingNames);
+        usingNames.Should().NotContain("TestProject");
     }
 
     #endregion
@@ -1201,14 +1177,13 @@ public partial class TestService_With_Underscores : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert - Should handle gracefully (underscores are valid in C# identifiers)
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("TestService_With_Underscores");
-        Assert.NotNull(constructorSource);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetRequiredConstructorSource("TestService_With_Underscores");
 
         // Verify no raw SQL or dangerous characters in generated output
-        Assert.DoesNotContain("DROP TABLE", constructorSource.Content, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("SELECT *", constructorSource.Content, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("<script>", constructorSource.Content, StringComparison.OrdinalIgnoreCase);
+        constructorSource.Content.Should().NotContainEquivalentOf("DROP TABLE");
+        constructorSource.Content.Should().NotContainEquivalentOf("SELECT *");
+        constructorSource.Content.Should().NotContainEquivalentOf("<script>");
     }
 
     [Fact]
@@ -1230,12 +1205,11 @@ public partial class TestService : ITestService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Assert
-        Assert.False(result.HasErrors);
-        var constructorSource = result.GetConstructorSource("TestService");
-        Assert.NotNull(constructorSource);
+        result.HasErrors.Should().BeFalse();
+        var constructorSource = result.GetRequiredConstructorSource("TestService");
 
         // Verify namespace is properly handled
-        Assert.Contains("namespace My.Complex.Namespace.V2", constructorSource.Content);
+        constructorSource.Content.Should().Contain("namespace My.Complex.Namespace.V2");
     }
 
     #endregion

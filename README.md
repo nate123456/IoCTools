@@ -1,6 +1,8 @@
 # IoCTools
 
-IoCTools is a .NET source generator that lets services declare their own dependencies and lifetimes using small, focused attributes. It generates constructors and service registrations at build time — no runtime reflection, minimal boilerplate.
+IoCTools is a .NET source generator that lets services declare their own dependencies and lifetimes using small, focused
+attributes. It generates constructors and service registrations at build time — no runtime reflection, minimal
+boilerplate.
 
 [![NuGet](https://img.shields.io/nuget/v/IoCTools.Abstractions?label=IoCTools.Abstractions)](https://www.nuget.org/packages/IoCTools.Abstractions)
 [![NuGet](https://img.shields.io/nuget/v/IoCTools.Generator?label=IoCTools.Generator)](https://www.nuget.org/packages/IoCTools.Generator)

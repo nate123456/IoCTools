@@ -106,9 +106,13 @@ internal static class DiagnosticsRunner
         DiagnosticRules.ValidateDuplicateDependsOn(context, classDeclaration, classSymbol);
         DiagnosticRules.ValidateDuplicatesWithinSingleDependsOn(context, classDeclaration, classSymbol);
         DiagnosticRules.ValidateUnnecessarySkipRegistration(context, classDeclaration, classSymbol);
+        DiagnosticRules.ValidateInjectFieldPreferences(context, classDeclaration, classSymbol);
 
         // IOC016–IOC019
         DiagnosticRules.ValidateConfigurationInjection(context, classDeclaration, classSymbol);
+
+        // IOC032–IOC034
+        DiagnosticRules.ValidateRedundantServiceConfigurations(context, classDeclaration, classSymbol);
 
         // IOC011
         DiagnosticRules.ValidateHostedServiceRequirements(context, classDeclaration, classSymbol);

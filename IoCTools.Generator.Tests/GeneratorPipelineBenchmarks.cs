@@ -67,7 +67,7 @@ public class GeneratorPipelineBenchmarks
             <= 50 => serviceCount * 2.0, // 2ms per service for medium
             _ => serviceCount * 1.0 // 1ms per service for large projects (realistic for compilation overhead)
         };
-        Assert.True(avgTime.TotalMilliseconds < maxAllowedTime,
+        (avgTime.TotalMilliseconds < maxAllowedTime).Should().BeTrue(
             $"Syntax provider too slow: {avgTime.TotalMilliseconds:F2}ms for {serviceCount} services (limit: {maxAllowedTime:F2}ms)");
     }
 
@@ -118,7 +118,7 @@ public class GeneratorPipelineBenchmarks
             <= 100 => baseCost * 1.0, // 1ms per potential dependency for medium
             _ => baseCost * 0.5 // 0.5ms per potential dependency for large
         };
-        Assert.True(avgTime.TotalMilliseconds < maxAllowedTime,
+        (avgTime.TotalMilliseconds < maxAllowedTime).Should().BeTrue(
             $"Dependency analysis too slow: {avgTime.TotalMilliseconds:F2}ms (limit: {maxAllowedTime:F2}ms)");
     }
 
@@ -170,7 +170,7 @@ public class GeneratorPipelineBenchmarks
         // Should handle inheritance efficiently - account for compilation overhead
         var maxAllowedTime =
             totalServices * inheritanceLevels * 1.0; // 1ms per service per level (realistic for compilation overhead)
-        Assert.True(avgTime.TotalMilliseconds < maxAllowedTime,
+        (avgTime.TotalMilliseconds < maxAllowedTime).Should().BeTrue(
             $"Inheritance analysis too slow: {avgTime.TotalMilliseconds:F2}ms (limit: {maxAllowedTime:F2}ms)");
     }
 
@@ -242,7 +242,7 @@ public class GeneratorPipelineBenchmarks
             <= 50 => serviceCount * 2.0, // 2ms per service for medium
             _ => serviceCount * 1.0 // 1ms per service for large
         };
-        Assert.True(avgTime.TotalMilliseconds < maxAllowedTime,
+        (avgTime.TotalMilliseconds < maxAllowedTime).Should().BeTrue(
             $"Constructor generation too slow: {avgTime.TotalMilliseconds:F2}ms (limit: {maxAllowedTime:F2}ms)");
     }
 
@@ -303,7 +303,7 @@ public class GeneratorPipelineBenchmarks
             <= 50 => serviceCount * 2.0, // 2ms per service for medium
             _ => serviceCount * 1.0 // 1ms per service for large
         };
-        Assert.True(avgTime.TotalMilliseconds < maxAllowedTime,
+        (avgTime.TotalMilliseconds < maxAllowedTime).Should().BeTrue(
             $"Service registration generation too slow: {avgTime.TotalMilliseconds:F2}ms for {serviceCount} services (limit: {maxAllowedTime:F2}ms)");
     }
 
@@ -384,7 +384,7 @@ public class GeneratorPipelineBenchmarks
             <= 100 => baseCost * 1.0, // 1ms per service-chain combination for medium
             _ => baseCost * 0.2 // 0.2ms per service-chain combination for large
         };
-        Assert.True(avgTime.TotalMilliseconds < maxAllowedTime,
+        (avgTime.TotalMilliseconds < maxAllowedTime).Should().BeTrue(
             $"Circular dependency detection too slow: {avgTime.TotalMilliseconds:F2}ms (limit: {maxAllowedTime:F2}ms)");
     }
 
@@ -441,10 +441,10 @@ public class GeneratorPipelineBenchmarks
             _ => 500.0 // 500ms for individual stages on large projects
         };
 
-        Assert.True(fullPipelineMs < maxAllowedFullPipelineTime,
-            $"Full pipeline too slow: {fullPipelineMs:F1}ms (limit: {maxAllowedFullPipelineTime:F1}ms)");
-        Assert.True(individualMs < maxAllowedIndividualTime,
-            $"Individual stages too slow: {individualMs:F1}ms (limit: {maxAllowedIndividualTime:F1}ms)");
+        (fullPipelineMs < maxAllowedFullPipelineTime).Should()
+            .BeTrue($"Full pipeline too slow: {fullPipelineMs:F1}ms (limit: {maxAllowedFullPipelineTime:F1}ms)");
+        (individualMs < maxAllowedIndividualTime).Should()
+            .BeTrue($"Individual stages too slow: {individualMs:F1}ms (limit: {maxAllowedIndividualTime:F1}ms)");
     }
 
     #region Helper Methods

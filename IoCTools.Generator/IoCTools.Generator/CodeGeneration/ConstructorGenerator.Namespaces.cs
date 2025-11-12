@@ -82,5 +82,5 @@ internal static partial class ConstructorGenerator
 
     private static string RemoveNamespacesAndDots(ITypeSymbol typeSymbol,
         HashSet<string> namespacesToStrip) =>
-        TypeDisplayUtilities.WithoutNamespaces(typeSymbol, namespacesToStrip, true);
+        TypeDisplayUtilities.WithoutNamespaces(typeSymbol, namespacesToStrip);
 }

@@ -3,6 +3,7 @@ namespace IoCTools.Generator.Tests;
 using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Runtime;
 using System.Text;
@@ -424,7 +425,7 @@ public partial class {className}{baseClause}
                 try
                 {
                     var parameters = method.GetParameters();
-                    var args = new object[parameters.Length];
+                    var args = new object?[parameters.Length];
                     args[0] = services;
 
                     // Fill in default values for optional parameters
@@ -462,7 +463,7 @@ public partial class {className}{baseClause}
     /// <param name="validateProperties">Optional property validation function</param>
     /// <returns>Resolved service instance</returns>
     public static T ResolveAndValidateService<T>(IServiceProvider serviceProvider,
-        Action<T>? validateProperties = null)
+        Action<T>? validateProperties = null) where T : notnull
     {
         var service = serviceProvider.GetRequiredService<T>();
         validateProperties?.Invoke(service);
@@ -476,7 +477,7 @@ public partial class {className}{baseClause}
     /// <param name="serviceProvider">Service provider</param>
     /// <param name="expectedLifetime">Expected service lifetime</param>
     public static void ValidateServiceLifetime<T>(IServiceProvider serviceProvider,
-        ServiceLifetime expectedLifetime)
+        ServiceLifetime expectedLifetime) where T : notnull
     {
         var service1 = serviceProvider.GetRequiredService<T>();
         var service2 = serviceProvider.GetRequiredService<T>();
@@ -1037,6 +1038,13 @@ public record GeneratorTestResult(
         });
     }
 
+    public GeneratedSource GetRequiredConstructorSource(string className)
+        => GetConstructorSource(className) ??
+           throw new InvalidOperationException($"Constructor source for '{className}' was not generated.");
+
+    public string GetConstructorSourceText(string className)
+        => GetRequiredConstructorSource(className).Content;
+
     public GeneratedSource? GetServiceRegistrationSource()
     {
         return GeneratedSources.FirstOrDefault(s =>
@@ -1046,6 +1054,27 @@ public record GeneratorTestResult(
             s.Content.Contains("RegisteredServices") ||
             s.Content.Contains("IServiceCollection services"));
     }
+
+    public OptionalGeneratedSource GetOptionalServiceRegistrationSource()
+        => new(GetServiceRegistrationSource());
+
+    public bool TryGetServiceRegistrationSource([NotNullWhen(true)] out GeneratedSource? source)
+    {
+        source = GetServiceRegistrationSource();
+        return source is not null;
+    }
+
+    public GeneratedSource GetRequiredServiceRegistrationSource()
+        => GetServiceRegistrationSource() ??
+           throw new InvalidOperationException("Service registration source was not generated.");
+
+    public string GetServiceRegistrationText()
+        => GetRequiredServiceRegistrationSource().Content;
+
+    public string? GetOptionalServiceRegistrationText()
+        => TryGetServiceRegistrationSource(out var source)
+            ? source.Content
+            : null;
 
     public List<Diagnostic> GetDiagnosticsByCode(string code)
     {
@@ -1058,6 +1087,24 @@ public record GeneratorTestResult(
 ///     A single generated source file
 /// </summary>
 public record GeneratedSource(string Hint, string Content);
+
+/// <summary>
+///     Optional wrapper for generated sources that may not exist
+/// </summary>
+public readonly record struct OptionalGeneratedSource(GeneratedSource? Source)
+{
+    public bool Exists => Source is not null;
+    public bool IsMissing => Source is null;
+
+    public string? ContentOrNull => Source?.Content;
+
+    public GeneratedSource Require(string? failureMessage = null)
+        => Source ??
+           throw new InvalidOperationException(failureMessage ?? "Service registration source was not generated.");
+
+    public string RequireContent(string? failureMessage = null)
+        => Require(failureMessage).Content;
+}
 
 /// <summary>
 ///     Runtime test context containing compiled assembly and test result

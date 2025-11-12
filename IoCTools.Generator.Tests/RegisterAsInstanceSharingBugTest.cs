@@ -30,23 +30,22 @@ namespace Test
 }";
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
+        result.HasErrors.Should()
+            .BeFalse($"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Expected behavior for InstanceSharing.Shared:
         // ONLY interface factory registration - NO concrete registration
         // services.AddScoped<ITransactionService>(provider => provider.GetRequiredService<DeltaDbContext>());
 
-        Assert.Contains(
-            "services.AddScoped<global::Test.ITransactionService>(provider => provider.GetRequiredService<global::Test.DeltaDbContext>());",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.ITransactionService>(provider => provider.GetRequiredService<global::Test.DeltaDbContext>());");
 
         // Should NOT register the concrete class at all - that's handled elsewhere (like EF Core AddDbContext)
-        Assert.DoesNotContain("services.AddScoped<global::Test.DeltaDbContext>", registrationSource.Content);
-        Assert.DoesNotContain("services.AddScoped<global::Test.DeltaDbContext,", registrationSource.Content);
+        registrationSource.Content.Should().NotContain("services.AddScoped<global::Test.DeltaDbContext>");
+        registrationSource.Content.Should().NotContain("services.AddScoped<global::Test.DeltaDbContext,");
     }
 
     [Fact]
@@ -74,20 +73,19 @@ namespace Test
 }";
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
+        result.HasErrors.Should()
+            .BeFalse($"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // For InstanceSharing.Separate, direct registrations are correct
-        Assert.Contains("services.AddScoped<global::Test.BusinessService, global::Test.BusinessService>();",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.ITransactionService, global::Test.BusinessService>();",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.BusinessService, global::Test.BusinessService>();");
+        registrationSource.Content.Should()
+            .Contain("services.AddScoped<global::Test.ITransactionService, global::Test.BusinessService>();");
 
         // Should NOT contain factory pattern for InstanceSharing.Separate
-        Assert.DoesNotContain("provider.GetRequiredService<global::Test.BusinessService>", registrationSource.Content);
+        registrationSource.Content.Should().NotContain("provider.GetRequiredService<global::Test.BusinessService>");
     }
 
     [Fact]
@@ -123,25 +121,24 @@ namespace Test
 }";
 
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
+        result.HasErrors.Should()
+            .BeFalse($"Compilation errors: {string.Join(", ", result.Diagnostics.Select(d => d.GetMessage()))}");
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Expected behavior for InstanceSharing.Shared + explicit lifetime:
         // 1. Concrete registration because service has [Scoped] attribute  
         // 2. Factory registrations for interfaces to share the same instance
 
         // Should register concrete class because of [Scoped] attribute
-        Assert.Contains("services.AddScoped<global::Test.UserNotificationService>();", registrationSource.Content);
+        registrationSource.Content.Should().Contain("services.AddScoped<global::Test.UserNotificationService>();");
 
         // Should register factory patterns for interfaces
-        Assert.Contains(
-            "services.AddScoped<global::Test.IUserService>(provider => provider.GetRequiredService<global::Test.UserNotificationService>());",
-            registrationSource.Content);
-        Assert.Contains(
-            "services.AddScoped<global::Test.INotificationService>(provider => provider.GetRequiredService<global::Test.UserNotificationService>());",
-            registrationSource.Content);
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.IUserService>(provider => provider.GetRequiredService<global::Test.UserNotificationService>());");
+        registrationSource.Content.Should()
+            .Contain(
+                "services.AddScoped<global::Test.INotificationService>(provider => provider.GetRequiredService<global::Test.UserNotificationService>());");
     }
 }

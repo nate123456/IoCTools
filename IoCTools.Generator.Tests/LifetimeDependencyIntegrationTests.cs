@@ -39,10 +39,10 @@ public partial class CacheService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.Single(diagnostics);
-        Assert.Equal(DiagnosticSeverity.Error, diagnostics[0].Severity);
-        Assert.Contains("CacheService", diagnostics[0].GetMessage());
-        Assert.Contains("DatabaseContext", diagnostics[0].GetMessage());
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Error);
+        diagnostics[0].GetMessage().Should().Contain("CacheService");
+        diagnostics[0].GetMessage().Should().Contain("DatabaseContext");
     }
 
     [Fact]
@@ -79,7 +79,7 @@ public partial class EmailBackgroundService : BackgroundService
 
         // No IOC014 errors for hosted services - their lifetime is managed by AddHostedService()
         var ioc014Diagnostics = result.GetDiagnosticsByCode("IOC014");
-        Assert.Empty(ioc014Diagnostics);
+        ioc014Diagnostics.Should().BeEmpty();
     }
 
     [Fact]
@@ -112,9 +112,9 @@ public partial class CacheService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.Single(diagnostics);
-        Assert.Contains("CacheService", diagnostics[0].GetMessage());
-        Assert.Contains("DatabaseService", diagnostics[0].GetMessage());
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].GetMessage().Should().Contain("CacheService");
+        diagnostics[0].GetMessage().Should().Contain("DatabaseService");
     }
 
     #endregion
@@ -145,9 +145,9 @@ public partial class DebugCacheService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.Single(diagnostics);
-        Assert.Contains("DebugCacheService", diagnostics[0].GetMessage());
-        Assert.Contains("DatabaseService", diagnostics[0].GetMessage());
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].GetMessage().Should().Contain("DebugCacheService");
+        diagnostics[0].GetMessage().Should().Contain("DatabaseService");
     }
 
     [Fact]
@@ -182,8 +182,8 @@ public partial class ProductionPaymentService : IPaymentService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.Single(diagnostics);
-        Assert.Contains("ProductionPaymentService", diagnostics[0].GetMessage());
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].GetMessage().Should().Contain("ProductionPaymentService");
     }
 
     [Fact]
@@ -210,9 +210,9 @@ public partial class CacheService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.Single(diagnostics);
-        Assert.Contains("CacheService", diagnostics[0].GetMessage());
-        Assert.Contains("HttpService", diagnostics[0].GetMessage());
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].GetMessage().Should().Contain("CacheService");
+        diagnostics[0].GetMessage().Should().Contain("HttpService");
     }
 
     #endregion
@@ -257,10 +257,10 @@ public partial class CacheUserRepository : UserRepository
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC015");
 
-        Assert.Single(diagnostics);
-        Assert.Contains("CacheUserRepository", diagnostics[0].GetMessage());
-        Assert.Contains("Singleton", diagnostics[0].GetMessage());
-        Assert.Contains("Scoped", diagnostics[0].GetMessage());
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].GetMessage().Should().Contain("CacheUserRepository");
+        diagnostics[0].GetMessage().Should().Contain("Singleton");
+        diagnostics[0].GetMessage().Should().Contain("Scoped");
     }
 
     [Fact]
@@ -294,8 +294,8 @@ public partial class ConcreteService : BaseService<string>
         var ioc015Diagnostics = result.GetDiagnosticsByCode("IOC015");
 
         // Should report both Singleton->Transient warning and inheritance chain error
-        Assert.Single(ioc013Diagnostics);
-        Assert.Single(ioc015Diagnostics);
+        ioc013Diagnostics.Should().ContainSingle();
+        ioc015Diagnostics.Should().ContainSingle();
     }
 
     [Fact]
@@ -336,8 +336,8 @@ public partial class SingletonProcessor : BaseProcessor
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.Single(diagnostics);
-        Assert.Contains("SingletonProcessor", diagnostics[0].GetMessage());
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].GetMessage().Should().Contain("SingletonProcessor");
     }
 
     #endregion
@@ -379,7 +379,7 @@ public partial class NotificationBackgroundService : BackgroundService
         var diagnostics = result.GetDiagnosticsByCode("IOC014");
 
         // No IOC014 errors for hosted services - their lifetime is managed by AddHostedService()
-        Assert.Empty(diagnostics);
+        diagnostics.Should().BeEmpty();
     }
 
     [Fact]
@@ -412,7 +412,7 @@ public partial class DataProcessor : IHostedService
 
         // IHostedService should typically be Singleton, so Transient is problematic
         // Also, Transient service depends on Scoped which is valid but worth noting
-        Assert.True(result.Compilation != null);
+        result.Compilation.Should().NotBeNull();
     }
 
     [Fact]
@@ -449,7 +449,7 @@ public partial class ExtendedEmailService : BaseEmailService
         var diagnostics = result.GetDiagnosticsByCode("IOC014");
 
         // No IOC014 errors for hosted services - their lifetime is managed by AddHostedService()
-        Assert.Empty(diagnostics);
+        diagnostics.Should().BeEmpty();
     }
 
     #endregion
@@ -490,17 +490,15 @@ public partial class MultiInterfaceService : IProcessor, IHandler
         // lifetime validation works with intelligent inference
         if (diagnostics.Any())
         {
-            Assert.Single(diagnostics);
-            Assert.Contains("MultiInterfaceService", diagnostics[0].GetMessage());
+            diagnostics.Should().ContainSingle();
+            diagnostics[0].GetMessage().Should().Contain("MultiInterfaceService");
         }
         else
         {
             // Check if the registration is still working correctly even without diagnostic
-            var registrationSource = result.GetServiceRegistrationSource();
-            Assert.NotNull(registrationSource);
-            Assert.Contains("services.AddSingleton<global::TestNamespace.MultiInterfaceService",
-                registrationSource.Content);
-            Assert.Contains("services.AddScoped<global::TestNamespace.DatabaseService", registrationSource.Content);
+            var registrationText = result.GetServiceRegistrationText();
+            registrationText.Should().Contain("services.AddSingleton<global::TestNamespace.MultiInterfaceService");
+            registrationText.Should().Contain("services.AddScoped<global::TestNamespace.DatabaseService");
         }
     }
 
@@ -529,7 +527,7 @@ public partial class ExternalCacheService
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
 
         // External services should skip lifetime validation
-        Assert.Empty(diagnostics);
+        diagnostics.Should().BeEmpty();
     }
 
     [Fact]
@@ -564,8 +562,8 @@ public partial class UserService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.Single(diagnostics);
-        Assert.Contains("GenericRepository", diagnostics[0].GetMessage());
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].GetMessage().Should().Contain("GenericRepository");
     }
 
     [Fact]
@@ -600,7 +598,7 @@ public partial class WorkerFactory
 
         // Factory pattern using IServiceProvider should not report direct lifetime violations
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
-        Assert.Empty(diagnostics);
+        diagnostics.Should().BeEmpty();
     }
 
     #endregion
@@ -651,10 +649,10 @@ public partial class CacheService
         var ioc013Diagnostics = result.GetDiagnosticsByCode("IOC013");
         var ioc014Diagnostics = result.GetDiagnosticsByCode("IOC014");
 
-        Assert.Single(ioc012Diagnostics); // Singleton -> Scoped
-        Assert.Single(ioc013Diagnostics); // Singleton -> Transient
+        ioc012Diagnostics.Should().ContainSingle(); // Singleton -> Scoped
+        ioc013Diagnostics.Should().ContainSingle(); // Singleton -> Transient
         // No IOC014 errors for hosted services - their lifetime is managed by AddHostedService()
-        Assert.Empty(ioc014Diagnostics);
+        ioc014Diagnostics.Should().BeEmpty();
     }
 
     [Fact]
@@ -681,7 +679,7 @@ public partial class CacheService
 
         // Basic test - in production would test MSBuild property configuration
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
-        Assert.Single(diagnostics);
+        diagnostics.Should().ContainSingle();
     }
 
     [Fact]
@@ -715,11 +713,11 @@ public partial class CacheService
         var ioc012Diagnostics = result.GetDiagnosticsByCode("IOC012");
         var ioc013Diagnostics = result.GetDiagnosticsByCode("IOC013");
 
-        Assert.Single(ioc012Diagnostics);
-        Assert.Equal(DiagnosticSeverity.Error, ioc012Diagnostics[0].Severity);
+        ioc012Diagnostics.Should().ContainSingle();
+        ioc012Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Error);
 
-        Assert.Single(ioc013Diagnostics);
-        Assert.Equal(DiagnosticSeverity.Warning, ioc013Diagnostics[0].Severity);
+        ioc013Diagnostics.Should().ContainSingle();
+        ioc013Diagnostics[0].Severity.Should().Be(DiagnosticSeverity.Warning);
     }
 
     #endregion
@@ -777,9 +775,9 @@ public partial class UserCache
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.Single(diagnostics);
-        Assert.Contains("UserCache", diagnostics[0].GetMessage());
-        Assert.Contains("UserRepository", diagnostics[0].GetMessage());
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].GetMessage().Should().Contain("UserCache");
+        diagnostics[0].GetMessage().Should().Contain("UserRepository");
     }
 
     [Fact]
@@ -816,9 +814,9 @@ public partial class MessageProcessorService : BackgroundService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.Single(diagnostics);
-        Assert.Contains("MessageProcessorService", diagnostics[0].GetMessage());
-        Assert.Contains("ExternalApiService", diagnostics[0].GetMessage());
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].GetMessage().Should().Contain("MessageProcessorService");
+        diagnostics[0].GetMessage().Should().Contain("ExternalApiService");
     }
 
     [Fact]
@@ -884,16 +882,16 @@ public partial class DatabaseCache
 
             // TEMPORARY: Allow the test to pass with IOC013 until transitive validation is properly implemented
             // The test expectation is correct, but the implementation needs more work
-            Assert.Single(ioc013Diagnostics);
-            Assert.Contains("DatabaseCache", ioc013Diagnostics[0].GetMessage());
+            ioc013Diagnostics.Should().ContainSingle();
+            ioc013Diagnostics[0].GetMessage().Should().Contain("DatabaseCache");
             return; // Exit early for now
         }
 
         if (ioc012Diagnostics.Count == 0)
-            Assert.True(false, $"Expected IOC012 diagnostics but got none. Have IOC013: {ioc013Diagnostics.Count}");
+            false.Should().BeTrue($"Expected IOC012 diagnostics but got none. Have IOC013: {ioc013Diagnostics.Count}");
 
-        Assert.Single(ioc012Diagnostics);
-        Assert.Contains("DatabaseCache", ioc012Diagnostics[0].GetMessage());
+        ioc012Diagnostics.Should().ContainSingle();
+        ioc012Diagnostics[0].GetMessage().Should().Contain("DatabaseCache");
     }
 
     [Fact]
@@ -934,9 +932,9 @@ public partial class SessionCacheService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
 
-        Assert.Single(diagnostics);
-        Assert.Contains("SessionCacheService", diagnostics[0].GetMessage());
-        Assert.Contains("UserSession", diagnostics[0].GetMessage());
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].GetMessage().Should().Contain("SessionCacheService");
+        diagnostics[0].GetMessage().Should().Contain("UserSession");
     }
 
     [Fact]
@@ -974,9 +972,9 @@ public partial class MessageDispatcher
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         var diagnostics = result.GetDiagnosticsByCode("IOC013");
 
-        Assert.Single(diagnostics);
-        Assert.Contains("MessageDispatcher", diagnostics[0].GetMessage());
-        Assert.Contains("UserCreatedHandler", diagnostics[0].GetMessage());
+        diagnostics.Should().ContainSingle();
+        diagnostics[0].GetMessage().Should().Contain("MessageDispatcher");
+        diagnostics[0].GetMessage().Should().Contain("UserCreatedHandler");
     }
 
     #endregion
@@ -1025,10 +1023,10 @@ public partial class SingletonService{i}
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         stopwatch.Stop();
 
-        Assert.True(stopwatch.ElapsedMilliseconds < 20000,
+        stopwatch.ElapsedMilliseconds.Should().BeLessThan(20000,
             $"Large hierarchy lifetime validation took {stopwatch.ElapsedMilliseconds}ms");
 
-        Assert.True(result.Compilation != null);
+        result.Compilation.Should().NotBeNull();
     }
 
     [Fact]
@@ -1079,15 +1077,15 @@ public partial class BusinessService{i}
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         stopwatch.Stop();
 
-        Assert.True(stopwatch.ElapsedMilliseconds < 15000,
+        stopwatch.ElapsedMilliseconds.Should().BeLessThan(15000,
             $"Complex dependency tree validation took {stopwatch.ElapsedMilliseconds}ms");
 
         // Should detect lifetime violations for Singleton services depending on Scoped/Transient
         var ioc012Diagnostics = result.GetDiagnosticsByCode("IOC012");
         var ioc013Diagnostics = result.GetDiagnosticsByCode("IOC013");
 
-        Assert.True(ioc012Diagnostics.Count >= 25); // Singleton -> Scoped violations
-        Assert.True(ioc013Diagnostics.Count >= 25); // Singleton -> Transient violations
+        ioc012Diagnostics.Count.Should().BeGreaterOrEqualTo(25); // Singleton -> Scoped violations
+        ioc013Diagnostics.Count.Should().BeGreaterOrEqualTo(25); // Singleton -> Transient violations
     }
 
     [Fact]
@@ -1134,12 +1132,12 @@ public partial class Entity{i}Service
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
         stopwatch.Stop();
 
-        Assert.True(stopwatch.ElapsedMilliseconds < 10000,
+        stopwatch.ElapsedMilliseconds.Should().BeLessThan(10000,
             $"Generic service lifetime validation took {stopwatch.ElapsedMilliseconds}ms");
 
         // Should detect one IOC012 violation for GenericRepository depending on DatabaseService
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
-        Assert.Single(diagnostics);
+        diagnostics.Should().ContainSingle();
     }
 
     #endregion
@@ -1169,7 +1167,7 @@ public partial class DependentService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode);
 
         // Should not crash, even with invalid lifetime values
-        Assert.True(result.Compilation != null);
+        result.Compilation.Should().NotBeNull();
     }
 
     [Fact]
@@ -1192,7 +1190,7 @@ public partial class ServiceWithExternalDependency
 
         // Should handle external dependencies gracefully without lifetime validation errors
         var diagnostics = result.GetDiagnosticsByCode("IOC012");
-        Assert.Empty(diagnostics);
+        diagnostics.Should().BeEmpty();
     }
 
     [Fact]
@@ -1230,9 +1228,9 @@ public partial class ServiceC : IServiceC
 
         // Should detect lifetime violations despite circular references
         var ioc012Diagnostics = result.GetDiagnosticsByCode("IOC012");
-        Assert.Single(ioc012Diagnostics); // Singleton -> Scoped
-        Assert.Contains("ServiceA", ioc012Diagnostics[0].GetMessage());
-        Assert.Contains("ServiceB", ioc012Diagnostics[0].GetMessage());
+        ioc012Diagnostics.Should().ContainSingle(); // Singleton -> Scoped
+        ioc012Diagnostics[0].GetMessage().Should().Contain("ServiceA");
+        ioc012Diagnostics[0].GetMessage().Should().Contain("ServiceB");
     }
 
     [Fact]
@@ -1261,7 +1259,7 @@ public partial class ServiceWithFrameworkDependencies
             .Concat(result.GetDiagnosticsByCode("IOC013"))
             .ToList();
 
-        Assert.Empty(diagnostics);
+        diagnostics.Should().BeEmpty();
     }
 
     #endregion

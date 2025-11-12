@@ -36,21 +36,23 @@ public partial class DerivedController : BaseController
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation errors: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+        result.HasErrors.Should().BeFalse("Compilation errors: {0}", errorMessages);
 
-        var constructorSource = result.GetConstructorSource("DerivedController");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("DerivedController");
 
         // Strong regex validation instead of weak Contains  
         // Base class abstract with [Inject] field, derived class inherits dependencies correctly
         var constructorRegex =
             new Regex(
                 @"public\s+DerivedController\s*\(\s*IBaseService\s+baseService\s*,\s*IDerivedService\s+derivedService\s*\)\s*:\s*base\s*\(\s*baseService\s*\)");
-        Assert.True(constructorRegex.IsMatch(constructorSource.Content),
-            $"Constructor doesn't match expected pattern. Actual content: {constructorSource.Content}");
+        constructorRegex.IsMatch(constructorContent).Should().BeTrue(
+            "Constructor doesn't match expected pattern. Actual content: {0}",
+            constructorContent);
     }
 
     [Fact]
@@ -135,16 +137,18 @@ public partial class Level10Final : Level9
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse("Compilation errors: {0}", errorMessages);
 
-        var constructorSource = result.GetConstructorSource("Level10Final");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("Level10Final");
 
         // Deep inheritance chain: Constructor should include ALL dependencies for proper base constructor calls
         var constructorSignatureRegex = new Regex(@"public\s+Level10Final\s*\(");
-        Assert.True(constructorSignatureRegex.IsMatch(constructorSource.Content));
+        constructorSignatureRegex.IsMatch(constructorContent).Should().BeTrue();
 
         // All dependencies should be present to support constructor chaining
         var expectedParams = new[]
@@ -154,9 +158,10 @@ public partial class Level10Final : Level9
             "IService9 service9", "IService10 service10"
         };
 
-        foreach (var param in
-                 expectedParams)
-            Assert.Contains(param, constructorSource.Content); // All dependencies needed for constructor chaining
+        foreach (var param in expectedParams)
+            constructorContent.Should().Contain(param,
+                "Dependency {0} should appear in constructor for chaining",
+                param);
     }
 
     [Fact]
@@ -188,17 +193,17 @@ public partial class DerivedController : BaseController
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+        result.HasErrors.Should().BeFalse("Compilation failed: {0}", errorMessages);
 
-        var constructorSource = result.GetConstructorSource("DerivedController");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("DerivedController");
         // Validate constructor signature with regex
         var constructorRegex = new Regex(@"public\s+DerivedController\s*\(");
-        Assert.True(constructorRegex.IsMatch(constructorSource.Content),
-            "Constructor signature not found");
+        constructorRegex.IsMatch(constructorContent).Should().BeTrue("Constructor signature not found");
 
         // Abstract classes don't get registered, but still need dependencies for inheritance
         var expectedParams = new[]
@@ -209,17 +214,17 @@ public partial class DerivedController : BaseController
             "IDerivedInject derivedInject" // From derived [Inject] field - should be included
         };
 
-        foreach (var param in
-                 expectedParams)
-            Assert.Contains(param, constructorSource.Content); // Parameter not found in constructor
+        foreach (var param in expectedParams)
+            constructorContent.Should().Contain(param, "Parameter {0} not found in constructor", param);
 
         // Validate field assignments for derived dependencies only
-        Assert.Contains("this._derivedInject = derivedInject;", constructorSource.Content);
+        constructorContent.Should().Contain("this._derivedInject = derivedInject;");
 
         // Should have base constructor call with ALL base dependencies
         var baseCallRegex = new Regex(@":\s*base\s*\(\s*baseService\s*,\s*baseInject\s*\)");
-        Assert.True(baseCallRegex.IsMatch(constructorSource.Content),
-            $"Base constructor call with all base dependencies not found. Content: {constructorSource.Content}");
+        baseCallRegex.IsMatch(constructorContent).Should().BeTrue(
+            "Base constructor call with all base dependencies not found. Content: {0}",
+            constructorContent);
     }
 
     [Fact]
@@ -246,21 +251,24 @@ public partial class Level3 : Level2 { }";
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse("Compilation errors: {0}", errorMessages);
 
-        var constructorSource = result.GetConstructorSource("Level3");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("Level3");
         // Validate collection type parameters with precise matching
         var expectedParams = new[]
         {
             "IEnumerable<IService1> service1", "IList<IService2> service2", "IReadOnlyList<IService3> service3"
         };
 
-        foreach (var param in
-                 expectedParams)
-            Assert.Contains(param, constructorSource.Content); // Collection parameter should be found in constructor
+        foreach (var param in expectedParams)
+            constructorContent.Should().Contain(param,
+                "Collection parameter {0} should be generated in constructor",
+                param);
     }
 
     [Fact]
@@ -294,12 +302,14 @@ public partial class DiamondFinal : LeftBranch { }";
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse("Compilation errors: {0}", errorMessages);
 
-        var constructorSource = result.GetConstructorSource("DiamondFinal");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("DiamondFinal");
 
         // Validate diamond inheritance parameters with robust assertions
         var expectedParams = new[]
@@ -307,13 +317,14 @@ public partial class DiamondFinal : LeftBranch { }";
             "IBaseService baseService", "ILeftService leftService", "IFinalService finalService"
         };
 
-        foreach (var param in
-                 expectedParams)
-            Assert.Contains(param, constructorSource.Content); // Diamond inheritance parameter should be found
+        foreach (var param in expectedParams)
+            constructorContent.Should().Contain(param,
+                "Diamond inheritance parameter {0} should be found",
+                param);
 
         // Ensure we don't have duplicate base dependencies
-        var baseServiceMatches = Regex.Matches(constructorSource.Content, @"IBaseService\s+\w+");
-        Assert.Equal(1, baseServiceMatches.Count); // Should have exactly one IBaseService parameter
+        var baseServiceMatches = Regex.Matches(constructorContent, @"IBaseService\s+\w+");
+        baseServiceMatches.Count.Should().Be(1); // Should have exactly one IBaseService parameter
     }
 
     [Fact]
@@ -340,25 +351,28 @@ public partial class StringService : BaseService<string> { }";
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse("Compilation errors: {0}", errorMessages);
 
-        var constructorSource = result.GetConstructorSource("StringService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("StringService");
         // Validate generic type resolution with strong assertions
         var expectedGenericParams = new[]
         {
             "IRepository<string> repository", "IValidator<string> validator", "ISpecialService specialService"
         };
 
-        foreach (var param in
-                 expectedGenericParams)
-            Assert.Contains(param, constructorSource.Content); // Generic parameter with resolved types should be found
+        foreach (var param in expectedGenericParams)
+            constructorContent.Should().Contain(param,
+                "Generic parameter {0} should be resolved",
+                param);
 
         // Ensure proper generic constraint resolution
-        Assert.DoesNotContain("IRepository<T>",
-            constructorSource.Content); // Generic type T should be resolved to string
+        constructorContent.Should().NotContain("IRepository<T>",
+            "Generic type T should be fully resolved");
     }
 
     [Fact]
@@ -389,12 +403,14 @@ public partial class InsanelyComplexService : NestedGenericMiddle<string> { }";
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse("Compilation errors: {0}", errorMessages);
 
-        var constructorSource = result.GetConstructorSource("InsanelyComplexService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("InsanelyComplexService");
 
         // Validate nested generic type resolution with precision
         var expectedNestedGenerics = new[]
@@ -403,12 +419,13 @@ public partial class InsanelyComplexService : NestedGenericMiddle<string> { }";
             "IComplexService<string, IEnumerable<IEntity<string>>> complexService"
         };
 
-        foreach (var param in
-                 expectedNestedGenerics)
-            Assert.Contains(param, constructorSource.Content); // Nested generic parameter should be found
+        foreach (var param in expectedNestedGenerics)
+            constructorContent.Should().Contain(param,
+                "Nested generic parameter {0} should be found",
+                param);
 
         // Ensure no unresolved generic type parameters remain
-        Assert.DoesNotContain("<T>", constructorSource.Content); // All generic type parameters should be resolved
+        constructorContent.Should().NotContain("<T>", "All generic type parameters should be resolved");
     }
 
     [Fact]
@@ -436,25 +453,25 @@ public partial class ConstrainedService<T> : BaseService<T> where T : class, IEn
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse("Compilation errors: {0}", errorMessages);
 
-        var constructorSource = result.GetConstructorSource("ConstrainedService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("ConstrainedService");
         // Validate generic class with constraints
         var genericClassRegex = new Regex(@"public\s+partial\s+class\s+ConstrainedService<T>");
-        Assert.True(genericClassRegex.IsMatch(constructorSource.Content),
-            "Generic class declaration not found");
+        genericClassRegex.IsMatch(constructorContent).Should().BeTrue("Generic class declaration not found");
 
         // Validate constraint propagation
         var constraintRegex = new Regex(@"where\s+T\s*:\s*class\s*,\s*IEntity\s*,\s*new\s*\(\s*\)");
-        Assert.True(constraintRegex.IsMatch(constructorSource.Content),
-            "Generic constraints not properly propagated");
+        constraintRegex.IsMatch(constructorContent).Should().BeTrue("Generic constraints not properly propagated");
 
         // Validate base constructor call
         var baseCallRegex = new Regex(@":\s*base\s*\(\s*repository\s*\)");
-        Assert.True(baseCallRegex.IsMatch(constructorSource.Content),
+        baseCallRegex.IsMatch(constructorContent).Should().BeTrue(
             "Base constructor call with repository parameter not found");
     }
 
@@ -497,13 +514,14 @@ public class MyEntity : IEntity { }";
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
+        result.HasErrors.Should().BeFalse("Compilation failed: {0}", errorMessages);
 
-        var constructorSource = result.GetConstructorSource("FinalInsanity");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("FinalInsanity");
 
         // This should handle ABSOLUTELY EVERYTHING:
         // - Deep inheritance (3 levels)
@@ -524,7 +542,7 @@ public class MyEntity : IEntity { }";
             "IMapper<MyEntity, IEnumerable<string>> mapper" // Final DependsOn
         };
 
-        foreach (var param in expectedParams) Assert.Contains(param, constructorSource.Content);
+        foreach (var param in expectedParams) constructorContent.Should().Contain(param);
     }
 
     #region CROSS-NAMESPACE AND ASSEMBLY TESTS
@@ -561,19 +579,21 @@ namespace Derived.Controllers
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse("Compilation errors: {0}", errorMessages);
 
-        var constructorSource = result.GetConstructorSource("DerivedController");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("DerivedController");
 
         // Should handle cross-namespace inheritance
         var namespaceRegex = new Regex(@"namespace\s+Derived\.Controllers");
-        Assert.True(namespaceRegex.IsMatch(constructorSource.Content));
+        namespaceRegex.IsMatch(constructorContent).Should().BeTrue();
 
-        Assert.Contains("IBaseService baseService", constructorSource.Content);
-        Assert.Contains("IDerivedService derivedService", constructorSource.Content);
+        constructorContent.Should().Contain("IBaseService baseService");
+        constructorContent.Should().Contain("IDerivedService derivedService");
     }
 
     #endregion
@@ -603,16 +623,17 @@ public partial class WideService : {implementsClause}
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert - Should handle many dependencies and interfaces without issues
-        Assert.False(result.HasErrors,
-            $"Wide inheritance failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
+        result.HasErrors.Should().BeFalse("Wide inheritance failed: {0}", errorMessages);
 
-        var constructorSource = result.GetConstructorSource("WideService");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("WideService");
 
         // Should have all 10 DependsOn parameters
-        for (var i = 1; i <= 10; i++) Assert.Contains($"IService{i} service{i}", constructorSource.Content);
+        for (var i = 1; i <= 10; i++) constructorContent.Should().Contain($"IService{i} service{i}");
     }
 
     #endregion
@@ -636,14 +657,14 @@ public partial class ClassB : ClassA { }";
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - Should have compilation errors for circular inheritance
-        Assert.True(result.HasErrors, "Circular inheritance should produce compilation errors");
+        result.HasErrors.Should().BeTrue("Circular inheritance should produce compilation errors");
 
         // C# compiler should catch this before our generator runs
         var circularErrors = result.CompilationDiagnostics
             .Where(d => d.Severity == DiagnosticSeverity.Error &&
                         (d.Id == "CS0146" || d.Id == "CS0508")) // Circular base class errors
             .ToList();
-        Assert.NotEmpty(circularErrors);
+        circularErrors.Should().NotBeEmpty();
     }
 
     [Fact]
@@ -670,16 +691,18 @@ public partial class DerivedController : BaseController
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert - Should generate code but base won't have constructor
-        Assert.False(result.HasErrors); // Compilation succeeds
+        result.HasErrors.Should().BeFalse("Compilation errors: {0}", errorMessages); // Compilation succeeds
 
-        var constructorSource = result.GetConstructorSource("DerivedController");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("DerivedController");
 
         // Derived should have constructor, but base parameter handling may be affected
         var baseCallRegex = new Regex(@":\s*base\s*\(\s*baseService\s*\)");
-        Assert.False(baseCallRegex.IsMatch(constructorSource.Content),
+        baseCallRegex.IsMatch(constructorContent).Should().BeFalse(
             "Should not call base constructor when base class is not partial");
     }
 
@@ -710,18 +733,20 @@ public partial class DerivedController : BaseController
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse("Compilation errors: {0}", errorMessages);
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationContent = result.GetServiceRegistrationText();
 
         // Only derived service should be registered, with Transient lifetime
         // The generator uses fully qualified names, so we need to match that
-        Assert.Contains("services.AddTransient<global::Test.DerivedController, global::Test.DerivedController>",
-            registrationSource.Content);
-        Assert.DoesNotContain("AddSingleton<", registrationSource.Content);
+        registrationContent.Should().Contain(
+            "services.AddTransient<global::Test.DerivedController, global::Test.DerivedController>");
+        registrationContent.Should().NotContain("AddSingleton<");
     }
 
     [Fact]
@@ -749,11 +774,11 @@ public partial class DerivedService : BaseService<int> // int doesn't satisfy 'c
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - Should have constraint violation error
-        Assert.True(result.HasErrors);
+        result.HasErrors.Should().BeTrue();
         var constraintErrors = result.CompilationDiagnostics
             .Where(d => d.Severity == DiagnosticSeverity.Error && d.Id == "CS0452")
             .ToList();
-        Assert.NotEmpty(constraintErrors);
+        constraintErrors.Should().NotBeEmpty();
     }
 
     [Fact]
@@ -783,10 +808,10 @@ public partial class DerivedController : BaseController
 
         // Assert - Should produce IOC007 warning for conflict
         var conflictWarnings = result.GetDiagnosticsByCode("IOC007");
-        Assert.NotEmpty(conflictWarnings);
+        conflictWarnings.Should().NotBeEmpty();
 
         // But should still compile successfully
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
     }
 
     #endregion
@@ -817,16 +842,18 @@ public partial class DerivedController : BaseController
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse("Compilation errors: {0}", errorMessages);
 
-        var constructorSource = result.GetConstructorSource("DerivedController");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("DerivedController");
 
         // Base should use semantic camelCase naming (baseService), derived should use camelCase (derivedService)
-        Assert.Contains("IBaseService baseService", constructorSource.Content);
-        Assert.Contains("IDerivedService derivedService", constructorSource.Content);
+        constructorContent.Should().Contain("IBaseService baseService");
+        constructorContent.Should().Contain("IDerivedService derivedService");
     }
 
     [Fact]
@@ -860,17 +887,18 @@ public partial class DerivedController : BaseController
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert
-        Assert.False(result.HasErrors,
-            $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
+        result.HasErrors.Should().BeFalse("Compilation failed: {0}", errorMessages);
 
-        var constructorSource = result.GetConstructorSource("DerivedController");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("DerivedController");
 
         // Base and derived should both use semantic camelCase naming
-        Assert.Contains("IBaseService baseService", constructorSource.Content); // Base: semantic naming
-        Assert.Contains("IDerivedService derivedService", constructorSource.Content); // Derived: semantic naming
+        constructorContent.Should().Contain("IBaseService baseService"); // Base: semantic naming
+        constructorContent.Should().Contain("IDerivedService derivedService"); // Derived: semantic naming
     }
 
     #endregion
@@ -903,23 +931,25 @@ public partial class DerivedClass : BaseClass, IDerivedInterface, ISpecialInterf
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert - With intelligent inference, compilation should succeed
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse("Compilation errors: {0}", errorMessages);
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationContent = result.GetServiceRegistrationText();
 
         // Should register for all implemented interfaces (including inherited)
         // Default behavior uses Scoped lifetime and Shared instances (factory pattern)
-        Assert.Contains("services.AddScoped<global::Test.DerivedClass, global::Test.DerivedClass>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IBaseInterface, global::Test.DerivedClass>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.IDerivedInterface, global::Test.DerivedClass>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.ISpecialInterface, global::Test.DerivedClass>",
-            registrationSource.Content);
+        registrationContent.Should().Contain(
+            "services.AddScoped<global::Test.DerivedClass, global::Test.DerivedClass>");
+        registrationContent.Should().Contain(
+            "services.AddScoped<global::Test.IBaseInterface, global::Test.DerivedClass>");
+        registrationContent.Should().Contain(
+            "services.AddScoped<global::Test.IDerivedInterface, global::Test.DerivedClass>");
+        registrationContent.Should().Contain(
+            "services.AddScoped<global::Test.ISpecialInterface, global::Test.DerivedClass>");
     }
 
     [Fact]
@@ -947,24 +977,26 @@ public partial class DerivedClass : BaseClass, IDerivedInterface, ISpecialInterf
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse("Compilation errors: {0}", errorMessages);
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationContent = result.GetServiceRegistrationText();
 
         // Should NOT register IBaseInterface (skipped)
-        Assert.DoesNotContain("AddTransient<global::Test.IBaseInterface, global::Test.DerivedClass>",
-            registrationSource.Content);
+        registrationContent.Should().NotContain(
+            "AddTransient<global::Test.IBaseInterface, global::Test.DerivedClass>");
 
         // Should register other interfaces
-        Assert.Contains("services.AddScoped<global::Test.IDerivedInterface, global::Test.DerivedClass>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.ISpecialInterface, global::Test.DerivedClass>",
-            registrationSource.Content);
-        Assert.Contains("services.AddScoped<global::Test.DerivedClass, global::Test.DerivedClass>",
-            registrationSource.Content);
+        registrationContent.Should().Contain(
+            "services.AddScoped<global::Test.IDerivedInterface, global::Test.DerivedClass>");
+        registrationContent.Should().Contain(
+            "services.AddScoped<global::Test.ISpecialInterface, global::Test.DerivedClass>");
+        registrationContent.Should().Contain(
+            "services.AddScoped<global::Test.DerivedClass, global::Test.DerivedClass>");
     }
 
     #endregion
@@ -997,12 +1029,14 @@ public partial class DerivedClass : BaseClass
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert - Complete constructor validation
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse("Compilation errors: {0}", errorMessages);
 
-        var constructorSource = result.GetConstructorSource("DerivedClass");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("DerivedClass");
 
         // Validate complete method signature with regex
         var fullConstructorRegex = new Regex(
@@ -1014,16 +1048,16 @@ public partial class DerivedClass : BaseClass
             @"\)"
         );
 
-        Assert.True(fullConstructorRegex.IsMatch(constructorSource.Content),
-            $"Complete constructor signature validation failed. Content: {constructorSource.Content}");
+        fullConstructorRegex.IsMatch(constructorContent).Should().BeTrue(
+            "Complete constructor signature validation failed. Content: {0}",
+            constructorContent);
 
         // Validate method body contains field assignments
-        Assert.Contains("this._injected = injected;", constructorSource.Content);
+        constructorContent.Should().Contain("this._injected = injected;");
 
         // Validate base constructor call
         var baseCallRegex = new Regex(@":\s*base\s*\(\s*service1\s*,\s*service2\s*\)");
-        Assert.True(baseCallRegex.IsMatch(constructorSource.Content),
-            "Base constructor call validation failed");
+        baseCallRegex.IsMatch(constructorContent).Should().BeTrue("Base constructor call validation failed");
     }
 
     [Fact]
@@ -1051,27 +1085,29 @@ public partial class DerivedClass : BaseClass, IDerivedInterface
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse("Compilation errors: {0}", errorMessages);
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationContent = result.GetServiceRegistrationText();
 
         // Validate complete registration method signature
         var extensionMethodRegex =
             new Regex(
                 @"public\s+static\s+IServiceCollection\s+Add\w+RegisteredServices\s*\(\s*this\s+IServiceCollection\s+services\s*\)");
-        Assert.True(extensionMethodRegex.IsMatch(registrationSource.Content),
+        extensionMethodRegex.IsMatch(registrationContent).Should().BeTrue(
             "Extension method signature validation failed");
 
         // Validate only derived class is registered with correct lifetime
-        Assert.Contains("services.AddScoped<global::Test.DerivedClass, global::Test.DerivedClass>",
-            registrationSource.Content);
-        Assert.DoesNotContain("BaseClass>", registrationSource.Content); // Base should not be registered
+        registrationContent.Should().Contain(
+            "services.AddScoped<global::Test.DerivedClass, global::Test.DerivedClass>");
+        registrationContent.Should().NotContain("BaseClass>", "Base should not be registered");
 
         // Validate return statement
-        Assert.Contains("return services;", registrationSource.Content);
+        registrationContent.Should().Contain("return services;");
     }
 
     #endregion
@@ -1113,7 +1149,7 @@ public partial class DerivedClass : BaseClass
         var diagnostics = result.CompilationDiagnostics.Where(d => d.Severity >= DiagnosticSeverity.Warning).ToList();
 
         // At minimum, should not crash the generator
-        Assert.NotNull(result);
+        result.Should().NotBeNull();
     }
 
     [Fact]
@@ -1150,24 +1186,25 @@ public partial class Level3 : Level2
 
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+        var errorMessages = string.Join(", ", result.Diagnostics
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.GetMessage()));
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse("Compilation errors: {0}", errorMessages);
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationContent = result.GetServiceRegistrationText();
 
         // Only Level3 (concrete class) should be registered
-        Assert.Contains("services.AddScoped<global::Test.Level3, global::Test.Level3>", registrationSource.Content);
-        Assert.DoesNotContain("AddScoped<global::Test.Level1, global::Test.Level1>", registrationSource.Content);
-        Assert.DoesNotContain("AddScoped<global::Test.Level2, global::Test.Level2>", registrationSource.Content);
+        registrationContent.Should().Contain("services.AddScoped<global::Test.Level3, global::Test.Level3>");
+        registrationContent.Should().NotContain("AddScoped<global::Test.Level1, global::Test.Level1>");
+        registrationContent.Should().NotContain("AddScoped<global::Test.Level2, global::Test.Level2>");
 
         // Level3 constructor should include all inherited dependencies
-        var constructorSource = result.GetConstructorSource("Level3");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("IService1 service1", constructorSource.Content);
-        Assert.Contains("IService2 service2", constructorSource.Content);
-        Assert.Contains("IService3 service3", constructorSource.Content);
+        var constructorContent = result.GetConstructorSourceText("Level3");
+        constructorContent.Should().Contain("IService1 service1");
+        constructorContent.Should().Contain("IService2 service2");
+        constructorContent.Should().Contain("IService3 service3");
     }
 
     [Fact]
@@ -1214,26 +1251,24 @@ public partial class FinalService : UnregisteredMiddle
         {
             // If there are compilation errors with this complex scenario, that's acceptable
             // as long as the generator doesn't crash and produces some output
-            var hasGeneratedOutput = result.GeneratedSources.Any();
-            Assert.True(hasGeneratedOutput, "Generator should produce some output even with complex inheritance");
+            result.GeneratedSources.Should().NotBeEmpty(
+                "Generator should produce some output even with complex inheritance");
             return; // Skip rest of test if compilation errors exist
         }
 
         // Only FinalService should be registered
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("services.AddScoped<global::Test.FinalService, global::Test.FinalService>",
-            registrationSource.Content);
-        Assert.DoesNotContain("ExternalBase>", registrationSource.Content);
-        Assert.DoesNotContain("UnregisteredMiddle>", registrationSource.Content);
+        var registrationContent = result.GetServiceRegistrationText();
+        registrationContent.Should().Contain(
+            "services.AddScoped<global::Test.FinalService, global::Test.FinalService>");
+        registrationContent.Should().NotContain("ExternalBase>");
+        registrationContent.Should().NotContain("UnregisteredMiddle>");
 
         // FinalService should have constructor with dependencies but not external ones
-        var constructorSource = result.GetConstructorSource("FinalService");
-        Assert.NotNull(constructorSource);
-        Assert.Contains("IService2 service2", constructorSource.Content); // From UnregisteredMiddle
-        Assert.Contains("IService3 service3", constructorSource.Content); // From FinalService
+        var constructorContent = result.GetConstructorSourceText("FinalService");
+        constructorContent.Should().Contain("IService2 service2"); // From UnregisteredMiddle
+        constructorContent.Should().Contain("IService3 service3"); // From FinalService
         // External service dependency should not appear in constructor
-        Assert.DoesNotContain("IService1", constructorSource.Content);
+        constructorContent.Should().NotContain("IService1");
     }
 
     [Fact]
@@ -1261,24 +1296,23 @@ public partial class DerivedClass : BaseClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
         // Assert - Should produce IOC006 warning for duplicate dependencies
         var duplicateWarnings = result.GetDiagnosticsByCode("IOC006");
-        Assert.NotEmpty(duplicateWarnings);
+        duplicateWarnings.Should().NotBeEmpty();
 
         // Should still compile and work correctly
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("DerivedClass");
-        Assert.NotNull(constructorSource);
+        var constructorContent = result.GetConstructorSourceText("DerivedClass");
 
         // Should only have one parameter for the duplicate dependency
         // Match constructor parameters specifically, not field declarations
         var constructorParamPattern = @"DerivedClass\s*\(\s*[^)]*IDuplicateService\s+\w+[^)]*\)";
-        var constructorMatch = Regex.Match(constructorSource.Content, constructorParamPattern);
-        Assert.True(constructorMatch.Success, "Should find constructor with IDuplicateService parameter");
+        var constructorMatch = Regex.Match(constructorContent, constructorParamPattern);
+        constructorMatch.Success.Should().BeTrue("Should find constructor with IDuplicateService parameter");
 
         // Count how many times IDuplicateService appears as a parameter in the constructor
         var parameterSection = constructorMatch.Value;
         var parameterMatches = Regex.Matches(parameterSection, @"IDuplicateService\s+\w+");
-        Assert.Equal(1, parameterMatches.Count); // Should deduplicate the dependency parameter
+        parameterMatches.Count.Should().Be(1); // Should deduplicate the dependency parameter
     }
 
     [Fact]
@@ -1329,11 +1363,12 @@ public partial class FinalClass : MiddleClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert - This pattern is expected to have compilation errors due to architectural limits
-        Assert.True(result.HasErrors, "Complex mixed external service patterns are architectural limits");
+        result.HasErrors.Should().BeTrue(
+            "Complex mixed external service patterns are architectural limits");
 
         // Verify this produces a specific diagnostic about the complexity
         var diagnostics = result.CompilationDiagnostics.Where(d => d.Severity >= DiagnosticSeverity.Warning).ToList();
-        Assert.NotEmpty(diagnostics); // Should produce diagnostics explaining the limitation
+        diagnostics.Should().NotBeEmpty(); // Should produce diagnostics explaining the limitation
 
         // This test documents the architectural boundary rather than expecting success
         // The generator prioritizes 90% use case reliability over edge case complexity
@@ -1363,7 +1398,7 @@ public partial class DerivedService : BaseService
 
         // Assert - Should detect and report circular dependency
         var circularDependencyErrors = result.GetDiagnosticsByCode("IOC003");
-        Assert.NotEmpty(circularDependencyErrors);
+        circularDependencyErrors.Should().NotBeEmpty();
 
         // May or may not have compilation errors depending on detection timing
     }

@@ -38,27 +38,26 @@ public partial class DerivedService : BaseService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
         var baseConstructorSource = result.GetConstructorSource("BaseService");
-        var derivedConstructorSource = result.GetConstructorSource("DerivedService");
+        var derivedConstructorText = result.GetConstructorSourceText("DerivedService");
 
         // Base should have configuration constructor
         if (baseConstructorSource != null)
         {
-            Assert.Contains("IConfiguration configuration", baseConstructorSource.Content);
-            Assert.Contains("configuration.GetValue<string>(\"Database:ConnectionString\")",
-                baseConstructorSource.Content);
-            Assert.Contains("configuration.GetValue<int>(\"Cache:TTL\")", baseConstructorSource.Content);
+            baseConstructorSource.Content.Should().Contain("IConfiguration configuration");
+            baseConstructorSource.Content.Should()
+                .Contain("configuration.GetValue<string>(\"Database:ConnectionString\")");
+            baseConstructorSource.Content.Should().Contain("configuration.GetValue<int>(\"Cache:TTL\")");
         }
 
         // Derived class should have a simple constructor that accepts configuration
         // Even with no fields of its own, it needs to accept the configuration parameter
-        Assert.NotNull(derivedConstructorSource);
-        Assert.Contains("IConfiguration configuration", derivedConstructorSource.Content);
+        derivedConstructorText.Should().Contain("IConfiguration configuration");
 
         // Should pass configuration to base constructor
-        Assert.Contains("base(configuration)", derivedConstructorSource.Content);
+        derivedConstructorText.Should().Contain("base(configuration)");
     }
 
     [Fact]
@@ -90,21 +89,20 @@ public partial class DerivedService : BaseService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var derivedConstructorSource = result.GetConstructorSource("DerivedService");
-        Assert.NotNull(derivedConstructorSource);
+        var derivedConstructorText = result.GetConstructorSourceText("DerivedService");
 
         // Should include base dependencies and configuration
-        Assert.Contains("IBaseService baseService", derivedConstructorSource.Content);
-        Assert.Contains("IConfiguration configuration", derivedConstructorSource.Content);
+        derivedConstructorText.Should().Contain("IBaseService baseService");
+        derivedConstructorText.Should().Contain("IConfiguration configuration");
 
         // Should handle configuration bindings
-        Assert.Contains("configuration.GetValue<string>(\"Email:SmtpHost\")", derivedConstructorSource.Content);
-        Assert.Contains("configuration.GetValue<int>(\"Email:SmtpPort\")", derivedConstructorSource.Content);
+        derivedConstructorText.Should().Contain("configuration.GetValue<string>(\"Email:SmtpHost\")");
+        derivedConstructorText.Should().Contain("configuration.GetValue<int>(\"Email:SmtpPort\")");
 
         // Should call base constructor with base dependencies
-        Assert.Contains("base(baseService)", derivedConstructorSource.Content);
+        derivedConstructorText.Should().Contain("base(baseService)");
     }
 
     [Fact]
@@ -134,24 +132,23 @@ public partial class DerivedService : BaseService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
+        result.HasErrors.Should().BeFalse(
             $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
 
-        var derivedConstructorSource = result.GetConstructorSource("DerivedService");
+        var derivedConstructorText = result.GetConstructorSourceText("DerivedService");
 
         // When derived class has NO configuration fields of its own, 
         // it still gets a constructor to pass configuration to base
-        Assert.NotNull(derivedConstructorSource);
-        Assert.Contains("IConfiguration configuration", derivedConstructorSource.Content);
-        Assert.Contains("base(configuration)", derivedConstructorSource.Content);
+        derivedConstructorText.Should().Contain("IConfiguration configuration");
+        derivedConstructorText.Should().Contain("base(configuration)");
 
         // Base class should handle its own configuration bindings
         var baseConstructorSource = result.GetConstructorSource("BaseService");
         if (baseConstructorSource != null)
         {
-            Assert.Contains("configuration.GetValue<string>(\"Database:ConnectionString\")",
-                baseConstructorSource.Content);
-            Assert.Contains("configuration.GetValue<int>(\"Database:Timeout\")", baseConstructorSource.Content);
+            baseConstructorSource.Content.Should()
+                .Contain("configuration.GetValue<string>(\"Database:ConnectionString\")");
+            baseConstructorSource.Content.Should().Contain("configuration.GetValue<int>(\"Database:Timeout\")");
         }
     }
 
@@ -185,13 +182,13 @@ public partial class DerivedService : BaseService
         // Test documents expected behavior for field name conflicts
         if (constructorSource != null)
         {
-            Assert.Contains("IConfiguration configuration", constructorSource.Content);
+            constructorSource.Content.Should().Contain("IConfiguration configuration");
 
             // Both configuration bindings should be present or properly resolved
             var hasBaseConfig = constructorSource.Content.Contains("Base:ConnectionString");
             var hasDerivedConfig = constructorSource.Content.Contains("Derived:ConnectionString");
 
-            Assert.True(hasBaseConfig || hasDerivedConfig, "Should handle field name conflicts");
+            (hasBaseConfig || hasDerivedConfig).Should().BeTrue("Should handle field name conflicts");
         }
     }
 
@@ -233,24 +230,23 @@ public partial class Level4Final : Level3Deep
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var finalConstructorSource = result.GetConstructorSource("Level4Final");
-        Assert.NotNull(finalConstructorSource);
+        var finalConstructorSource = result.GetConstructorSourceText("Level4Final");
 
         // Should include configuration parameter
-        Assert.Contains("IConfiguration configuration", finalConstructorSource.Content);
+        finalConstructorSource.Should().Contain("IConfiguration configuration");
 
         // Should handle ONLY its own configuration binding (hierarchical approach to prevent CS0191)
-        Assert.Contains("configuration.GetValue<string>(\"Level4:Setting\")", finalConstructorSource.Content);
+        finalConstructorSource.Should().Contain("configuration.GetValue<string>(\"Level4:Setting\")");
 
         // Should NOT handle base class configuration bindings (handled by base constructors)
-        Assert.DoesNotContain("configuration.GetValue<string>(\"Level1:Setting\")", finalConstructorSource.Content);
-        Assert.DoesNotContain("configuration.GetValue<string>(\"Level2:Setting\")", finalConstructorSource.Content);
-        Assert.DoesNotContain("configuration.GetValue<string>(\"Level3:Setting\")", finalConstructorSource.Content);
+        finalConstructorSource.Should().NotContain("configuration.GetValue<string>(\"Level1:Setting\")");
+        finalConstructorSource.Should().NotContain("configuration.GetValue<string>(\"Level2:Setting\")");
+        finalConstructorSource.Should().NotContain("configuration.GetValue<string>(\"Level3:Setting\")");
 
         // Should have proper base constructor call
-        Assert.Contains("base(configuration)", finalConstructorSource.Content);
+        finalConstructorSource.Should().Contain("base(configuration)");
     }
 
     [Fact]
@@ -284,23 +280,22 @@ public partial class StringService : GenericBase<string>
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("StringService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("StringService");
 
         // Should handle configuration parameter
-        Assert.Contains("IConfiguration configuration", constructorSource.Content);
+        constructorSource.Should().Contain("IConfiguration configuration");
 
         // Should handle ONLY its own configuration binding (hierarchical approach)
-        Assert.Contains("configuration.GetValue<string>(\"String:Specific\")", constructorSource.Content);
+        constructorSource.Should().Contain("configuration.GetValue<string>(\"String:Specific\")");
 
         // Should NOT handle base class configuration bindings (handled by base constructor)
-        Assert.DoesNotContain("configuration.GetSection(\"Entity\").Get<EntitySettings>()", constructorSource.Content);
-        Assert.DoesNotContain("configuration.GetValue<string>(\"Generic:Setting\")", constructorSource.Content);
+        constructorSource.Should().NotContain("configuration.GetSection(\"Entity\").Get<EntitySettings>()");
+        constructorSource.Should().NotContain("configuration.GetValue<string>(\"Generic:Setting\")");
 
         // Should pass configuration to base constructor
-        Assert.Contains("base(", constructorSource.Content);
+        constructorSource.Should().Contain("base(");
     }
 
     [Fact]
@@ -335,25 +330,23 @@ public partial class ConcreteEmailService : AbstractEmailService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("ConcreteEmailService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("ConcreteEmailService");
 
         // Should include all dependencies and configuration from inheritance chain
-        Assert.Contains("IRepository<string> repository", constructorSource.Content);
-        Assert.Contains("IConfiguration configuration", constructorSource.Content);
+        constructorSource.Should().Contain("IRepository<string> repository");
+        constructorSource.Should().Contain("IConfiguration configuration");
 
         // Should handle ONLY its own configuration binding (hierarchical approach to prevent CS0191)
-        Assert.Contains("configuration.GetValue<string>(\"Email:ApiKey\")", constructorSource.Content);
+        constructorSource.Should().Contain("configuration.GetValue<string>(\"Email:ApiKey\")");
 
         // Should NOT handle base class configuration bindings (these are handled by base constructors)
-        Assert.DoesNotContain("configuration.GetValue<string>(\"Repository:ConnectionString\")",
-            constructorSource.Content);
-        Assert.DoesNotContain("configuration.GetValue<string>(\"Email:SmtpHost\")", constructorSource.Content);
+        constructorSource.Should().NotContain("configuration.GetValue<string>(\"Repository:ConnectionString\")");
+        constructorSource.Should().NotContain("configuration.GetValue<string>(\"Email:SmtpHost\")");
 
         // Should pass parameters to base constructor
-        Assert.Contains("base(", constructorSource.Content);
+        constructorSource.Should().Contain("base(");
     }
 
     #endregion
@@ -388,11 +381,11 @@ public partial class DerivedService : BaseService
 
         if (constructorSource != null)
         {
-            Assert.Contains("IConfiguration configuration", constructorSource.Content);
+            constructorSource.Content.Should().Contain("IConfiguration configuration");
 
             // Should handle both bindings for same key (implementation-specific behavior)
             var connectionStringCount = Regex.Matches(constructorSource.Content, "ConnectionString").Count;
-            Assert.True(connectionStringCount >= 1, "Should handle configuration key conflicts");
+            (connectionStringCount >= 1).Should().BeTrue("Should handle configuration key conflicts");
         }
     }
 
@@ -433,18 +426,15 @@ public partial class DerivedService : BaseService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("DerivedService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("DerivedService");
 
         // Should handle ONLY its own configuration section bindings (hierarchical approach to prevent CS0191)
         // Base class configuration is handled by base constructor
-        Assert.DoesNotContain("configuration.GetSection(\"Database\").Get<DatabaseSettings>()",
-            constructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Cache\").Get<CacheSettings>()", constructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"CustomSection\").Get<DatabaseSettings>()",
-            constructorSource.Content);
+        constructorSource.Should().NotContain("configuration.GetSection(\"Database\").Get<DatabaseSettings>()");
+        constructorSource.Should().Contain("configuration.GetSection(\"Cache\").Get<CacheSettings>()");
+        constructorSource.Should().Contain("configuration.GetSection(\"CustomSection\").Get<DatabaseSettings>()");
     }
 
     [Fact]
@@ -479,21 +469,19 @@ public partial class DerivedService : BaseService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("DerivedService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("DerivedService");
 
         // Should handle mixed configuration sources
-        Assert.Contains("IConfiguration configuration", constructorSource.Content);
-        Assert.Contains("IOptions<EmailSettings> emailOptions", constructorSource.Content);
-        Assert.Contains("IOptionsSnapshot<EmailSettings> snapshotEmailSettings", constructorSource.Content);
+        constructorSource.Should().Contain("IConfiguration configuration");
+        constructorSource.Should().Contain("IOptions<EmailSettings> emailOptions");
+        constructorSource.Should().Contain("IOptionsSnapshot<EmailSettings> snapshotEmailSettings");
 
         // Should handle ONLY its own configuration bindings (hierarchical approach to prevent CS0191)
         // Base class configuration is handled by base constructor
-        Assert.DoesNotContain("configuration.GetValue<string>(\"Database:ConnectionString\")",
-            constructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Email\").Get<EmailSettings>()", constructorSource.Content);
+        constructorSource.Should().NotContain("configuration.GetValue<string>(\"Database:ConnectionString\")");
+        constructorSource.Should().Contain("configuration.GetSection(\"Email\").Get<EmailSettings>()");
     }
 
     #endregion
@@ -531,28 +519,27 @@ public partial class DerivedController : BaseController
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("DerivedController");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("DerivedController");
 
         // Should include all dependency types
-        Assert.Contains("IBaseService baseService", constructorSource.Content);
-        Assert.Contains("IDerivedService derivedService", constructorSource.Content);
-        Assert.Contains("ILogger logger", constructorSource.Content);
-        Assert.Contains("ILogger<DerivedController> typedLogger", constructorSource.Content);
-        Assert.Contains("IConfiguration configuration", constructorSource.Content);
+        constructorSource.Should().Contain("IBaseService baseService");
+        constructorSource.Should().Contain("IDerivedService derivedService");
+        constructorSource.Should().Contain("ILogger logger");
+        constructorSource.Should().Contain("ILogger<DerivedController> typedLogger");
+        constructorSource.Should().Contain("IConfiguration configuration");
 
         // Should handle configuration bindings - ONLY derived class fields, not base class fields
         // Base class configuration is handled by base constructor, not in derived constructor (prevents CS0191)
-        Assert.DoesNotContain("configuration.GetValue<string>(\"Base:ConnectionString\")", constructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"Derived:ApiKey\")", constructorSource.Content);
+        constructorSource.Should().NotContain("configuration.GetValue<string>(\"Base:ConnectionString\")");
+        constructorSource.Should().Contain("configuration.GetValue<string>(\"Derived:ApiKey\")");
 
         // Should have proper base constructor call with all base dependencies
         // Note: Parameter order may vary based on dependency analysis order
         var baseCallPattern = @"base\s*\(\s*[^)]*configuration[^)]*\)";
-        Assert.True(Regex.IsMatch(constructorSource.Content, baseCallPattern),
-            $"Base constructor call pattern not found. Content: {constructorSource.Content}");
+        Regex.IsMatch(constructorSource, baseCallPattern).Should().BeTrue(
+            $"Base constructor call pattern not found. Content: {constructorSource}");
     }
 
     [Fact]
@@ -587,25 +574,22 @@ public partial class SingletonService : BaseService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetServiceRegistrationText();
 
         // Should register with correct lifetime
-        Assert.Contains("AddSingleton", registrationSource.Content);
-        Assert.Contains("SingletonService", registrationSource.Content);
+        registrationSource.Should().Contain("AddSingleton");
+        registrationSource.Should().Contain("SingletonService");
 
-        var constructorSource = result.GetConstructorSource("SingletonService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("SingletonService");
 
         // Should handle configuration inheritance (hierarchical approach)
         // Only derived class configuration is handled in this constructor
-        Assert.Contains("configuration.GetValue<int>(\"Cache:TTL\")", constructorSource.Content);
+        constructorSource.Should().Contain("configuration.GetValue<int>(\"Cache:TTL\")");
 
         // Base class configuration is handled by base constructor (prevents CS0191)
-        Assert.DoesNotContain("configuration.GetValue<string>(\"Database:ConnectionString\")",
-            constructorSource.Content);
+        constructorSource.Should().NotContain("configuration.GetValue<string>(\"Database:ConnectionString\")");
     }
 
     [Fact]
@@ -645,24 +629,23 @@ public partial class RegisteredService : BaseService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetServiceRegistrationText();
 
         // Only RegisteredService should be registered (has Lifetime attribute)
-        Assert.Contains("RegisteredService", registrationSource.Content);
-        Assert.DoesNotContain("UnmanagedService>", registrationSource.Content);
+        registrationSource.Should().Contain("RegisteredService");
+        registrationSource.Should().NotContain("UnmanagedService>");
 
         // Both should have constructors with configuration
         var unmanagedConstructorSource = result.GetConstructorSource("UnmanagedService");
         var registeredConstructorSource = result.GetConstructorSource("RegisteredService");
 
         if (unmanagedConstructorSource != null)
-            Assert.Contains("IConfiguration configuration", unmanagedConstructorSource.Content);
+            unmanagedConstructorSource.Content.Should().Contain("IConfiguration configuration");
 
         if (registeredConstructorSource != null)
-            Assert.Contains("IConfiguration configuration", registeredConstructorSource.Content);
+            registeredConstructorSource.Content.Should().Contain("IConfiguration configuration");
     }
 
     #endregion
@@ -698,10 +681,9 @@ public partial class DerivedClass : BaseClass
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("DerivedClass");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("DerivedClass");
 
         // Validate parameter ordering: dependencies first, then configuration last
         var constructorRegex = new Regex(
@@ -712,8 +694,8 @@ public partial class DerivedClass : BaseClass
             @"\)"
         );
 
-        Assert.True(constructorRegex.IsMatch(constructorSource.Content),
-            $"Parameter ordering validation failed. Content: {constructorSource.Content}");
+        constructorRegex.IsMatch(constructorSource).Should().BeTrue(
+            $"Parameter ordering validation failed. Content: {constructorSource}");
     }
 
     [Fact]
@@ -743,20 +725,18 @@ public partial class DerivedService : BaseService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("DerivedService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("DerivedService");
 
         // Should have proper base constructor call with correct parameters
         var baseCallRegex = new Regex(@":\s*base\s*\(\s*baseService\s*,\s*configuration\s*\)");
-        Assert.True(baseCallRegex.IsMatch(constructorSource.Content),
-            $"Base constructor call validation failed. Content: {constructorSource.Content}");
+        baseCallRegex.IsMatch(constructorSource).Should().BeTrue(
+            $"Base constructor call validation failed. Content: {constructorSource}");
 
         // Should assign derived fields only
-        Assert.Contains("this._cacheTtl = configuration.GetValue<int>(\"Cache:TTL\")!;", constructorSource.Content);
-        Assert.DoesNotContain("this._connectionString",
-            constructorSource.Content); // Base field handled by base constructor
+        constructorSource.Should().Contain("this._cacheTtl = configuration.GetValue<int>(\"Cache:TTL\")!;");
+        constructorSource.Should().NotContain("this._connectionString"); // Base field handled by base constructor
     }
 
     [Fact]
@@ -785,20 +765,19 @@ public partial class DerivedService : BaseService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("DerivedService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("DerivedService");
 
         // Should only assign derived class fields (base handled by base constructor)
-        Assert.Contains("this._derivedSetting1 = configuration.GetValue<string>(\"Derived:Setting1\")!;",
-            constructorSource.Content);
-        Assert.Contains("this._derivedSetting2 = configuration.GetValue<string>(\"Derived:Setting2\")!;",
-            constructorSource.Content);
+        constructorSource.Should()
+            .Contain("this._derivedSetting1 = configuration.GetValue<string>(\"Derived:Setting1\")!;");
+        constructorSource.Should()
+            .Contain("this._derivedSetting2 = configuration.GetValue<string>(\"Derived:Setting2\")!;");
 
         // Should not assign base class fields
-        Assert.DoesNotContain("this._setting1", constructorSource.Content);
-        Assert.DoesNotContain("this._setting2", constructorSource.Content);
+        constructorSource.Should().NotContain("this._setting1");
+        constructorSource.Should().NotContain("this._setting2");
     }
 
     [Fact]
@@ -830,23 +809,22 @@ public partial class Level3 : Level2
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("Level3");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("Level3");
 
         // DEBUG: Print the actual generated content
 
         // Should have only one IConfiguration parameter
-        var configParameterMatches = Regex.Matches(constructorSource.Content, @"IConfiguration\s+configuration");
-        Assert.Equal(1, configParameterMatches.Count);
+        var configParameterMatches = Regex.Matches(constructorSource, @"IConfiguration\s+configuration");
+        configParameterMatches.Count.Should().Be(1);
 
         // Should handle ONLY its own configuration binding (hierarchical approach to prevent CS0191)
-        Assert.Contains("configuration.GetValue<string>(\"Level3:Setting\")", constructorSource.Content);
+        constructorSource.Should().Contain("configuration.GetValue<string>(\"Level3:Setting\")");
 
         // Should NOT handle base class configuration bindings (handled by base constructors)
-        Assert.DoesNotContain("configuration.GetValue<string>(\"Level1:Setting\")", constructorSource.Content);
-        Assert.DoesNotContain("configuration.GetValue<string>(\"Level2:Setting\")", constructorSource.Content);
+        constructorSource.Should().NotContain("configuration.GetValue<string>(\"Level1:Setting\")");
+        constructorSource.Should().NotContain("configuration.GetValue<string>(\"Level2:Setting\")");
     }
 
     #endregion
@@ -888,17 +866,15 @@ public class MyEntity : IEntity { }";
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("ConcreteService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("ConcreteService");
 
         // Should handle ONLY its own configuration bindings (hierarchical approach to prevent CS0191)
         // Base class configuration is handled by base constructor
-        Assert.DoesNotContain("configuration.GetSection(\"Entity\").Get<EntitySettings<MyEntity>>()",
-            constructorSource.Content);
-        Assert.DoesNotContain("configuration.GetValue<string>(\"Generic:ApiKey\")", constructorSource.Content);
-        Assert.Contains("configuration.GetValue<string>(\"Concrete:Setting\")", constructorSource.Content);
+        constructorSource.Should().NotContain("configuration.GetSection(\"Entity\").Get<EntitySettings<MyEntity>>()");
+        constructorSource.Should().NotContain("configuration.GetValue<string>(\"Generic:ApiKey\")");
+        constructorSource.Should().Contain("configuration.GetValue<string>(\"Concrete:Setting\")");
     }
 
     [Fact]
@@ -930,33 +906,30 @@ public partial class ConcreteService<T> : GenericMiddle<T> where T : class
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("ConcreteService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("ConcreteService");
 
         // Should handle open generic inheritance
-        Assert.Contains("public partial class ConcreteService<T>", constructorSource.Content);
-        Assert.Contains("where T : class", constructorSource.Content);
+        constructorSource.Should().Contain("public partial class ConcreteService<T>");
+        constructorSource.Should().Contain("where T : class");
 
         // Should only handle its own configuration binding, not base class fields (to avoid CS0191 readonly field errors)
-        Assert.Contains("configuration.GetValue<string>(\"Concrete:Setting\")", constructorSource.Content);
+        constructorSource.Should().Contain("configuration.GetValue<string>(\"Concrete:Setting\")");
 
         // Should NOT contain base class configuration bindings (these are handled via constructor parameters)
-        Assert.DoesNotContain("configuration.GetValue<string>(\"Generic:Setting\")", constructorSource.Content);
-        Assert.DoesNotContain("configuration.GetValue<string>(\"Middle:Setting\")", constructorSource.Content);
+        constructorSource.Should().NotContain("configuration.GetValue<string>(\"Generic:Setting\")");
+        constructorSource.Should().NotContain("configuration.GetValue<string>(\"Middle:Setting\")");
 
         // Should pass configuration parameters to base constructor
-        Assert.Contains("base(", constructorSource.Content);
+        constructorSource.Should().Contain("base(");
 
         // Verify base class constructors have their own configuration bindings
-        var genericBaseConstructor = result.GetConstructorSource("GenericBase");
-        Assert.NotNull(genericBaseConstructor);
-        Assert.Contains("configuration.GetValue<string>(\"Generic:Setting\")", genericBaseConstructor.Content);
+        var genericBaseConstructor = result.GetConstructorSourceText("GenericBase");
+        genericBaseConstructor.Should().Contain("configuration.GetValue<string>(\"Generic:Setting\")");
 
-        var genericMiddleConstructor = result.GetConstructorSource("GenericMiddle");
-        Assert.NotNull(genericMiddleConstructor);
-        Assert.Contains("configuration.GetValue<string>(\"Middle:Setting\")", genericMiddleConstructor.Content);
+        var genericMiddleConstructor = result.GetConstructorSourceText("GenericMiddle");
+        genericMiddleConstructor.Should().Contain("configuration.GetValue<string>(\"Middle:Setting\")");
     }
 
     [Fact]
@@ -984,18 +957,16 @@ public partial class StringCollectionService : CollectionService<string>
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("StringCollectionService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("StringCollectionService");
 
         // Should handle ONLY its own configuration binding (hierarchical approach)
-        Assert.Contains("configuration.GetValue<string>(\"StringCollection:Prefix\")", constructorSource.Content);
+        constructorSource.Should().Contain("configuration.GetValue<string>(\"StringCollection:Prefix\")");
 
         // Should NOT handle base class configuration bindings (handled by base constructor to prevent CS0191)
-        Assert.DoesNotContain("configuration.GetValue<int>(\"Collection:MaxSize\")", constructorSource.Content);
-        Assert.DoesNotContain("configuration.GetSection(\"Collection:Items\").Get<List<string>>()",
-            constructorSource.Content);
+        constructorSource.Should().NotContain("configuration.GetValue<int>(\"Collection:MaxSize\")");
+        constructorSource.Should().NotContain("configuration.GetSection(\"Collection:Items\").Get<List<string>>()");
     }
 
     #endregion
@@ -1030,11 +1001,11 @@ public partial class DerivedService : BaseService
 
         if (constructorSource != null)
         {
-            Assert.Contains("IConfiguration configuration", constructorSource.Content);
+            constructorSource.Content.Should().Contain("IConfiguration configuration");
 
             // Should handle both bindings or provide appropriate diagnostics
             var conflictKeyCount = Regex.Matches(constructorSource.Content, "ConflictKey").Count;
-            Assert.True(conflictKeyCount >= 1, "Should handle configuration key conflicts");
+            (conflictKeyCount >= 1).Should().BeTrue("Should handle configuration key conflicts");
         }
     }
 
@@ -1066,7 +1037,7 @@ public partial class DerivedService : BaseService
 
         if (constructorSource != null)
             // Should handle valid configuration
-            Assert.Contains("configuration.GetValue<string>(\"Valid:Key\")", constructorSource.Content);
+            constructorSource.Content.Should().Contain("configuration.GetValue<string>(\"Valid:Key\")");
         // Invalid configuration should be handled gracefully (implementation-specific)
     }
 
@@ -1097,7 +1068,7 @@ public partial class DerivedFromNonPartial : NonPartialBase
 
         if (constructorSource != null)
             // Should handle derived configuration regardless of base
-            Assert.Contains("configuration.GetValue<string>(\"Derived:Setting\")", constructorSource.Content);
+            constructorSource.Content.Should().Contain("configuration.GetValue<string>(\"Derived:Setting\")");
     }
 
     #endregion
@@ -1157,18 +1128,16 @@ public partial class ConcreteService : BaseService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors,
+        result.HasErrors.Should().BeFalse(
             $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.GetMessage()))}");
 
         // Validate service registration
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
-        Assert.Contains("services.AddSingleton<global::Test.ConcreteService, global::Test.ConcreteService>",
-            registrationSource.Content);
+        var registrationSource = result.GetServiceRegistrationText();
+        registrationSource.Should().Contain(
+            "services.AddSingleton<global::Test.ConcreteService, global::Test.ConcreteService>");
 
         // Validate constructor generation
-        var constructorSource = result.GetConstructorSource("ConcreteService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("ConcreteService");
 
         // DEBUG: Print out the actual constructor content to understand what's generated
 
@@ -1179,26 +1148,23 @@ public partial class ConcreteService : BaseService
         };
 
         foreach (var param in expectedParams)
-            Assert.Contains(param, constructorSource.Content);
+            constructorSource.Should().Contain(param);
 
         // Should handle ONLY derived class configuration bindings (hierarchical approach to prevent CS0191)
-        Assert.Contains("configuration.GetValue<int>(\"Concrete:MaxRetries\")", constructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"AllowedHosts\")", constructorSource.Content);
-        Assert.Contains("configuration.GetSection(\"Email\").Get<EmailSettings>()", constructorSource.Content);
+        constructorSource.Should().Contain("configuration.GetValue<int>(\"Concrete:MaxRetries\")");
+        constructorSource.Should().Contain("configuration.GetSection(\"AllowedHosts\")");
+        constructorSource.Should().Contain("configuration.GetSection(\"Email\").Get<EmailSettings>()");
 
         // Should NOT handle base class configuration bindings (handled by base constructors)
-        Assert.DoesNotContain("configuration.GetSection(\"Database\").Get<DatabaseSettings>()",
-            constructorSource.Content);
-        Assert.DoesNotContain("configuration.GetValue<string>(\"Base:ApiKey\")", constructorSource.Content);
+        constructorSource.Should().NotContain("configuration.GetSection(\"Database\").Get<DatabaseSettings>()");
+        constructorSource.Should().NotContain("configuration.GetValue<string>(\"Base:ApiKey\")");
 
         // Should have base constructor call
-        Assert.Contains("base(", constructorSource.Content);
+        constructorSource.Should().Contain("base(");
     }
 
-    // ARCHITECTURAL LIMIT: Deep nesting with all features combined creates architectural complexity
-    // See ARCHITECTURAL_LIMITS.md for details
-    // [Fact] - DISABLED: Architectural limit
-    public void ConfigurationInheritance_DeepNestingWithAllFeatures_HandlesCorrectly_DISABLED_ArchitecturalLimit()
+    [Fact]
+    public void ConfigurationInheritance_DeepNestingWithAllFeatures_GeneratesCorrectly()
     {
         // Arrange - Deep nesting with all features combined
         var source = @"
@@ -1248,24 +1214,23 @@ public partial class FinalLevel : Level3<string>
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("FinalLevel");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("FinalLevel");
 
         // Should handle deep inheritance with all features
         var expectedFeatures = new[]
         {
-            "IService1 service1", "IService2 service2", "IService3 service3", // DependsOn
-            "IEnumerable<string> items", "IService3 finalService", // Inject
+            "IService1 service1", "IService2 service2", "IService3 finalService", // DependsOn + inject
+            "IEnumerable<string> items", // Injected collection
             "IConfiguration configuration", // Configuration
             "IOptions<Settings2> settings2Options", "IOptionsSnapshot<Settings3> settings3Snapshot" // Options
         };
 
-        foreach (var feature in expectedFeatures) Assert.Contains(feature, constructorSource.Content);
+        foreach (var feature in expectedFeatures) constructorSource.Should().Contain(feature);
 
         // Should handle ONLY its own configuration pattern (hierarchical approach to prevent CS0191)
-        Assert.Contains("configuration.GetValue<string>(\"Final:Value\")", constructorSource.Content);
+        constructorSource.Should().Contain("configuration.GetValue<string>(\"Final:Value\")");
 
         // Should NOT handle base class configuration patterns (handled by base constructors)
         var baseConfigPatterns = new[]
@@ -1276,7 +1241,7 @@ public partial class FinalLevel : Level3<string>
             "configuration.GetSection(\"Level3:Collection\").Get<List<string>>()"
         };
 
-        foreach (var pattern in baseConfigPatterns) Assert.DoesNotContain(pattern, constructorSource.Content);
+        foreach (var pattern in baseConfigPatterns) constructorSource.Should().NotContain(pattern);
     }
 
     #endregion
@@ -1315,21 +1280,20 @@ public partial class DerivedService : BaseService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("DerivedService");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("DerivedService");
 
         // Should handle many configuration fields efficiently
-        Assert.Contains("IConfiguration configuration", constructorSource.Content);
+        constructorSource.Should().Contain("IConfiguration configuration");
 
         // Should have ONLY derived configuration bindings (hierarchical approach to prevent CS0191)
         for (var i = 1; i <= 15; i++)
         {
-            Assert.Contains($"configuration.GetValue<string>(\"Derived{i}:Value\")", constructorSource.Content);
+            constructorSource.Should().Contain($"configuration.GetValue<string>(\"Derived{i}:Value\")");
 
             // Should NOT have base configuration bindings (handled by base constructor)
-            Assert.DoesNotContain($"configuration.GetValue<string>(\"Base{i}:Value\")", constructorSource.Content);
+            constructorSource.Should().NotContain($"configuration.GetValue<string>(\"Base{i}:Value\")");
         }
     }
 
@@ -1360,17 +1324,16 @@ public partial class FinalLevel : Level8
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        Assert.False(result.HasErrors);
+        result.HasErrors.Should().BeFalse();
 
-        var constructorSource = result.GetConstructorSource("FinalLevel");
-        Assert.NotNull(constructorSource);
+        var constructorSource = result.GetConstructorSourceText("FinalLevel");
 
         // Should handle ONLY its own configuration binding (hierarchical approach to prevent CS0191)
-        Assert.Contains("configuration.GetValue<string>(\"Final:Setting\")", constructorSource.Content);
+        constructorSource.Should().Contain("configuration.GetValue<string>(\"Final:Setting\")");
 
         // Should NOT handle base class configuration bindings (handled by base constructors)
         for (var i = 1; i <= 8; i++)
-            Assert.DoesNotContain($"configuration.GetValue<string>(\"Level{i}:Setting\")", constructorSource.Content);
+            constructorSource.Should().NotContain($"configuration.GetValue<string>(\"Level{i}:Setting\")");
     }
 
     #endregion

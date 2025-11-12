@@ -6,6 +6,7 @@
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
         <NoPackageAnalysis>true</NoPackageAnalysis>
+        <NoWarn>$(NoWarn);RS2008</NoWarn>
 
         <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
         <IsRoslynComponent>true</IsRoslynComponent>
@@ -14,10 +15,10 @@
         <PackageId>IoCTools.Generator</PackageId>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <IncludeBuildOutput>false</IncludeBuildOutput>
-        <Version>1.0.0</Version>
-        <PackageVersion>1.0.0</PackageVersion>
-        <AssemblyVersion>1.0.0.0</AssemblyVersion>
-        <FileVersion>1.0.0.0</FileVersion>
+        <Version>1.1.0</Version>
+        <PackageVersion>1.1.0</PackageVersion>
+        <AssemblyVersion>1.1.0.0</AssemblyVersion>
+        <FileVersion>1.1.0.0</FileVersion>
         <Title>IoC Tools Generator Package</Title>
         <Description>Advanced .NET source generator that automates dependency injection configuration and service registration. Features comprehensive diagnostic validation, inheritance support, and zero-runtime overhead.</Description>
         <Copyright>MIT</Copyright>
@@ -26,7 +27,7 @@
         <RepositoryType>git</RepositoryType>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <PackageReleaseNotes>v1.0.0: First stable release. Comprehensive diagnostics, inheritance support, configuration injection, conditional services, background services auto-registration, and optimized registration generation.</PackageReleaseNotes>
+        <PackageReleaseNotes>v1.1.0: Adds redundant registration diagnostics (IOC032-IOC038), null-safe generator test infrastructure, Inject-vs-DependsOn guidance, and refreshed documentation.</PackageReleaseNotes>
     </PropertyGroup>
 
     <ItemGroup>
@@ -45,8 +46,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <AdditionalFiles Include="AnalyzerReleases.Shipped.md"/>
-        <AdditionalFiles Include="AnalyzerReleases.Unshipped.md"/>
         <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs/netstandard2.0" Visible="false"/>
         <None Include="../../README.md" Pack="true" PackagePath=""/>
     </ItemGroup>

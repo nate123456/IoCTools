@@ -13,8 +13,7 @@ namespace IoCTools.Generator.Configuration { public static class GeneratorOption
 
         var result = CompileWithGenerator(code);
         var reg = result.GetServiceRegistrationSource();
-        Assert.NotNull(reg);
-        Assert.Contains("MyController", reg!.Content);
+        reg!.Content.Should().Contain("MyController");
     }
 
     // Note: UseDefaults=false is implicitly covered by the FullOverride test (which blanks defaults by overriding the list).
@@ -30,8 +29,7 @@ namespace IoCTools.Generator.Configuration { public static class GeneratorOption
 
         var result = CompileWithGenerator(code);
         var reg = result.GetServiceRegistrationSource();
-        Assert.NotNull(reg);
-        Assert.Contains("MyController", reg!.Content);
+        reg!.Content.Should().Contain("MyController");
     }
 
     [Fact]
@@ -48,8 +46,8 @@ namespace IoCTools.Generator.Configuration { public static class GeneratorOption
         var reg = result.GetServiceRegistrationSource();
         if (reg != null)
         {
-            Assert.DoesNotContain("S1", reg.Content);
-            Assert.DoesNotContain("S2", reg.Content);
+            reg.Content.Should().NotContain("S1");
+            reg.Content.Should().NotContain("S2");
         }
     }
 }

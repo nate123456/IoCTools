@@ -70,23 +70,23 @@ public partial class StripePaymentService : IPaymentService
             // Act - Test Development Environment
             Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
             var devServiceProvider = BuildServiceProviderFromSource(source);
-            var devPaymentService = ResolveServiceByInterfaceName(devServiceProvider, "IPaymentService");
+            var devPaymentService = ResolveServiceByInterfaceName(devServiceProvider, "IPaymentService") ??
+                                    throw new InvalidOperationException("Expected IPaymentService in Development.");
 
             // Act - Test Production Environment  
             Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Production");
             var prodServiceProvider = BuildServiceProviderFromSource(source);
-            var prodPaymentService = ResolveServiceByInterfaceName(prodServiceProvider, "IPaymentService");
+            var prodPaymentService = ResolveServiceByInterfaceName(prodServiceProvider, "IPaymentService") ??
+                                     throw new InvalidOperationException("Expected IPaymentService in Production.");
 
             // Assert - Services actually resolve based on environment conditions
-            Assert.NotNull(devPaymentService);
-            var devResult = InvokeMethod(devPaymentService, "ProcessPayment");
-            Assert.Equal("Mock Payment", devResult);
-            Assert.Equal("MockPaymentService", devPaymentService.GetType().Name);
+            var devResult = InvokeMethod<string>(devPaymentService, "ProcessPayment");
+            devResult.Should().Be("Mock Payment");
+            devPaymentService.GetType().Name.Should().Be("MockPaymentService");
 
-            Assert.NotNull(prodPaymentService);
-            var prodResult = InvokeMethod(prodPaymentService, "ProcessPayment");
-            Assert.Equal("Stripe Payment", prodResult);
-            Assert.Equal("StripePaymentService", prodPaymentService.GetType().Name);
+            var prodResult = InvokeMethod<string>(prodPaymentService, "ProcessPayment");
+            prodResult.Should().Be("Stripe Payment");
+            prodPaymentService.GetType().Name.Should().Be("StripePaymentService");
         }
         finally
         {
@@ -127,23 +127,23 @@ public partial class MemoryCacheService : ICacheService
         // Act - Test with Redis enabled
         var redisConfig = new Dictionary<string, string> { ["Features:UseRedisCache"] = "true" };
         var redisServiceProvider = BuildServiceProviderFromSource(source, redisConfig);
-        var redisCacheService = ResolveServiceByInterfaceName(redisServiceProvider, "ICacheService");
+        var redisCacheService = ResolveServiceByInterfaceName(redisServiceProvider, "ICacheService") ??
+                                throw new InvalidOperationException("Expected ICacheService when Redis enabled.");
 
         // Act - Test with Redis disabled
         var memoryConfig = new Dictionary<string, string> { ["Features:UseRedisCache"] = "false" };
         var memoryServiceProvider = BuildServiceProviderFromSource(source, memoryConfig);
-        var memoryCacheService = ResolveServiceByInterfaceName(memoryServiceProvider, "ICacheService");
+        var memoryCacheService = ResolveServiceByInterfaceName(memoryServiceProvider, "ICacheService") ??
+                                 throw new InvalidOperationException("Expected ICacheService when Redis disabled.");
 
         // Assert - Services actually resolve based on configuration conditions
-        Assert.NotNull(redisCacheService);
-        var redisResult = InvokeMethod(redisCacheService, "GetCacheType");
-        Assert.Equal("Redis", redisResult);
-        Assert.Equal("RedisCacheService", redisCacheService.GetType().Name);
+        var redisResult = InvokeMethod<string>(redisCacheService, "GetCacheType");
+        redisResult.Should().Be("Redis");
+        redisCacheService.GetType().Name.Should().Be("RedisCacheService");
 
-        Assert.NotNull(memoryCacheService);
-        var memoryResult = InvokeMethod(memoryCacheService, "GetCacheType");
-        Assert.Equal("Memory", memoryResult);
-        Assert.Equal("MemoryCacheService", memoryCacheService.GetType().Name);
+        var memoryResult = InvokeMethod<string>(memoryCacheService, "GetCacheType");
+        memoryResult.Should().Be("Memory");
+        memoryCacheService.GetType().Name.Should().Be("MemoryCacheService");
     }
 
     [Fact]
@@ -184,13 +184,16 @@ public partial class SendGridEmailService : IEmailService
             Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
             var mockConfig = new Dictionary<string, string> { ["Features:UseMockEmail"] = "true" };
             var mockServiceProvider = BuildServiceProviderFromSource(source, mockConfig);
-            var mockEmailService = ResolveServiceByInterfaceName(mockServiceProvider, "IEmailService");
+            var mockEmailService = ResolveServiceByInterfaceName(mockServiceProvider, "IEmailService") ??
+                                   throw new InvalidOperationException("Expected IEmailService for mock scenario.");
 
             // Act - Test Production + SendGrid enabled
             Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Production");
             var sendGridConfig = new Dictionary<string, string> { ["Features:UseSendGrid"] = "true" };
             var sendGridServiceProvider = BuildServiceProviderFromSource(source, sendGridConfig);
-            var sendGridEmailService = ResolveServiceByInterfaceName(sendGridServiceProvider, "IEmailService");
+            var sendGridEmailService = ResolveServiceByInterfaceName(sendGridServiceProvider, "IEmailService") ??
+                                       throw new InvalidOperationException(
+                                           "Expected IEmailService for SendGrid scenario.");
 
             // Act - Test Development + Mock disabled (should not resolve)
             Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
@@ -199,16 +202,14 @@ public partial class SendGridEmailService : IEmailService
             var disabledEmailService = ResolveServiceByInterfaceName(disabledServiceProvider, "IEmailService");
 
             // Assert - Environment and configuration condition evaluation working properly
-            Assert.NotNull(mockEmailService);
-            var mockResult = InvokeMethod(mockEmailService, "SendEmail");
-            Assert.Equal("Mock Email Sent", mockResult);
+            var mockResult = InvokeMethod<string>(mockEmailService, "SendEmail");
+            mockResult.Should().Be("Mock Email Sent");
 
-            Assert.NotNull(sendGridEmailService);
-            var sendGridResult = InvokeMethod(sendGridEmailService, "SendEmail");
-            Assert.Equal("SendGrid Email Sent", sendGridResult);
+            var sendGridResult = InvokeMethod<string>(sendGridEmailService, "SendEmail");
+            sendGridResult.Should().Be("SendGrid Email Sent");
 
             // Conditional registration working at runtime with DI container - service not registered when conditions not met
-            Assert.Null(disabledEmailService);
+            disabledEmailService.Should().BeNull();
         }
         finally
         {
@@ -230,12 +231,12 @@ public partial class SendGridEmailService : IEmailService
     {
         // Generate the source code using the existing test helper
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
-        Assert.False(result.HasErrors,
-            $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
+        result.HasErrors.Should()
+            .BeFalse(
+                $"Compilation failed: {string.Join(", ", result.CompilationDiagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))}");
 
         // Get the generated registration source
-        var registrationSource = result.GetServiceRegistrationSource();
-        Assert.NotNull(registrationSource);
+        var registrationSource = result.GetRequiredServiceRegistrationSource();
 
         // Create a service collection
         var services = new ServiceCollection();
@@ -261,15 +262,14 @@ public partial class SendGridEmailService : IEmailService
 
         // Find and invoke the registration extension method
         var extensionType = generatedAssembly.GetTypes()
-            .FirstOrDefault(t => t.Name.Contains("ServiceCollectionExtensions"));
-
-        Assert.NotNull(extensionType);
+                                .FirstOrDefault(t => t.Name.Contains("ServiceCollectionExtensions")) ??
+                            throw new InvalidOperationException("Registration extensions not generated.");
 
         var registrationMethods = extensionType.GetMethods(BindingFlags.Public | BindingFlags.Static)
             .Where(m => m.Name.StartsWith("Add") && m.Name.EndsWith("RegisteredServices"))
             .ToArray();
 
-        Assert.Single(registrationMethods);
+        registrationMethods.Should().ContainSingle();
 
         var registrationMethod = registrationMethods[0];
         var parameters = registrationMethod.GetParameters();
@@ -282,8 +282,8 @@ public partial class SendGridEmailService : IEmailService
         else if (parameters.Length == 2)
         {
             // IServiceCollection and IConfiguration parameters
-            var config = services.BuildServiceProvider().GetService<IConfiguration>();
-            Assert.NotNull(config);
+            var config = services.BuildServiceProvider().GetService<IConfiguration>() ??
+                         throw new InvalidOperationException("IConfiguration not registered.");
             registrationMethod.Invoke(null, new object[] { services, config });
         }
         else
@@ -405,12 +405,17 @@ public partial class SendGridEmailService : IEmailService
     /// <summary>
     ///     Invokes a method on an object using reflection.
     /// </summary>
-    private static object? InvokeMethod(object instance,
+    private static object InvokeMethod(object instance,
         string methodName,
         params object[] parameters)
     {
-        var method = instance.GetType().GetMethod(methodName);
-        return method?.Invoke(instance, parameters);
+        var method = instance.GetType().GetMethod(methodName) ??
+                     throw new InvalidOperationException(
+                         $"Method '{methodName}' not found on type '{instance.GetType().Name}'.");
+
+        var result = method.Invoke(instance, parameters);
+        return result ?? throw new InvalidOperationException(
+            $"Method '{methodName}' returned null unexpectedly.");
     }
 
     /// <summary>
@@ -421,7 +426,10 @@ public partial class SendGridEmailService : IEmailService
         params object[] parameters)
     {
         var result = InvokeMethod(instance, methodName, parameters);
-        return (T)result!;
+        return result is T typed
+            ? typed
+            : throw new InvalidOperationException(
+                $"Method '{methodName}' on '{instance.GetType().Name}' did not return {typeof(T).Name}.");
     }
 
     #endregion

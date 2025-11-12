@@ -662,9 +662,8 @@ public interface ISelectiveService3
     bool Validate(string input);
 }
 
-// Example 1: Register as only two specific interfaces
-[Scoped]
-[RegisterAs<ISelectiveService1, ISelectiveService2>] // Only registers for these two interfaces
+// Example 1: Register as only two specific interfaces (Scoped by default)
+[RegisterAs<ISelectiveService1, ISelectiveService2>]
 public partial class SelectiveRegistrationService : ISelectiveService1, ISelectiveService2, ISelectiveService3
 {
     [Inject] private readonly ILogger<SelectiveRegistrationService> _logger;
