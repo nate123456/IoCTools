@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 internal static class TypeAnalyzer
@@ -181,10 +182,16 @@ internal static class TypeAnalyzer
             attr.AttributeClass?.Name?.StartsWith("RegisterAsAttribute") == true &&
             attr.AttributeClass?.IsGenericType == true);
         var isHostedService = IsAssignableFromIHostedService(classSymbol);
+        var isPartialWithInterfaces = IsPartialWithInterfaces(classSymbol);
 
-        return hasLifetimeAttribute || hasConditionalServiceAttribute || hasInjectFields ||
-               hasInjectConfigurationFields ||
-               hasDependsOnAttribute || hasRegisterAsAllAttribute || hasRegisterAsAttribute || isHostedService;
+        var hasIntent = hasLifetimeAttribute || hasConditionalServiceAttribute || hasInjectFields ||
+                        hasInjectConfigurationFields || hasDependsOnAttribute || hasRegisterAsAllAttribute ||
+                        hasRegisterAsAttribute || isHostedService;
+
+        if (!hasIntent && isPartialWithInterfaces && !hasInjectConfigurationFields && !hasDependsOnAttribute)
+            hasIntent = true;
+
+        return hasIntent;
     }
 
     /// <summary>
@@ -212,22 +219,24 @@ internal static class TypeAnalyzer
 
         if (hasAttributes) return true;
 
+        if (IsPartialWithInterfaces(type)) return true;
+
         // Also check for field-level attributes like [Inject] and [InjectConfiguration]
         // Use syntax-based detection for better reliability with field attributes
         foreach (var syntaxRef in type.DeclaringSyntaxReferences)
             if (syntaxRef.GetSyntax() is TypeDeclarationSyntax typeDeclaration)
                 foreach (var fieldDeclaration in typeDeclaration.DescendantNodes().OfType<FieldDeclarationSyntax>())
-                foreach (var attributeList in fieldDeclaration.AttributeLists)
-                foreach (var attribute in attributeList.Attributes)
-                {
-                    var attributeText = attribute.Name.ToString();
-                    if (attributeText == "Inject" || attributeText == "InjectAttribute" ||
-                        attributeText.EndsWith("Inject") || attributeText.EndsWith("InjectAttribute") ||
-                        attributeText == "InjectConfiguration" || attributeText == "InjectConfigurationAttribute" ||
-                        attributeText.EndsWith("InjectConfiguration") ||
-                        attributeText.EndsWith("InjectConfigurationAttribute"))
-                        return true;
-                }
+                    foreach (var attributeList in fieldDeclaration.AttributeLists)
+                        foreach (var attribute in attributeList.Attributes)
+                        {
+                            var attributeText = attribute.Name.ToString();
+                            if (attributeText == "Inject" || attributeText == "InjectAttribute" ||
+                                attributeText.EndsWith("Inject") || attributeText.EndsWith("InjectAttribute") ||
+                                attributeText == "InjectConfiguration" || attributeText == "InjectConfigurationAttribute" ||
+                                attributeText.EndsWith("InjectConfiguration") ||
+                                attributeText.EndsWith("InjectConfigurationAttribute"))
+                                return true;
+                        }
 
         // Also consider any IHostedService assignable type as relevant for service registration
         if (IsAssignableFromIHostedService(type)) return true;
@@ -259,6 +268,16 @@ internal static class TypeAnalyzer
             currentType = currentType.BaseType;
         }
 
+        return false;
+    }
+
+    private static bool IsPartialWithInterfaces(INamedTypeSymbol classSymbol)
+    {
+        if (!classSymbol.Interfaces.Any()) return false;
+        foreach (var syntaxRef in classSymbol.DeclaringSyntaxReferences)
+            if (syntaxRef.GetSyntax() is TypeDeclarationSyntax typeDeclaration &&
+                typeDeclaration.Modifiers.Any(modifier => modifier.IsKind(SyntaxKind.PartialKeyword)))
+                return true;
         return false;
     }
 }

@@ -12,21 +12,22 @@ internal static class DependencyLifetimeResolver
             string dependencyTypeName,
             Dictionary<string, string> serviceLifetimes,
             HashSet<string> allRegisteredServices,
-            Dictionary<string, List<INamedTypeSymbol>>? allImplementations = null)
+            Dictionary<string, List<INamedTypeSymbol>>? allImplementations,
+            string implicitLifetime)
     {
         if (serviceLifetimes.TryGetValue(dependencyTypeName, out var lifetime)) return (lifetime, null);
 
         if (allImplementations != null)
             foreach (var kvp in allImplementations)
-            foreach (var implementation in kvp.Value)
-            {
-                var implTypeName = implementation.ToDisplayString();
-                if (implTypeName == dependencyTypeName)
+                foreach (var implementation in kvp.Value)
                 {
-                    var implLifetime = LifetimeUtilities.GetServiceLifetimeFromSymbol(implementation);
-                    if (implLifetime != null) return (implLifetime, implementation.Name);
+                    var implTypeName = implementation.ToDisplayString();
+                    if (implTypeName == dependencyTypeName)
+                    {
+                        var implLifetime = LifetimeUtilities.GetServiceLifetimeFromSymbol(implementation, implicitLifetime);
+                        if (implLifetime != null) return (implLifetime, implementation.Name);
+                    }
                 }
-            }
 
         if (TypeHelpers.IsConstructedGenericTypeSimple(dependencyTypeName))
         {
@@ -49,7 +50,7 @@ internal static class DependencyLifetimeResolver
                             var implTypeName = impl.ToDisplayString();
                             if (serviceLifetimes.TryGetValue(implTypeName, out var implLifetime))
                                 return (implLifetime, TypeHelpers.FormatTypeNameForDiagnostic(impl));
-                            var symbolLifetime = LifetimeUtilities.GetServiceLifetimeFromSymbol(impl);
+                            var symbolLifetime = LifetimeUtilities.GetServiceLifetimeFromSymbol(impl, implicitLifetime);
                             if (symbolLifetime != null)
                                 return (symbolLifetime, TypeHelpers.FormatTypeNameForDiagnostic(impl));
                         }
@@ -59,19 +60,19 @@ internal static class DependencyLifetimeResolver
                 {
                     var implementations = kvp.Value;
                     foreach (var impl in implementations)
-                    foreach (var implementedInterface in impl.AllInterfaces)
-                    {
-                        var implementedInterfaceName = implementedInterface.ToDisplayString();
-                        if (TypeHelpers.IsMatchingGenericInterface(dependencyTypeName, implementedInterfaceName))
+                        foreach (var implementedInterface in impl.AllInterfaces)
                         {
-                            var implTypeName = impl.ToDisplayString();
-                            if (serviceLifetimes.TryGetValue(implTypeName, out var implLifetime))
-                                return (implLifetime, TypeHelpers.FormatTypeNameForDiagnostic(impl));
-                            var symbolLifetime = LifetimeUtilities.GetServiceLifetimeFromSymbol(impl);
-                            if (symbolLifetime != null)
-                                return (symbolLifetime, TypeHelpers.FormatTypeNameForDiagnostic(impl));
+                            var implementedInterfaceName = implementedInterface.ToDisplayString();
+                            if (TypeHelpers.IsMatchingGenericInterface(dependencyTypeName, implementedInterfaceName))
+                            {
+                                var implTypeName = impl.ToDisplayString();
+                                if (serviceLifetimes.TryGetValue(implTypeName, out var implLifetime))
+                                    return (implLifetime, TypeHelpers.FormatTypeNameForDiagnostic(impl));
+                                var symbolLifetime = LifetimeUtilities.GetServiceLifetimeFromSymbol(impl, implicitLifetime);
+                                if (symbolLifetime != null)
+                                    return (symbolLifetime, TypeHelpers.FormatTypeNameForDiagnostic(impl));
+                            }
                         }
-                    }
                 }
 
                 foreach (var kvp in allImplementations)
@@ -84,7 +85,7 @@ internal static class DependencyLifetimeResolver
                             var implTypeName = impl.ToDisplayString();
                             if (serviceLifetimes.TryGetValue(implTypeName, out var implLifetime))
                                 return (implLifetime, TypeHelpers.FormatTypeNameForDiagnostic(impl));
-                            var symbolLifetime = LifetimeUtilities.GetServiceLifetimeFromSymbol(impl);
+                            var symbolLifetime = LifetimeUtilities.GetServiceLifetimeFromSymbol(impl, implicitLifetime);
                             if (symbolLifetime != null)
                                 return (symbolLifetime, TypeHelpers.FormatTypeNameForDiagnostic(impl));
                         }
@@ -97,14 +98,16 @@ internal static class DependencyLifetimeResolver
 
     internal static string? GetDependencyLifetimeForSourceProduction(ITypeSymbol dependencyType,
         Dictionary<string, string> serviceLifetimes,
-        Dictionary<string, List<INamedTypeSymbol>> allImplementations)
+        Dictionary<string, List<INamedTypeSymbol>> allImplementations,
+        string implicitLifetime)
     {
         var dependencyTypeName = dependencyType.ToDisplayString();
         if (serviceLifetimes.TryGetValue(dependencyTypeName, out var lifetime)) return lifetime;
         if (allImplementations.TryGetValue(dependencyTypeName, out var implementations) && implementations.Any())
         {
             var implementation = implementations.First();
-            var implementationLifetime = LifetimeUtilities.GetServiceLifetimeFromSymbol(implementation);
+            var implementationLifetime = LifetimeUtilities.GetServiceLifetimeFromSymbol(implementation,
+                implicitLifetime);
             if (implementationLifetime != null) return implementationLifetime;
         }
 

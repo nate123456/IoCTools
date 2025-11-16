@@ -64,7 +64,8 @@ internal static class RegistrationSelector
         SemanticModel semanticModel,
         TypeDeclarationSyntax classDeclaration,
         INamedTypeSymbol classSymbol,
-        SourceProductionContext context)
+        SourceProductionContext context,
+        string implicitLifetime)
     {
         var results = new List<ServiceRegistration>();
 
@@ -94,7 +95,9 @@ internal static class RegistrationSelector
         }
 
         var (hasLifetimeAttribute, _, _, _) = ServiceDiscovery.GetLifetimeAttributes(classSymbol);
-        var lifetime = hasLifetimeAttribute ? ServiceDiscovery.GetServiceLifetimeFromAttributes(classSymbol) : "Scoped";
+        var lifetime = hasLifetimeAttribute
+            ? ServiceDiscovery.GetServiceLifetimeFromAttributes(classSymbol, implicitLifetime)
+            : implicitLifetime;
 
         var isHostedService = TypeAnalyzer.IsAssignableFromIHostedService(classSymbol);
         if (isHostedService) lifetime = "BackgroundService";
@@ -146,7 +149,8 @@ internal static class RegistrationSelector
         SemanticModel semanticModel,
         TypeDeclarationSyntax classDeclaration,
         INamedTypeSymbol classSymbol,
-        SourceProductionContext context)
+        SourceProductionContext context,
+        string implicitLifetime)
     {
         var serviceRegistrations = new List<ServiceRegistration>();
 
@@ -222,8 +226,8 @@ internal static class RegistrationSelector
                 }
 
                 var lifetime = hasLifetimeAttribute
-                    ? ServiceDiscovery.GetServiceLifetimeFromAttributes(classSymbol)
-                    : "Scoped";
+                    ? ServiceDiscovery.GetServiceLifetimeFromAttributes(classSymbol, implicitLifetime)
+                    : implicitLifetime;
 
                 if (isHostedService) lifetime = "BackgroundService";
 
@@ -285,8 +289,8 @@ internal static class RegistrationSelector
             if (hasConditionalAttributes) return serviceRegistrations;
 
             var lifetimeValue = hasLifetimeAttribute
-                ? ServiceDiscovery.GetServiceLifetimeFromAttributes(classSymbol)
-                : "Scoped";
+                ? ServiceDiscovery.GetServiceLifetimeFromAttributes(classSymbol, implicitLifetime)
+                : implicitLifetime;
             if (isHostedService) lifetimeValue = "BackgroundService";
 
             var hasConfig = ServiceDiscovery.HasInjectConfigurationFieldsAcrossPartialClasses(classSymbol);

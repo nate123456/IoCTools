@@ -1549,9 +1549,9 @@ internal class Program
             "  - IOC015: SingletonServiceWithInheritance inherits from BaseServiceWithScopedDependencies");
         Console.WriteLine();
 
-        Console.WriteLine("Registration Conflict Diagnostics (IOC006-IOC009):");
+        Console.WriteLine("Registration Conflict Diagnostics (IOC006-IOC009, IOC040):");
         Console.WriteLine("  - IOC006: ConflictingDependenciesService has duplicate DependsOn declarations");
-        Console.WriteLine("  - IOC007: ConflictingDependenciesService has DependsOn + [Inject] field for same type");
+        Console.WriteLine("  - IOC040: ConflictingDependenciesService mixes DependsOn with [Inject] for the same type");
         Console.WriteLine("  - IOC008: ConflictingDependenciesService has duplicate types in single DependsOn");
         Console.WriteLine(
             "  - IOC009: RedundantSkipRegistrationService skips interface not registered by RegisterAsAll");

@@ -15,18 +15,21 @@ internal sealed class GeneratorStyleOptions
     private GeneratorStyleOptions(HashSet<string> skipAssignableTypes,
         HashSet<string> exceptions,
         HashSet<string> skipTypePatterns,
-        HashSet<string> exceptionPatterns)
+        HashSet<string> exceptionPatterns,
+        string implicitLifetime)
     {
         SkipAssignableTypes = skipAssignableTypes;
         SkipAssignableExceptions = exceptions;
         SkipAssignableTypePatterns = skipTypePatterns;
         SkipAssignableExceptionPatterns = exceptionPatterns;
+        DefaultImplicitLifetime = implicitLifetime;
     }
 
     public HashSet<string> SkipAssignableTypes { get; }
     public HashSet<string> SkipAssignableExceptions { get; }
     public HashSet<string> SkipAssignableTypePatterns { get; }
     public HashSet<string> SkipAssignableExceptionPatterns { get; }
+    public string DefaultImplicitLifetime { get; }
 
     public static GeneratorStyleOptions From(AnalyzerConfigOptionsProvider optionsProvider,
         Compilation compilation)
@@ -104,7 +107,60 @@ internal sealed class GeneratorStyleOptions
         var exceptionPatterns = new HashSet<string>(exceptions.Where(ContainsGlob), StringComparer.Ordinal);
         var exceptionExacts = new HashSet<string>(exceptions.Where(s => !ContainsGlob(s)), StringComparer.Ordinal);
 
-        return new GeneratorStyleOptions(typeExacts, exceptionExacts, typePatterns, exceptionPatterns);
+        var implicitLifetime = GetImplicitLifetime(optionsProvider, compilation);
+
+        return new GeneratorStyleOptions(typeExacts, exceptionExacts, typePatterns, exceptionPatterns,
+            implicitLifetime);
+    }
+
+    public static string GetImplicitLifetime(AnalyzerConfigOptionsProvider optionsProvider,
+        Compilation compilation)
+    {
+        const string propertyName = "build_property.IoCToolsDefaultServiceLifetime";
+
+        if (TryGetOption(propertyName, optionsProvider, compilation, out var value) &&
+            !string.IsNullOrWhiteSpace(value))
+        {
+            var normalized = value!.Trim();
+            return normalized.ToLowerInvariant() switch
+            {
+                "singleton" => "Singleton",
+                "transient" => "Transient",
+                "scoped" => "Scoped",
+                _ => "Scoped"
+            };
+        }
+
+        return "Scoped";
+
+        static bool TryGetOption(string key,
+            AnalyzerConfigOptionsProvider provider,
+            Compilation compilation,
+            out string? result)
+        {
+            if (TryGetCaseInsensitive(provider.GlobalOptions, key, out result)) return true;
+            foreach (var tree in compilation.SyntaxTrees)
+            {
+                var treeOptions = provider.GetOptions(tree);
+                if (TryGetCaseInsensitive(treeOptions, key, out result)) return true;
+            }
+
+            result = null;
+            return false;
+        }
+
+        static bool TryGetCaseInsensitive(AnalyzerConfigOptions options,
+            string key,
+            out string? result)
+        {
+            if (options.TryGetValue(key, out result)) return true;
+            var lowerKey = key.ToLowerInvariant();
+            if (!string.Equals(lowerKey, key, StringComparison.Ordinal) && options.TryGetValue(lowerKey, out result))
+                return true;
+            result = null;
+            return false;
+        }
+
     }
 
     private static IEnumerable<string> SplitTypes(string? value)

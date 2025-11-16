@@ -806,8 +806,8 @@ public partial class DerivedController : BaseController
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
-        // Assert - Should produce IOC007 warning for conflict
-        var conflictWarnings = result.GetDiagnosticsByCode("IOC007");
+        // Assert - Should produce IOC040 warning for conflict
+        var conflictWarnings = result.GetDiagnosticsByCode("IOC040");
         conflictWarnings.Should().NotBeEmpty();
 
         // But should still compile successfully

@@ -8,6 +8,7 @@ using System.Linq;
 using Analysis;
 
 using IoCTools.Generator.Diagnostics.Configuration;
+using IoCTools.Generator.Utilities;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -15,15 +16,14 @@ using Microsoft.CodeAnalysis.Diagnostics;
 
 using Models;
 
-using Utilities;
-
 internal static class DiagnosticsRunner
 {
     public static void EmitWithReferencedTypes(
         SourceProductionContext context,
         ((ImmutableArray<ServiceClassInfo> Services, ImmutableArray<INamedTypeSymbol> ReferencedTypes, Compilation
             Compilation) Input,
-            AnalyzerConfigOptionsProvider ConfigOptions) payload) =>
+            AnalyzerConfigOptionsProvider ConfigOptions,
+            GeneratorStyleOptions StyleOptions) payload) =>
         ValidateAllServiceDiagnosticsWithReferencedTypes(context, payload);
 
     internal static void ValidateAllServiceDiagnostics(SourceProductionContext context,
@@ -39,6 +39,7 @@ internal static class DiagnosticsRunner
             var allImplementations = new Dictionary<string, List<INamedTypeSymbol>>();
             var serviceLifetimes = new Dictionary<string, string>();
             var processedClasses = new HashSet<string>(StringComparer.Ordinal);
+            var implicitLifetime = GeneratorStyleOptions.From(configOptions, compilation).DefaultImplicitLifetime;
 
             foreach (var serviceInfo in services)
             {
@@ -48,7 +49,7 @@ internal static class DiagnosticsRunner
                     DiagnosticScan.CollectServiceSymbolsOnce(serviceInfo.ClassDeclaration.SyntaxTree.GetRoot(),
                         serviceInfo.SemanticModel,
                         new List<INamedTypeSymbol>(), allRegisteredServices, allImplementations, serviceLifetimes,
-                        new HashSet<string>());
+                        new HashSet<string>(), implicitLifetime);
             }
 
             var diagnosticConfig = DiagnosticConfigProvider.From(configOptions);
@@ -66,7 +67,7 @@ internal static class DiagnosticsRunner
                 if (serviceInfo.ClassDeclaration != null)
                     ValidateDependenciesComplete(context, serviceInfo.ClassDeclaration, hierarchyDependencies,
                         allRegisteredServices, allImplementations, serviceLifetimes, diagnosticConfig,
-                        serviceInfo.SemanticModel, serviceInfo.ClassSymbol);
+                        serviceInfo.SemanticModel, serviceInfo.ClassSymbol, implicitLifetime);
             }
 
             var allServiceSymbols = services.Select(s => s.ClassSymbol).ToList();
@@ -88,7 +89,8 @@ internal static class DiagnosticsRunner
         Dictionary<string, string> serviceLifetimes,
         DiagnosticConfiguration diagnosticConfig,
         SemanticModel semanticModel,
-        INamedTypeSymbol classSymbol)
+        INamedTypeSymbol classSymbol,
+        string implicitLifetime)
     {
         if (!diagnosticConfig.DiagnosticsEnabled) return;
 
@@ -98,15 +100,18 @@ internal static class DiagnosticsRunner
         if (hasExternalServiceAttribute) return;
 
         // IOC012/IOC013
-        DiagnosticRules.ValidateLifetimeDependencies(context, classDeclaration, hierarchyDependencies, serviceLifetimes,
-            allRegisteredServices, allImplementations, diagnosticConfig, classSymbol);
+        DiagnosticRules.ValidateLifetimeDependencies(context, classDeclaration, hierarchyDependencies,
+            serviceLifetimes,
+            allRegisteredServices, allImplementations, diagnosticConfig, classSymbol, implicitLifetime);
 
-        // IOC007/006/008/009 already in DiagnosticRules
-        DiagnosticRules.ValidateDependsOnConflicts(context, classDeclaration, hierarchyDependencies, classSymbol);
+        // IOC040/IOC006/IOC008/IOC009
+        DiagnosticRules.ValidateDependencyRedundancy(context, classDeclaration, classSymbol, hierarchyDependencies);
         DiagnosticRules.ValidateDuplicateDependsOn(context, classDeclaration, classSymbol);
         DiagnosticRules.ValidateDuplicatesWithinSingleDependsOn(context, classDeclaration, classSymbol);
         DiagnosticRules.ValidateUnnecessarySkipRegistration(context, classDeclaration, classSymbol);
         DiagnosticRules.ValidateInjectFieldPreferences(context, classDeclaration, classSymbol);
+        DiagnosticRules.ValidateUnusedDependencies(context, classDeclaration, classSymbol, semanticModel,
+            hierarchyDependencies);
 
         // IOC016–IOC019
         DiagnosticRules.ValidateConfigurationInjection(context, classDeclaration, classSymbol);
@@ -118,30 +123,33 @@ internal static class DiagnosticsRunner
         DiagnosticRules.ValidateHostedServiceRequirements(context, classDeclaration, classSymbol);
 
         // IOC015
-        var serviceLifetime = LifetimeUtilities.GetServiceLifetimeFromSymbol(classSymbol);
+        var serviceLifetime = LifetimeUtilities.GetServiceLifetimeFromSymbol(classSymbol, implicitLifetime);
         if (serviceLifetime == "Singleton")
             DiagnosticRules.ValidateInheritanceChainLifetimesForSourceProduction(context, classDeclaration, classSymbol,
-                serviceLifetimes, allImplementations);
+                serviceLifetimes, allImplementations, implicitLifetime);
 
         // IOC001/IOC002
         DiagnosticRules.ValidateMissingDependencies(context, classDeclaration, hierarchyDependencies,
             allRegisteredServices,
-            allImplementations, serviceLifetimes, diagnosticConfig);
+            allImplementations, serviceLifetimes, diagnosticConfig, implicitLifetime);
     }
 
     private static void ValidateAllServiceDiagnosticsWithReferencedTypes(SourceProductionContext context,
         ((ImmutableArray<ServiceClassInfo> Services, ImmutableArray<INamedTypeSymbol> ReferencedTypes, Compilation
-            Compilation) Input, AnalyzerConfigOptionsProvider ConfigOptions) input)
+            Compilation) Input,
+            AnalyzerConfigOptionsProvider ConfigOptions,
+            GeneratorStyleOptions StyleOptions) input)
     {
         try
         {
-            var ((services, referencedTypes, compilation), configOptions) = input;
+            var ((services, referencedTypes, compilation), configOptions, styleOptions) = input;
             if (!services.Any()) return;
 
             var allRegisteredServices = new HashSet<string>();
             var allImplementations = new Dictionary<string, List<INamedTypeSymbol>>();
             var serviceLifetimes = new Dictionary<string, string>();
             var processedClasses = new HashSet<string>(StringComparer.Ordinal);
+            var implicitLifetime = styleOptions.DefaultImplicitLifetime;
 
             // Collect from current project
             foreach (var serviceInfo in services)
@@ -152,7 +160,7 @@ internal static class DiagnosticsRunner
                     DiagnosticScan.CollectServiceSymbolsOnce(
                         serviceInfo.ClassDeclaration.SyntaxTree.GetRoot(), serviceInfo.SemanticModel,
                         new List<INamedTypeSymbol>(), allRegisteredServices, allImplementations, serviceLifetimes,
-                        new HashSet<string>());
+                        new HashSet<string>(), implicitLifetime);
             }
 
             // Scan current compilation types
@@ -179,7 +187,14 @@ internal static class DiagnosticsRunner
                     var hasExplicitServiceIntent = hasConditionalServiceAttribute || hasRegisterAsAllAttribute ||
                                                    hasRegisterAsAttribute || hasLifetimeAttribute || isHostedService ||
                                                    hasInjectFields || hasDependsOnAttribute;
-                    if (hasExplicitServiceIntent) allRegisteredServices.Add(typeName);
+                    if (hasExplicitServiceIntent)
+                    {
+                        allRegisteredServices.Add(typeName);
+                        var lifetime = ServiceDiscovery.GetServiceLifetimeFromAttributes(currentType, implicitLifetime);
+                        serviceLifetimes[typeName] = lifetime;
+                        foreach (var interfaceSymbol in currentType.Interfaces)
+                            serviceLifetimes[interfaceSymbol.ToDisplayString()] = lifetime;
+                    }
                     if (!allImplementations.ContainsKey(typeName))
                         allImplementations[typeName] = new List<INamedTypeSymbol>();
                     allImplementations[typeName].Add(currentType);
@@ -219,9 +234,15 @@ internal static class DiagnosticsRunner
                     (attr.AttributeClass?.Name?.StartsWith("RegisterAsAttribute") == true &&
                      attr.AttributeClass?.IsGenericType == true));
                 var isHostedService = TypeAnalyzer.IsAssignableFromIHostedService(referencedType);
-                if (hasServiceRelatedAttribute || isHostedService) allRegisteredServices.Add(typeName);
-                if (!referencedType.IsAbstract && referencedType.TypeKind == TypeKind.Class)
+                if (hasServiceRelatedAttribute || isHostedService ||
+                    (!referencedType.IsAbstract && referencedType.TypeKind == TypeKind.Class))
+                {
                     allRegisteredServices.Add(typeName);
+                    var lifetime = ServiceDiscovery.GetServiceLifetimeFromAttributes(referencedType, implicitLifetime);
+                    serviceLifetimes[typeName] = lifetime;
+                    foreach (var interfaceSymbol in referencedType.Interfaces)
+                        serviceLifetimes[interfaceSymbol.ToDisplayString()] = lifetime;
+                }
             }
 
             var diagnosticConfig = DiagnosticConfigProvider.From(configOptions);
@@ -238,7 +259,7 @@ internal static class DiagnosticsRunner
 
                     ValidateDependenciesComplete(context, serviceInfo.ClassDeclaration, hierarchyDependencies,
                         allRegisteredServices, allImplementations, serviceLifetimes, diagnosticConfig,
-                        serviceInfo.SemanticModel, serviceInfo.ClassSymbol);
+                        serviceInfo.SemanticModel, serviceInfo.ClassSymbol, implicitLifetime);
                 }
             }
 

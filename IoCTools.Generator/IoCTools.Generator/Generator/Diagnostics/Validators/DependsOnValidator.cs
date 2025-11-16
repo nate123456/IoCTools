@@ -14,28 +14,6 @@ using Utilities;
 
 internal static class DependsOnValidator
 {
-    internal static void ValidateDependsOnConflicts(SourceProductionContext context,
-        TypeDeclarationSyntax classDeclaration,
-        InheritanceHierarchyDependencies hierarchyDependencies,
-        INamedTypeSymbol classSymbol)
-    {
-        var dependsOnTypes = new HashSet<string>(hierarchyDependencies.RawAllDependencies
-            .Where(d => d.Source == DependencySource.DependsOn)
-            .Select(d => d.ServiceType.ToDisplayString()));
-
-        var injectTypes = new HashSet<string>(hierarchyDependencies.RawAllDependencies
-            .Where(d => d.Source == DependencySource.Inject)
-            .Select(d => d.ServiceType.ToDisplayString()));
-
-        foreach (var dependsOnType in dependsOnTypes)
-            if (injectTypes.Contains(dependsOnType))
-            {
-                var diagnostic = Diagnostic.Create(DiagnosticDescriptors.DependsOnConflictsWithInject,
-                    classDeclaration.GetLocation(), dependsOnType, classSymbol.Name);
-                context.ReportDiagnostic(diagnostic);
-            }
-    }
-
     internal static void ValidateDuplicateDependsOn(SourceProductionContext context,
         TypeDeclarationSyntax classDeclaration,
         INamedTypeSymbol classSymbol)

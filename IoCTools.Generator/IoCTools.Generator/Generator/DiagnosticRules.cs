@@ -86,7 +86,8 @@ internal static class DiagnosticRules
         HashSet<string> allRegisteredServices,
         Dictionary<string, List<INamedTypeSymbol>> allImplementations,
         Dictionary<string, string> serviceLifetimes,
-        DiagnosticConfiguration diagnosticConfig)
+        DiagnosticConfiguration diagnosticConfig,
+        string implicitLifetime)
     {
         foreach (var dependency in hierarchyDependencies.AllDependenciesWithExternalFlag)
         {
@@ -148,7 +149,7 @@ internal static class DiagnosticRules
 
             var (dependencyLifetime, _) =
                 DependencyLifetimeResolver.GetDependencyLifetimeWithGenericSupportAndImplementationName(
-                    dependencyType, serviceLifetimes, allRegisteredServices, allImplementations);
+                    dependencyType, serviceLifetimes, allRegisteredServices, allImplementations, implicitLifetime);
 
             var implementationExists = dependencyLifetime != null || allImplementations.ContainsKey(dependencyType);
             if (implementationExists)
@@ -283,12 +284,14 @@ internal static class DiagnosticRules
         if (key!.Contains("::"))
             return new ConfigurationKeyValidationResult
             {
-                IsValid = false, ErrorMessage = "contains double colons (::)"
+                IsValid = false,
+                ErrorMessage = "contains double colons (::)"
             };
         if (key!.StartsWith(":") || key.EndsWith(":"))
             return new ConfigurationKeyValidationResult
             {
-                IsValid = false, ErrorMessage = "cannot start or end with a colon (:)"
+                IsValid = false,
+                ErrorMessage = "cannot start or end with a colon (:)"
             };
         if (key.Any(c => c == '\0' || c == '\r' || c == '\n' || c == '\t'))
             return new ConfigurationKeyValidationResult
@@ -299,14 +302,22 @@ internal static class DiagnosticRules
         return new ConfigurationKeyValidationResult { IsValid = true, ErrorMessage = string.Empty };
     }
 
-    public static void ValidateDependsOnConflicts(SourceProductionContext context,
+    public static void ValidateDependencyRedundancy(SourceProductionContext context,
         TypeDeclarationSyntax classDeclaration,
-        InheritanceHierarchyDependencies hierarchyDependencies,
-        INamedTypeSymbol classSymbol)
+        INamedTypeSymbol classSymbol,
+        InheritanceHierarchyDependencies hierarchyDependencies)
     {
-        DependsOnValidator
-            .ValidateDependsOnConflicts(context, classDeclaration, hierarchyDependencies, classSymbol);
+        DependencyUsageValidator
+            .ValidateRedundantDependencies(context, classDeclaration, classSymbol, hierarchyDependencies);
     }
+
+    public static void ValidateUnusedDependencies(SourceProductionContext context,
+        TypeDeclarationSyntax classDeclaration,
+        INamedTypeSymbol classSymbol,
+        SemanticModel? semanticModel,
+        InheritanceHierarchyDependencies hierarchyDependencies) =>
+        DependencyUsageValidator.ValidateUnusedDependencies(context, classDeclaration, classSymbol, semanticModel,
+            hierarchyDependencies);
 
     public static void ValidateDuplicateDependsOn(SourceProductionContext context,
         TypeDeclarationSyntax classDeclaration,
@@ -343,11 +354,12 @@ internal static class DiagnosticRules
         TypeDeclarationSyntax classDeclaration,
         INamedTypeSymbol classSymbol,
         Dictionary<string, string> serviceLifetimes,
-        Dictionary<string, List<INamedTypeSymbol>> allImplementations)
+        Dictionary<string, List<INamedTypeSymbol>> allImplementations,
+        string implicitLifetime)
     {
         LifetimeDependencyValidator
             .ValidateInheritanceChainLifetimesForSourceProduction(context, classDeclaration, classSymbol,
-                serviceLifetimes, allImplementations);
+                serviceLifetimes, allImplementations, implicitLifetime);
     }
 
     // IOC012/IOC013: Validate service lifetime dependencies
@@ -358,11 +370,12 @@ internal static class DiagnosticRules
         HashSet<string> allRegisteredServices,
         Dictionary<string, List<INamedTypeSymbol>> allImplementations,
         DiagnosticConfiguration diagnosticConfig,
-        INamedTypeSymbol classSymbol)
+        INamedTypeSymbol classSymbol,
+        string implicitLifetime)
     {
         LifetimeDependencyValidator
             .ValidateLifetimeDependencies(context, classDeclaration, hierarchyDependencies, serviceLifetimes,
-                allRegisteredServices, allImplementations, diagnosticConfig, classSymbol);
+                allRegisteredServices, allImplementations, diagnosticConfig, classSymbol, implicitLifetime);
     }
 
     internal static void ValidateIEnumerableLifetimes(SourceProductionContext context,
@@ -373,7 +386,8 @@ internal static class DiagnosticRules
         string dependencyTypeName,
         Dictionary<string, string> serviceLifetimes,
         HashSet<string> allRegisteredServices,
-        Dictionary<string, List<INamedTypeSymbol>> allImplementations)
+        Dictionary<string, List<INamedTypeSymbol>> allImplementations,
+        string implicitLifetime)
     {
         var foundImplementations = false;
         var processedImplementations = new HashSet<string>();
@@ -383,7 +397,8 @@ internal static class DiagnosticRules
             foreach (var implementation in directImplementations)
             {
                 if (!processedImplementations.Add(implementation.ToDisplayString())) continue;
-                var implementationLifetime = LifetimeUtilities.GetServiceLifetimeFromSymbol(implementation);
+                var implementationLifetime = LifetimeUtilities.GetServiceLifetimeFromSymbol(implementation,
+                    implicitLifetime);
                 if (implementationLifetime == null) continue;
                 if (serviceLifetime == "Singleton" && implementationLifetime == "Scoped")
                 {
@@ -412,7 +427,8 @@ internal static class DiagnosticRules
                 foreach (var implementation in genericImplementations)
                 {
                     if (!processedImplementations.Add(implementation.ToDisplayString())) continue;
-                    var implementationLifetime = LifetimeUtilities.GetServiceLifetimeFromSymbol(implementation);
+                    var implementationLifetime = LifetimeUtilities.GetServiceLifetimeFromSymbol(implementation,
+                        implicitLifetime);
                     if (implementationLifetime == null) continue;
                     if (serviceLifetime == "Singleton" && implementationLifetime == "Scoped")
                     {
@@ -441,7 +457,8 @@ internal static class DiagnosticRules
                     if (!processedImplementations.Add(implementation.ToDisplayString())) continue;
                     var implementedInterfaces = implementation.AllInterfaces.Select(i => i.ToDisplayString());
                     if (!implementedInterfaces.Contains(innerType)) continue;
-                    var implementationLifetime = LifetimeUtilities.GetServiceLifetimeFromSymbol(implementation);
+                    var implementationLifetime = LifetimeUtilities.GetServiceLifetimeFromSymbol(implementation,
+                        implicitLifetime);
                     if (implementationLifetime == null) continue;
                     if (serviceLifetime == "Singleton" && implementationLifetime == "Scoped")
                     {

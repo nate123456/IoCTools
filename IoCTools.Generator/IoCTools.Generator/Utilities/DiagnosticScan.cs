@@ -9,6 +9,7 @@ using Analysis;
 using Generator;
 
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 internal static class DiagnosticScan
@@ -19,7 +20,8 @@ internal static class DiagnosticScan
         HashSet<string> allRegisteredServices,
         Dictionary<string, List<INamedTypeSymbol>> allImplementations,
         Dictionary<string, string> serviceLifetimes,
-        HashSet<string> globalProcessedClasses)
+        HashSet<string> globalProcessedClasses,
+        string implicitLifetime)
     {
         var typeDeclarations = root.DescendantNodes().OfType<TypeDeclarationSyntax>();
         foreach (var typeDeclaration in typeDeclarations)
@@ -63,27 +65,27 @@ internal static class DiagnosticScan
                 attr.AttributeClass?.Name?.StartsWith("RegisterAsAttribute") == true &&
                 attr.AttributeClass?.IsGenericType == true);
             var isHostedService = TypeAnalyzer.IsAssignableFromIHostedService(classSymbol);
+            var isPartialWithInterfaces = typeDeclaration.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)) &&
+                                          classSymbol.Interfaces.Any();
 
             var (hasLifetimeAttribute, _, _, _) = ServiceDiscovery.GetLifetimeAttributes(classSymbol);
             var hasExplicitServiceIntent = hasConditionalServiceAttribute || hasRegisterAsAllAttribute ||
-                                           hasRegisterAsAttribute || isHostedService || hasLifetimeAttribute;
+                                           hasRegisterAsAttribute || isHostedService || hasLifetimeAttribute ||
+                                           (isPartialWithInterfaces && !hasDependsOnAttribute &&
+                                            !hasInjectConfigurationFields);
 
             if (hasExplicitServiceIntent || hasInjectFields || hasDependsOnAttribute || hasInjectConfigurationFields)
             {
                 if (globalProcessedClasses.Add(classKey)) servicesWithAttributes.Add(classSymbol);
                 else continue;
                 allRegisteredServices.Add(classSymbol.ToDisplayString());
-                var (hasAnyLifetime, _, _, _) = ServiceDiscovery.GetLifetimeAttributes(classSymbol);
-                if (hasAnyLifetime)
+                var lifetime = ServiceDiscovery.GetServiceLifetimeFromAttributes(classSymbol, implicitLifetime);
+                serviceLifetimes[classSymbol.ToDisplayString()] = lifetime;
+                foreach (var interfaceSymbol in classSymbol.AllInterfaces)
                 {
-                    var lifetime = ServiceDiscovery.GetServiceLifetimeFromAttributes(classSymbol);
-                    serviceLifetimes[classSymbol.ToDisplayString()] = lifetime;
-                    foreach (var interfaceSymbol in classSymbol.AllInterfaces)
-                    {
-                        var ifDisplayString = interfaceSymbol.ToDisplayString();
-                        serviceLifetimes[ifDisplayString] = lifetime;
-                        allRegisteredServices.Add(ifDisplayString);
-                    }
+                    var ifDisplayString = interfaceSymbol.ToDisplayString();
+                    serviceLifetimes[ifDisplayString] = lifetime;
+                    allRegisteredServices.Add(ifDisplayString);
                 }
             }
         }

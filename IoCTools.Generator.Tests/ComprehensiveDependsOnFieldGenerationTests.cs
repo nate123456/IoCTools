@@ -780,9 +780,9 @@ public partial class ConflictingService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        var ioc007Diagnostics = result.GetDiagnosticsByCode("IOC007");
-        ioc007Diagnostics.Should().NotBeEmpty();
-        ioc007Diagnostics[0].GetMessage().Should().Contain("DependsOn");
+        var ioc040Diagnostics = result.GetDiagnosticsByCode("IOC040");
+        ioc040Diagnostics.Should().NotBeEmpty();
+        ioc040Diagnostics[0].GetMessage().Should().Contain("DependsOn");
     }
 
     [Fact]

@@ -28,7 +28,8 @@ internal class InheritanceHierarchyDependencies(
     } = rawAllDependencies;
 
     public List<(ITypeSymbol ServiceType, string FieldName, DependencySource Source, bool IsExternal)>
-        AllDependenciesWithExternalFlag { get; } = allDependenciesWithExternalFlag;
+        AllDependenciesWithExternalFlag
+    { get; } = allDependenciesWithExternalFlag;
 
     /// <summary>
     ///     Gets inheritance chain lifetime analysis data for comprehensive lifetime validation

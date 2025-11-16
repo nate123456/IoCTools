@@ -9,6 +9,7 @@ using System.Text;
 using CodeGeneration;
 
 using IoCTools.Generator.Diagnostics;
+using IoCTools.Generator.Utilities;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -17,25 +18,23 @@ using Microsoft.CodeAnalysis.Text;
 
 using Models;
 
-using Utilities;
-
 internal static class RegistrationEmitter
 {
     public static void Emit(Action<string, SourceText> addSource,
         SourceProductionContext context,
-        (ImmutableArray<ServiceClassInfo> Services, Compilation Compilation, AnalyzerConfigOptionsProvider Config)
+        (ImmutableArray<ServiceClassInfo> Services, Compilation Compilation, GeneratorStyleOptions StyleOptions)
             input)
     {
         try
         {
-            var (services, compilation, config) = input;
+            var (services, compilation, styleOptions) = input;
             if (!services.Any()) return;
 
             var allServiceRegistrations = new List<ServiceRegistration>();
             var allConfigOptions = new List<ConfigurationOptionsRegistration>();
             var processedClasses = new HashSet<string>(StringComparer.Ordinal);
 
-            var styleOptions = GeneratorStyleOptions.From(config, compilation);
+            var implicitLifetime = styleOptions.DefaultImplicitLifetime;
 
             foreach (var serviceInfo in services)
             {
@@ -47,7 +46,7 @@ internal static class RegistrationEmitter
 
                 var treeServices = RegistrationSelector.GetServicesToRegisterForSingleClass(
                     serviceInfo.SemanticModel, serviceInfo.ClassDeclaration,
-                    serviceInfo.ClassSymbol, context).ToList();
+                    serviceInfo.ClassSymbol, context, implicitLifetime).ToList();
                 allServiceRegistrations.AddRange(treeServices);
 
                 var treeConfigOptions = ConfigurationOptionsScanner.GetConfigurationOptionsToRegister(

@@ -12,6 +12,7 @@ using Abstractions.Annotations;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -226,12 +227,23 @@ public static class SourceGeneratorTestHelper
         // Run the source generator
         var generator = new DependencyInjectionGenerator();
         var additionalTexts = new List<AdditionalText>();
+        AnalyzerConfigOptionsProvider? configProvider = null;
         if (analyzerBuildProperties is not null && analyzerBuildProperties.Count > 0)
-            additionalTexts.Add(CreateEditorConfig(analyzerBuildProperties));
+        {
+            var normalizedProperties = NormalizeBuildProperties(analyzerBuildProperties);
+            if (normalizedProperties.Count > 0)
+            {
+                additionalTexts.Add(CreateEditorConfigFromNormalized(normalizedProperties));
+                configProvider = new InMemoryAnalyzerConfigOptionsProvider(normalizedProperties);
+            }
+        }
 
         var driver = CSharpGeneratorDriver.Create(new[] { generator.AsSourceGenerator() },
             additionalTexts.ToArray(),
             new CSharpParseOptions(LanguageVersion.Preview));
+
+        if (configProvider != null)
+            driver = (CSharpGeneratorDriver)driver.WithUpdatedAnalyzerConfigOptions(configProvider);
 
         driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);
 
@@ -826,24 +838,38 @@ public partial class {className}{baseClause}
 
     #region Performance Testing Infrastructure
 
+    private static Dictionary<string, string> NormalizeBuildProperties(Dictionary<string, string> buildProperties)
+    {
+        var normalized = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var kvp in buildProperties)
+        {
+            var key = kvp.Key.StartsWith("build_property.", StringComparison.Ordinal)
+                ? kvp.Key
+                : $"build_property.{kvp.Key}";
+            normalized[key] = kvp.Value;
+        }
+
+        return normalized;
+    }
+
     private static AdditionalText CreateEditorConfig(Dictionary<string, string> buildProperties)
+    {
+        var normalized = NormalizeBuildProperties(buildProperties);
+        return CreateEditorConfigFromNormalized(normalized);
+    }
+
+    private static AdditionalText CreateEditorConfigFromNormalized(IReadOnlyDictionary<string, string> buildProperties)
     {
         var sb = new StringBuilder();
         sb.AppendLine("root = true");
         sb.AppendLine("is_global = true");
         foreach (var kvp in buildProperties)
-        {
-            var key = kvp.Key.StartsWith("build_property.") ? kvp.Key : $"build_property.{kvp.Key}";
-            sb.AppendLine($"{key} = {kvp.Value}");
-        }
+            sb.AppendLine($"{kvp.Key} = {kvp.Value}");
 
         sb.AppendLine();
         sb.AppendLine("[*.cs]");
         foreach (var kvp in buildProperties)
-        {
-            var key = kvp.Key.StartsWith("build_property.") ? kvp.Key : $"build_property.{kvp.Key}";
-            sb.AppendLine($"{key} = {kvp.Value}");
-        }
+            sb.AppendLine($"{kvp.Key} = {kvp.Value}");
 
         return new TestAdditionalFile("/AnalyzerConfig/.editorconfig", sb.ToString());
     }
@@ -1202,4 +1228,44 @@ public class TestAdditionalFile : AdditionalText
     public override string Path { get; }
 
     public override SourceText? GetText(CancellationToken cancellationToken = default) => SourceText.From(_content);
+}
+
+internal sealed class InMemoryAnalyzerConfigOptionsProvider : AnalyzerConfigOptionsProvider
+{
+    private readonly IReadOnlyDictionary<string, string> _properties;
+
+    public InMemoryAnalyzerConfigOptionsProvider(IReadOnlyDictionary<string, string> properties)
+    {
+        _properties = properties;
+    }
+
+    public override AnalyzerConfigOptions GlobalOptions => new InMemoryAnalyzerConfigOptions(_properties);
+
+    public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => new InMemoryAnalyzerConfigOptions(_properties);
+
+    public override AnalyzerConfigOptions GetOptions(AdditionalText textFile) =>
+        new InMemoryAnalyzerConfigOptions(_properties);
+}
+
+internal sealed class InMemoryAnalyzerConfigOptions : AnalyzerConfigOptions
+{
+    private readonly IReadOnlyDictionary<string, string> _properties;
+
+    public InMemoryAnalyzerConfigOptions(IReadOnlyDictionary<string, string> properties)
+    {
+        _properties = properties;
+    }
+
+    public override bool TryGetValue(string key,
+        out string value)
+    {
+        if (_properties.TryGetValue(key, out var stored))
+        {
+            value = stored;
+            return true;
+        }
+
+        value = string.Empty;
+        return false;
+    }
 }

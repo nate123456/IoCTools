@@ -904,6 +904,37 @@ public partial class ConsumerService
         diagnostic.GetMessage().Should().Contain("implementation exists but lacks lifetime attribute");
     }
 
+    [Fact]
+    public void Diagnostic_IOC002_NotRaised_ForPartialInterfaceServiceWithoutExplicitLifetime()
+    {
+        // Arrange - Partial service implements an interface with no lifetime attribute but should still register as scoped
+        var source = @"
+using IoCTools.Abstractions.Annotations;
+using IoCTools.Abstractions.Enumerations;
+
+namespace Test;
+
+public interface IModuleProvider { }
+
+public partial class ModuleProvider : IModuleProvider
+{
+}
+
+[Singleton]
+[DependsOn<IModuleProvider>]
+public partial class ResultToHttpResponseMapper
+{
+}
+";
+
+        // Act
+        var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
+
+        // Assert - No IOC002 or IOC033 warnings
+        result.GetDiagnosticsByCode("IOC002").Should().BeEmpty();
+        result.GetDiagnosticsByCode("IOC033").Should().BeEmpty();
+    }
+
 
     [Fact]
     public void Diagnostic_IOC003_CircularDependencyDetected()
@@ -968,7 +999,7 @@ public partial class DuplicateDependsOnService
     }
 
     [Fact]
-    public void Diagnostic_IOC007_DependsOnConflictsWithInjectField()
+    public void Diagnostic_IOC040_DependsOnConflictsWithInjectField()
     {
         // Arrange
         var source = @"
@@ -987,13 +1018,15 @@ public partial class ConflictingDependenciesService
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
         // Assert
-        var ioc007Diagnostics = result.GetDiagnosticsByCode("IOC007");
-        ioc007Diagnostics.Should().ContainSingle();
+        var ioc040Diagnostics = result.GetDiagnosticsByCode("IOC040");
+        ioc040Diagnostics.Should().ContainSingle();
 
-        var diagnostic = ioc007Diagnostics[0];
-        diagnostic.GetMessage().Should().Contain("IService1");
-        diagnostic.GetMessage().Should().Contain("declared in [DependsOn] attribute");
-        diagnostic.GetMessage().Should().Contain("ConflictingDependenciesService");
+        var diagnostic = ioc040Diagnostics[0];
+        var message = diagnostic.GetMessage();
+        message.Should().Contain("IService1");
+        message.Should().Contain("[Inject] fields");
+        message.Should().Contain("[DependsOn] attributes");
+        message.Should().Contain("ConflictingDependenciesService");
     }
 
     [Fact]
@@ -1458,17 +1491,18 @@ public partial class SpecificDiagnosticService
         var ioc001Diagnostics = result.GetDiagnosticsByCode("IOC001");
         ioc001Diagnostics.Should().ContainSingle();
 
-        // IMPROVED: Verify NO other IOC diagnostics are present
+        // IMPROVED: Verify only the expected IOC diagnostics are present
         var allIOCDiagnostics = result.GeneratorDiagnostics
             .Concat(result.CompilationDiagnostics)
             .Where(d => d.Id.StartsWith("IOC"))
             .ToList();
 
-        allIOCDiagnostics.Should().ContainSingle();
-        allIOCDiagnostics[0].Id.Should().Be("IOC001");
+        var expectedIds = new[] { "IOC001", "IOC039" };
+        allIOCDiagnostics.Select(d => d.Id)
+            .Should().BeEquivalentTo(expectedIds);
 
         // Verify the specific diagnostic message
-        var diagnostic = allIOCDiagnostics[0];
+        var diagnostic = allIOCDiagnostics.First(d => d.Id == "IOC001");
         diagnostic.GetMessage().Should().Contain("SpecificDiagnosticService");
         diagnostic.GetMessage().Should().Contain("IMissingService");
         diagnostic.GetMessage().Should().Contain("no implementation");

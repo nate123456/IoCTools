@@ -18,9 +18,10 @@ internal static class LifetimeDependencyValidator
         TypeDeclarationSyntax classDeclaration,
         INamedTypeSymbol classSymbol,
         Dictionary<string, string> serviceLifetimes,
-        Dictionary<string, List<INamedTypeSymbol>> allImplementations)
+        Dictionary<string, List<INamedTypeSymbol>> allImplementations,
+        string implicitLifetime)
     {
-        var serviceLifetime = LifetimeUtilities.GetServiceLifetimeFromSymbol(classSymbol);
+        var serviceLifetime = LifetimeUtilities.GetServiceLifetimeFromSymbol(classSymbol, implicitLifetime);
         if (serviceLifetime != "Singleton") return;
 
         var currentType = classSymbol.BaseType;
@@ -28,7 +29,7 @@ internal static class LifetimeDependencyValidator
         {
             var baseServiceLifetime =
                 DependencyLifetimeResolver.GetDependencyLifetimeForSourceProduction(currentType, serviceLifetimes,
-                    allImplementations);
+                    allImplementations, implicitLifetime);
             if (baseServiceLifetime == "Scoped")
             {
                 var diagnostic = Diagnostic.Create(DiagnosticDescriptors.InheritanceChainLifetimeValidation,
@@ -45,7 +46,7 @@ internal static class LifetimeDependencyValidator
                     {
                         var depLifetime =
                             DependencyLifetimeResolver.GetDependencyLifetimeForSourceProduction(typeArg,
-                                serviceLifetimes, allImplementations);
+                                serviceLifetimes, allImplementations, implicitLifetime);
                         if (depLifetime == "Scoped")
                         {
                             var diagnostic = Diagnostic.Create(DiagnosticDescriptors.InheritanceChainLifetimeValidation,
@@ -66,9 +67,10 @@ internal static class LifetimeDependencyValidator
         HashSet<string> allRegisteredServices,
         Dictionary<string, List<INamedTypeSymbol>> allImplementations,
         DiagnosticConfiguration diagnosticConfig,
-        INamedTypeSymbol classSymbol)
+        INamedTypeSymbol classSymbol,
+        string implicitLifetime)
     {
-        var serviceLifetime = LifetimeUtilities.GetServiceLifetimeFromSymbol(classSymbol);
+        var serviceLifetime = LifetimeUtilities.GetServiceLifetimeFromSymbol(classSymbol, implicitLifetime);
         if (serviceLifetime == null) return;
 
         foreach (var dependency in hierarchyDependencies.AllDependenciesWithExternalFlag)
@@ -82,13 +84,13 @@ internal static class LifetimeDependencyValidator
             {
                 ValidateIEnumerableLifetimes(context, classDeclaration, classSymbol, serviceLifetime,
                     enumerableTypeInfo.InnerType, enumerableTypeInfo.FullEnumerableType, serviceLifetimes,
-                    allRegisteredServices, allImplementations);
+                    allRegisteredServices, allImplementations, implicitLifetime);
                 continue;
             }
 
             var (dependencyLifetime, implementationName) =
                 DependencyLifetimeResolver.GetDependencyLifetimeWithGenericSupportAndImplementationName(
-                    dependencyTypeName, serviceLifetimes, allRegisteredServices, allImplementations);
+                    dependencyTypeName, serviceLifetimes, allRegisteredServices, allImplementations, implicitLifetime);
             if (dependencyLifetime == null) continue;
 
             if (serviceLifetime == "Singleton" && dependencyLifetime == "Scoped")
@@ -118,7 +120,8 @@ internal static class LifetimeDependencyValidator
         string dependencyTypeName,
         Dictionary<string, string> serviceLifetimes,
         HashSet<string> allRegisteredServices,
-        Dictionary<string, List<INamedTypeSymbol>> allImplementations)
+        Dictionary<string, List<INamedTypeSymbol>> allImplementations,
+        string implicitLifetime)
     {
         var foundImplementations = false;
         var processed = new HashSet<string>();
@@ -128,7 +131,7 @@ internal static class LifetimeDependencyValidator
             foreach (var implementation in direct)
             {
                 if (!processed.Add(implementation.ToDisplayString())) continue;
-                var implLifetime = LifetimeUtilities.GetServiceLifetimeFromSymbol(implementation);
+                var implLifetime = LifetimeUtilities.GetServiceLifetimeFromSymbol(implementation, implicitLifetime);
                 if (implLifetime == null) continue;
                 if (serviceLifetime == "Singleton" && implLifetime == "Scoped")
                 {
@@ -156,7 +159,8 @@ internal static class LifetimeDependencyValidator
                 foreach (var implementation in generics)
                 {
                     if (!processed.Add(implementation.ToDisplayString())) continue;
-                    var implLifetime = LifetimeUtilities.GetServiceLifetimeFromSymbol(implementation);
+                    var implLifetime = LifetimeUtilities.GetServiceLifetimeFromSymbol(implementation,
+                        implicitLifetime);
                     if (implLifetime == null) continue;
                     if (serviceLifetime == "Singleton" && implLifetime == "Scoped")
                     {
@@ -178,27 +182,28 @@ internal static class LifetimeDependencyValidator
 
         if (!foundImplementations)
             foreach (var kvp in allImplementations)
-            foreach (var implementation in kvp.Value)
-            {
-                if (!processed.Add(implementation.ToDisplayString())) continue;
-                var interfaces = implementation.AllInterfaces.Select(i => i.ToDisplayString());
-                if (!interfaces.Contains(innerType)) continue;
-                var implLifetime = LifetimeUtilities.GetServiceLifetimeFromSymbol(implementation);
-                if (implLifetime == null) continue;
-                if (serviceLifetime == "Singleton" && implLifetime == "Scoped")
+                foreach (var implementation in kvp.Value)
                 {
-                    var diagnostic = Diagnostic.Create(DiagnosticDescriptors.SingletonDependsOnScoped,
-                        classDeclaration.GetLocation(), classSymbol.Name,
-                        $"{dependencyTypeName} -> {implementation.Name}");
-                    context.ReportDiagnostic(diagnostic);
+                    if (!processed.Add(implementation.ToDisplayString())) continue;
+                    var interfaces = implementation.AllInterfaces.Select(i => i.ToDisplayString());
+                    if (!interfaces.Contains(innerType)) continue;
+                    var implLifetime = LifetimeUtilities.GetServiceLifetimeFromSymbol(implementation,
+                        implicitLifetime);
+                    if (implLifetime == null) continue;
+                    if (serviceLifetime == "Singleton" && implLifetime == "Scoped")
+                    {
+                        var diagnostic = Diagnostic.Create(DiagnosticDescriptors.SingletonDependsOnScoped,
+                            classDeclaration.GetLocation(), classSymbol.Name,
+                            $"{dependencyTypeName} -> {implementation.Name}");
+                        context.ReportDiagnostic(diagnostic);
+                    }
+                    else if (serviceLifetime == "Singleton" && implLifetime == "Transient")
+                    {
+                        var diagnostic = Diagnostic.Create(DiagnosticDescriptors.SingletonDependsOnTransient,
+                            classDeclaration.GetLocation(), classSymbol.Name,
+                            $"{dependencyTypeName} -> {implementation.Name}");
+                        context.ReportDiagnostic(diagnostic);
+                    }
                 }
-                else if (serviceLifetime == "Singleton" && implLifetime == "Transient")
-                {
-                    var diagnostic = Diagnostic.Create(DiagnosticDescriptors.SingletonDependsOnTransient,
-                        classDeclaration.GetLocation(), classSymbol.Name,
-                        $"{dependencyTypeName} -> {implementation.Name}");
-                    context.ReportDiagnostic(diagnostic);
-                }
-            }
     }
 }

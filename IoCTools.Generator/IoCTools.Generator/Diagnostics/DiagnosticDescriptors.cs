@@ -351,4 +351,22 @@ internal static class DiagnosticDescriptors
         DiagnosticSeverity.Warning,
         true,
         "Change RegisterAsAll to RegistrationMode.All/Exclusionary or remove the ineffective [SkipRegistration] declaration.");
+
+    public static readonly DiagnosticDescriptor UnusedDependency = new(
+        "IOC039",
+        "Dependency declared but never used",
+        "Dependency field '{0}' of type '{1}' declared via {2} on class '{3}' is never referenced. Remove the declaration or use the dependency.",
+        "IoCTools",
+        DiagnosticSeverity.Warning,
+        true,
+        "Keep only the dependencies that are actually consumed by the class. Remove unused [Inject]/[DependsOn] declarations or reference the generated field in your implementation.");
+
+    public static readonly DiagnosticDescriptor RedundantDependencyDeclarations = new(
+        "IOC040",
+        "Redundant dependency declarations",
+        "Dependency type '{0}' is declared multiple times via {1} on class '{2}'. Remove the duplicate declarations so the generator only binds it once.",
+        "IoCTools",
+        DiagnosticSeverity.Warning,
+        true,
+        "Declare each dependency a single time. Prefer [DependsOn] when no custom field is required and drop extra [Inject] fields or duplicate attributes to avoid confusing constructor graphs.");
 }

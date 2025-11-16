@@ -38,18 +38,18 @@ internal static class ConfigurationFieldAnalyzer
                     // Check for [InjectConfiguration]
                     AttributeSyntax? injectConfigAttribute = null;
                     foreach (var attributeList in fieldDeclaration.AttributeLists)
-                    foreach (var attribute in attributeList.Attributes)
-                    {
-                        var attributeText = attribute.Name.ToString();
-                        if (attributeText == "InjectConfiguration" ||
-                            attributeText == "InjectConfigurationAttribute" ||
-                            attributeText.EndsWith("InjectConfiguration") ||
-                            attributeText.EndsWith("InjectConfigurationAttribute"))
+                        foreach (var attribute in attributeList.Attributes)
                         {
-                            injectConfigAttribute = attribute;
-                            break;
+                            var attributeText = attribute.Name.ToString();
+                            if (attributeText == "InjectConfiguration" ||
+                                attributeText == "InjectConfigurationAttribute" ||
+                                attributeText.EndsWith("InjectConfiguration") ||
+                                attributeText.EndsWith("InjectConfigurationAttribute"))
+                            {
+                                injectConfigAttribute = attribute;
+                                break;
+                            }
                         }
-                    }
 
                     if (injectConfigAttribute == null) continue;
 

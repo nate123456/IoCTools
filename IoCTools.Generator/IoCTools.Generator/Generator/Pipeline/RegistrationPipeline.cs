@@ -4,22 +4,25 @@ using Microsoft.CodeAnalysis;
 
 using Models;
 
+using Utilities;
+
 internal static class RegistrationPipeline
 {
     internal static void Attach(
         IncrementalGeneratorInitializationContext context,
         IncrementalValuesProvider<ServiceClassInfo> serviceClasses)
     {
+        var styleOptionsProvider = context.AnalyzerConfigOptionsProvider
+            .Combine(context.CompilationProvider)
+            .Select(static (input,
+                _) => GeneratorStyleOptions.From(input.Left, input.Right));
+
         var registrationInput = serviceClasses
             .Collect()
             .Combine(context.CompilationProvider)
-            .Combine(context.AnalyzerConfigOptionsProvider)
+            .Combine(styleOptionsProvider)
             .Select(static (input,
-                _) =>
-            {
-                var ((services, compilation), config) = input;
-                return (services, compilation, config);
-            });
+                _) => (input.Left.Left, input.Left.Right, input.Right));
 
         context.RegisterSourceOutput(registrationInput,
             static (spc,

@@ -17,6 +17,11 @@ internal static class DiagnosticsPipeline
         IncrementalGeneratorInitializationContext context,
         IncrementalValuesProvider<ServiceClassInfo> serviceClasses)
     {
+        var styleOptionsProvider = context.AnalyzerConfigOptionsProvider
+            .Combine(context.CompilationProvider)
+            .Select(static (input,
+                _) => GeneratorStyleOptions.From(input.Left, input.Right));
+
         var referencedAssemblyTypes = context.CompilationProvider
             .Select(static (compilation,
                 _) =>
@@ -46,11 +51,12 @@ internal static class DiagnosticsPipeline
             .Combine(referencedAssemblyTypes)
             .Combine(context.CompilationProvider)
             .Combine(context.AnalyzerConfigOptionsProvider)
+            .Combine(styleOptionsProvider)
             .Select(static (input,
                 _) =>
             {
-                var (((services, referencedTypes), compilation), config) = input;
-                return ((services, referencedTypes, compilation), config);
+                var ((((services, referencedTypes), compilation), config), styleOptions) = input;
+                return ((services, referencedTypes, compilation), config, styleOptions);
             });
 
         context.RegisterSourceOutput(diagnosticsInput, DiagnosticsRunner.EmitWithReferencedTypes);

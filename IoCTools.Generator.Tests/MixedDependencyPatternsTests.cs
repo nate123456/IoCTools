@@ -169,7 +169,7 @@ public partial class OrderingTestService
     [Fact]
     public void MixedPatterns_RedundancyDetection_HandlesCorrectly()
     {
-        // Arrange - Test IOC007 diagnostic for redundant dependencies
+        // Arrange - Test IOC040 diagnostic for redundant dependencies
         var source = @"
 using IoCTools.Abstractions.Annotations;
 
@@ -185,12 +185,14 @@ public partial class ConflictService
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
-        // Assert - should generate IOC007 diagnostic
-        var ioc007Diagnostics = result.GetDiagnosticsByCode("IOC007");
-        ioc007Diagnostics.Should().ContainSingle();
+        // Assert - should generate IOC040 diagnostic
+        var ioc040Diagnostics = result.GetDiagnosticsByCode("IOC040");
+        ioc040Diagnostics.Should().ContainSingle();
 
-        var diagnostic = ioc007Diagnostics[0];
-        diagnostic.GetMessage().Should().Contain("IConflictService");
-        diagnostic.GetMessage().Should().Contain("declared in [DependsOn] attribute");
+        var diagnostic = ioc040Diagnostics[0];
+        var message = diagnostic.GetMessage();
+        message.Should().Contain("IConflictService");
+        message.Should().Contain("[Inject] fields");
+        message.Should().Contain("[DependsOn] attributes");
     }
 }

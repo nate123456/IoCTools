@@ -8,14 +8,16 @@ using Microsoft.CodeAnalysis;
 
 internal static class LifetimeUtilities
 {
-    internal static string? GetServiceLifetimeFromSymbol(INamedTypeSymbol classSymbol)
+    internal static string? GetServiceLifetimeFromSymbol(INamedTypeSymbol classSymbol,
+        string implicitLifetime)
     {
         var (hasLifetimeAttribute, _, _, _) = ServiceDiscovery.GetLifetimeAttributes(classSymbol);
         var conditionalAttribute = classSymbol.GetAttributes()
             .FirstOrDefault(attr =>
                 attr.AttributeClass?.ToDisplayString() ==
                 "IoCTools.Abstractions.Annotations.ConditionalServiceAttribute");
-        if (hasLifetimeAttribute) return ServiceDiscovery.GetServiceLifetimeFromAttributes(classSymbol);
+        if (hasLifetimeAttribute)
+            return ServiceDiscovery.GetServiceLifetimeFromAttributes(classSymbol, implicitLifetime);
         if (conditionalAttribute?.ConstructorArguments.Length > 1)
         {
             var lifetimeValue = conditionalAttribute.ConstructorArguments[1].Value;
@@ -24,14 +26,14 @@ internal static class LifetimeUtilities
                 var lifetimeInt = (int)lifetimeValue;
                 return lifetimeInt switch
                 {
-                    0 => "Scoped",
+                    0 => implicitLifetime,
                     1 => "Transient",
                     2 => "Singleton",
-                    _ => "Scoped"
+                    _ => implicitLifetime
                 };
             }
         }
 
-        return "Scoped";
+        return implicitLifetime;
     }
 }

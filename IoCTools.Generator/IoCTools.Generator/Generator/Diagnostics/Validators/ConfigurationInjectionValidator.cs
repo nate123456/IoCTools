@@ -163,12 +163,14 @@ internal static class ConfigurationInjectionValidator
         if (key!.Contains("::"))
             return new ConfigurationKeyValidationResult
             {
-                IsValid = false, ErrorMessage = "contains double colons (::)"
+                IsValid = false,
+                ErrorMessage = "contains double colons (::)"
             };
         if (key!.StartsWith(":") || key.EndsWith(":"))
             return new ConfigurationKeyValidationResult
             {
-                IsValid = false, ErrorMessage = "cannot start or end with a colon (:)"
+                IsValid = false,
+                ErrorMessage = "cannot start or end with a colon (:)"
             };
         if (key!.Any(c => c == '\0' || c == '\r' || c == '\n' || c == '\t'))
             return new ConfigurationKeyValidationResult

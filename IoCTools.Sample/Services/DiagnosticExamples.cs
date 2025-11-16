@@ -222,7 +222,7 @@ public partial class BaseServiceWithScopedDependencies
 [DependsOn<IMemoryCache, IMemoryCache>] // IOC008: Duplicate within single attribute
 public partial class ConflictingDependenciesService
 {
-    // IOC007: This will conflict with DependsOn<ILogger<ConflictingDependenciesService>>
+    // IOC040: This will conflict with DependsOn<ILogger<ConflictingDependenciesService>>
     [Inject] private readonly ILogger<ConflictingDependenciesService> _logger;
 }
 

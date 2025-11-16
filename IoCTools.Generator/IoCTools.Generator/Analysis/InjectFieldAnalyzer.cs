@@ -34,17 +34,17 @@ internal static class InjectFieldAnalyzer
 
                     var hasInject = false;
                     foreach (var attributeList in fieldDeclaration.AttributeLists)
-                    foreach (var attribute in attributeList.Attributes)
-                    {
-                        var name = attribute.Name.ToString();
-                        if (name == "Inject" || name == "InjectAttribute" ||
-                            (name.EndsWith("Inject") && !name.Contains("Configuration")) ||
-                            (name.EndsWith("InjectAttribute") && !name.Contains("Configuration")))
+                        foreach (var attribute in attributeList.Attributes)
                         {
-                            hasInject = true;
-                            break;
+                            var name = attribute.Name.ToString();
+                            if (name == "Inject" || name == "InjectAttribute" ||
+                                (name.EndsWith("Inject") && !name.Contains("Configuration")) ||
+                                (name.EndsWith("InjectAttribute") && !name.Contains("Configuration")))
+                            {
+                                hasInject = true;
+                                break;
+                            }
                         }
-                    }
 
                     if (!hasInject) continue;
 
@@ -129,16 +129,16 @@ internal static class InjectFieldAnalyzer
                     var hasInject = false;
                     var hasExternalService = false;
                     foreach (var attributeList in fieldDeclaration.AttributeLists)
-                    foreach (var attribute in attributeList.Attributes)
-                    {
-                        var name = attribute.Name.ToString();
-                        if (name == "Inject" || name == "InjectAttribute" ||
-                            (name.EndsWith("Inject") && !name.Contains("Configuration")))
-                            hasInject = true;
-                        if (name == "ExternalService" || name == "ExternalServiceAttribute" ||
-                            name.EndsWith("ExternalService") || name.EndsWith("ExternalServiceAttribute"))
-                            hasExternalService = true;
-                    }
+                        foreach (var attribute in attributeList.Attributes)
+                        {
+                            var name = attribute.Name.ToString();
+                            if (name == "Inject" || name == "InjectAttribute" ||
+                                (name.EndsWith("Inject") && !name.Contains("Configuration")))
+                                hasInject = true;
+                            if (name == "ExternalService" || name == "ExternalServiceAttribute" ||
+                                name.EndsWith("ExternalService") || name.EndsWith("ExternalServiceAttribute"))
+                                hasExternalService = true;
+                        }
 
                     if (!hasInject) continue;
                     if (!hasExternalService) continue;

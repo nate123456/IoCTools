@@ -650,16 +650,16 @@ public partial class FinalClass : MiddleClass
         // Act
         var result = SourceGeneratorTestHelper.CompileWithGenerator(source);
 
-        // Assert - Should produce IOC007 warnings for conflicting DependsOn/Inject
-        var ioc007Diagnostics = result.GetDiagnosticsByCode("IOC007");
-        ioc007Diagnostics.Should().NotBeEmpty();
+        // Assert - Should produce IOC040 warnings for conflicting DependsOn/Inject
+        var ioc040Diagnostics = result.GetDiagnosticsByCode("IOC040");
+        ioc040Diagnostics.Should().NotBeEmpty();
 
         // Should have conflicts for:
         // 1. ISharedService (DependsOn in base, Inject in middle)
         // 2. IBaseService (DependsOn in base, Inject in final)
-        ioc007Diagnostics.Count.Should().BeGreaterOrEqualTo(2,
-            "Expected at least 2 IOC007 conflicts, got {0}",
-            ioc007Diagnostics.Count);
+        ioc040Diagnostics.Count.Should().BeGreaterOrEqualTo(2,
+            "Expected at least 2 IOC040 conflicts, got {0}",
+            ioc040Diagnostics.Count);
 
         // Should still compile successfully despite warnings
         result.HasErrors.Should().BeFalse();

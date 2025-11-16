@@ -1,8 +1,6 @@
 namespace IoCTools.Generator.Tests;
 
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.Diagnostics;
 
 /// <summary>
 ///     Comprehensive tests for MSBuild diagnostic configuration system.
@@ -38,68 +36,8 @@ public class MSBuildDiagnosticConfigurationTests
         string sourceCode,
         Dictionary<string, string> msbuildProperties)
     {
-        var syntaxTree = CSharpSyntaxTree.ParseText(sourceCode);
-        var references = SourceGeneratorTestHelper.GetStandardReferences();
-
-        var compilation = CSharpCompilation.Create(
-            "TestAssembly",
-            new[] { syntaxTree },
-            references,
-            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
-
-        // Create analyzer config options with MSBuild properties
-        var configOptions = new TestAnalyzerConfigOptionsProvider(msbuildProperties);
-
-        var generator = new DependencyInjectionGenerator();
-        var driver = CSharpGeneratorDriver.Create(generator)
-            .WithUpdatedAnalyzerConfigOptions(configOptions);
-
-        driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);
-
-        return (outputCompilation, diagnostics.ToList());
-    }
-
-    /// <summary>
-    ///     Test implementation of AnalyzerConfigOptionsProvider for testing MSBuild properties
-    /// </summary>
-    private class TestAnalyzerConfigOptionsProvider : AnalyzerConfigOptionsProvider
-    {
-        private readonly Dictionary<string, string> _properties;
-
-        public TestAnalyzerConfigOptionsProvider(Dictionary<string, string> properties)
-        {
-            _properties = properties;
-        }
-
-        public override AnalyzerConfigOptions GlobalOptions => new TestAnalyzerConfigOptions(_properties);
-
-        public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => new TestAnalyzerConfigOptions(_properties);
-
-        public override AnalyzerConfigOptions GetOptions(AdditionalText textFile) =>
-            new TestAnalyzerConfigOptions(_properties);
-    }
-
-    private class TestAnalyzerConfigOptions : AnalyzerConfigOptions
-    {
-        private readonly Dictionary<string, string> _properties;
-
-        public TestAnalyzerConfigOptions(Dictionary<string, string> properties)
-        {
-            _properties = properties;
-        }
-
-        public override bool TryGetValue(string key,
-            out string value)
-        {
-            if (_properties.TryGetValue(key, out var stored))
-            {
-                value = stored;
-                return true;
-            }
-
-            value = string.Empty;
-            return false;
-        }
+        var result = SourceGeneratorTestHelper.CompileWithGenerator(sourceCode, true, msbuildProperties);
+        return (result.Compilation, result.Diagnostics.ToList());
     }
 
     /// <summary>
@@ -132,8 +70,8 @@ namespace TestNamespace
 {
     public interface IUnmanagedService { }
     
-    // NOTE: UnmanagedService deliberately lacks lifetime attribute to trigger IOC002
-    public partial class UnmanagedService : IUnmanagedService { }
+    // NOTE: UnmanagedService deliberately lacks lifetime attribute and is non-partial to trigger IOC002
+    public class UnmanagedService : IUnmanagedService { }
 
     
     [Scoped]
