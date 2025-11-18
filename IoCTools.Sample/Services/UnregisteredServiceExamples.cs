@@ -114,15 +114,15 @@ public partial class AdvancedPaymentBase : BasePaymentProcessor
 {
     [Inject] private readonly ILogger<AdvancedPaymentBase> _advancedLogger;
 
-    protected async Task<bool> ValidatePaymentAsync(decimal amount)
+    protected Task<bool> ValidatePaymentAsync(decimal amount)
     {
         if (amount <= 0)
         {
             _advancedLogger.LogWarning("Invalid payment amount: {Amount}", amount);
-            return false;
+            return Task.FromResult(false);
         }
 
-        return true;
+        return Task.FromResult(true);
     }
 }
 

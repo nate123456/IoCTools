@@ -32,6 +32,9 @@
         <!-- Available severity options: Error, Warning, Info, Hidden -->
         <!-- To see diagnostic examples in action, build the project and check build output -->
 
+        <!-- Suppress educational IoCTools warnings that intentionally light up in the sample app -->
+        <NoWarn>$(NoWarn);IOC001;IOC002;IOC006;IOC008;IOC009;IOC013;IOC032;IOC033;IOC034;IOC035;IOC039;IOC040</NoWarn>
+
         <!-- Enable generated file output for debugging (commented by default) -->
         <!-- Uncomment these to view generated files in the 'generated' folder during development -->
         <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>

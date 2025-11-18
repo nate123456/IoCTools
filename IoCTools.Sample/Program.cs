@@ -487,7 +487,7 @@ internal class Program
         }
     }
 
-    private static async Task TestDifferentLifetimes(IServiceProvider services)
+    private static Task TestDifferentLifetimes(IServiceProvider services)
     {
         Console.WriteLine();
         Console.WriteLine("--- Different Service Lifetimes ---");
@@ -509,6 +509,8 @@ internal class Program
         if (greeting1 != null && greeting2 != null)
             Console.WriteLine(
                 $"  ✅ Scoped GreetingService: Same instance in scope = {ReferenceEquals(greeting1, greeting2)}");
+
+        return Task.CompletedTask;
     }
 
     private static async Task TestBasicServices(IServiceProvider services)
@@ -1077,7 +1079,7 @@ internal class Program
                 Username = "validuser", Email = "valid@example.com", FirstName = "Valid", LastName = "User"
             };
             var validationResult = await userValidator.ValidateAsync(testUser);
-            var validationStatus = string.IsNullOrEmpty(validationResult.ErrorMessage) ? "Valid" : "Invalid";
+            var validationStatus = string.IsNullOrEmpty(validationResult?.ErrorMessage) ? "Valid" : "Invalid";
             Console.WriteLine($"✅ GenericValidator<User>: Validation result = {validationStatus}");
         }
 
@@ -1683,7 +1685,7 @@ internal class Program
         Console.WriteLine();
     }
 
-    private static async Task TestRegistrationModes(IServiceProvider services)
+    private static Task TestRegistrationModes(IServiceProvider services)
     {
         Console.WriteLine("--- Testing Different Registration Modes ---");
 
@@ -1711,6 +1713,7 @@ internal class Program
         }
 
         Console.WriteLine();
+        return Task.CompletedTask;
     }
 
     private static async Task TestInstanceSharing(IServiceProvider services)
@@ -1861,7 +1864,7 @@ internal class Program
         Console.WriteLine();
     }
 
-    private static async Task TestRepositoryPattern(IServiceProvider services)
+    private static Task TestRepositoryPattern(IServiceProvider services)
     {
         Console.WriteLine("--- Testing Generic Repository Pattern ---");
 
@@ -1873,18 +1876,10 @@ internal class Program
         Console.WriteLine("  IMultiRepository<User>: Temporarily disabled (open generic registration issue)");
         Console.WriteLine("  IMultiQueryable<User>: Temporarily disabled (open generic registration issue)");
 
-        if (false) // userRepo != null && userQueryable != null)
-        {
-            var user = new User(1, "Repository User", "repo@example.com");
-            // await userRepo.SaveAsync(user);
-
-            // var foundUser = await userQueryable.FirstOrDefaultAsync(u => u.Name.Contains("Repository"));
-            // Console.WriteLine($"✅ Generic repository test: User found = {foundUser?.Name}");
-            Console.WriteLine(
-                "✅ Generic repository pattern: Temporarily disabled - would demonstrate generic service resolution");
-        }
-
+        Console.WriteLine(
+            "✅ Generic repository pattern: Temporarily disabled - pending open generic registration support");
         Console.WriteLine();
+        return Task.CompletedTask;
     }
 
     private static async Task TestPerformanceService(IServiceProvider services)
@@ -1928,7 +1923,7 @@ internal class Program
         Console.WriteLine();
     }
 
-    private static async Task TestTransientLifetime(IServiceProvider services)
+    private static Task TestTransientLifetime(IServiceProvider services)
     {
         Console.WriteLine("--- Transient Service Examples ---");
 
@@ -1948,6 +1943,8 @@ internal class Program
         Console.WriteLine(
             $"  ✅ Multiple service resolution: First batch = {services1.Count}, Second batch = {services2.Count}");
         Console.WriteLine("  Note: Each GetServices() call may return new instances for Transient services");
+
+        return Task.CompletedTask;
     }
 
     private static async Task DemonstrateConditionalServices(IServiceProvider services)

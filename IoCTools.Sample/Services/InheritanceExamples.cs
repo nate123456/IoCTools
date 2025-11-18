@@ -96,13 +96,14 @@ public partial class UserRepository : BaseRepository<InheritanceUser>, IInherita
     // Additional specific dependencies for UserRepository
     [Inject] private readonly ILogger<UserRepository> _specificLogger;
 
-    public async Task<InheritanceUser?> GetUserByIdAsync(int id)
+    public Task<InheritanceUser?> GetUserByIdAsync(int id)
     {
         _specificLogger.LogInformation("Getting user by ID: {UserId}", id);
 
         // Use cache from DependsOn injection
         var cacheKey = $"user:{id}";
-        return _cacheService.GetOrSet(cacheKey, () => GetByIdAsync(id).Result);
+        var user = _cacheService.GetOrSet(cacheKey, () => GetByIdAsync(id).GetAwaiter().GetResult());
+        return Task.FromResult(user);
     }
 
     public async Task<InheritanceUser?> GetUserByUsernameAsync(string username)
@@ -509,7 +510,10 @@ public partial class InheritanceUserValidator : EntityValidator<InheritanceUser>
 
     public async Task<InheritanceExampleValidationResult> ValidateUserAsync(InheritanceUser user)
     {
-        _userLogger.LogInformation("Validating user: {Username}", user?.Username);
+        if (user is null)
+            return InheritanceExampleValidationResult.CreateFailed("User instance cannot be null");
+
+        _userLogger.LogInformation("Validating user: {Username}", user.Username);
 
         // Use inherited entity validation
         var entityResult = await ValidateEntityPropertiesAsync(user);
@@ -532,7 +536,10 @@ public partial class InheritanceUserValidator : EntityValidator<InheritanceUser>
 
     public async Task<InheritanceExampleValidationResult> ValidateUserCreationAsync(InheritanceUser user)
     {
-        _userLogger.LogInformation("Validating user creation: {Username}", user?.Username);
+        if (user is null)
+            return InheritanceExampleValidationResult.CreateFailed("User instance cannot be null");
+
+        _userLogger.LogInformation("Validating user creation: {Username}", user.Username);
 
         var basicValidation = await ValidateUserAsync(user);
         if (!basicValidation.Success) return basicValidation;
@@ -547,7 +554,10 @@ public partial class InheritanceUserValidator : EntityValidator<InheritanceUser>
 
     public async Task<InheritanceExampleValidationResult> ValidateUserUpdateAsync(InheritanceUser user)
     {
-        _userLogger.LogInformation("Validating user update: {Username}", user?.Username);
+        if (user is null)
+            return InheritanceExampleValidationResult.CreateFailed("User instance cannot be null");
+
+        _userLogger.LogInformation("Validating user update: {Username}", user.Username);
 
         var basicValidation = await ValidateUserAsync(user);
         if (!basicValidation.Success) return basicValidation;
@@ -595,12 +605,12 @@ public abstract partial class DatabaseConfigurationService : BaseConfigurationSe
 {
     [Inject] protected readonly ICacheService CacheService;
 
-    protected virtual async Task<InheritanceDatabaseSettings> GetDatabaseSettingsAsync()
+    protected virtual Task<InheritanceDatabaseSettings> GetDatabaseSettingsAsync()
     {
         Logger.LogDebug("Getting database settings");
 
         // Use cache from DependsOn and inherited configuration
-        return CacheService.GetOrSet("database-settings",
+        var settings = CacheService.GetOrSet("database-settings",
             () => new InheritanceDatabaseSettings
             {
                 ConnectionString = GetConnectionString("DefaultConnection"),
@@ -608,6 +618,8 @@ public abstract partial class DatabaseConfigurationService : BaseConfigurationSe
                 MaxRetries = GetConfigurationValue("Database:MaxRetries", 3),
                 EnableLogging = GetConfigurationValue("Database:EnableLogging", true)
             });
+
+        return Task.FromResult(settings);
     }
 }
 
@@ -621,7 +633,6 @@ public interface IApplicationSettingsService
     Task<bool> ValidateConfigurationAsync();
 }
 
-[Singleton]
 public partial class ApplicationSettingsService : DatabaseConfigurationService, IApplicationSettingsService
 {
     [Inject] private readonly ILogger<ApplicationSettingsService> _appLogger;

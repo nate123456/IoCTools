@@ -89,7 +89,7 @@ public partial class MemoryCacheService : IConfigurableCacheService
     {
         _logger.LogDebug("Getting key {Key} from memory cache", key);
         var value = _memoryCache.Get<T>(key);
-        return Task.FromResult(value);
+        return Task.FromResult<T?>(value);
     }
 
     public Task SetAsync<T>(string key,
@@ -123,7 +123,7 @@ public partial class RedisCacheService : IConfigurableCacheService
         _logger.LogDebug("Getting key {Key} from Redis at {ConnectionString}", key, connectionString);
 
         // Mock Redis operation
-        return Task.FromResult(default(T));
+        return Task.FromResult<T?>(default);
     }
 
     public Task SetAsync<T>(string key,
@@ -458,7 +458,7 @@ public partial class LocalFileStorageService : IStorageService
         return await File.ReadAllBytesAsync(path);
     }
 
-    public async Task<bool> DeleteFileAsync(string fileName)
+    public Task<bool> DeleteFileAsync(string fileName)
     {
         var path = Path.Combine("./temp", fileName);
         _logger.LogInformation("Deleting file {FileName} from local path {Path}", fileName, path);
@@ -466,10 +466,10 @@ public partial class LocalFileStorageService : IStorageService
         if (File.Exists(path))
         {
             File.Delete(path);
-            return true;
+            return Task.FromResult(true);
         }
 
-        return false;
+        return Task.FromResult(false);
     }
 }
 

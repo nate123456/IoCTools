@@ -306,10 +306,10 @@ public interface IFileProcessor
 public interface IConfigurationManager
 {
     T GetValue<T>(string key,
-        T defaultValue = default);
+        T defaultValue = default!);
 
     Task<T> GetValueAsync<T>(string key,
-        T defaultValue = default);
+        T defaultValue = default!);
 
     Task SetValueAsync<T>(string key,
         T value);
@@ -341,7 +341,7 @@ public interface IAuditService
 
     Task LogActionAsync(string action,
         object data,
-        string userId = null);
+        string? userId = null);
 
     Task<IEnumerable<AuditEntry>> GetAuditTrailAsync(string entityType,
         int entityId);
@@ -433,7 +433,7 @@ public record BusinessRequest(string Operation, Dictionary<string, object> Param
     public DateTime RequestedAt { get; init; } = DateTime.UtcNow;
 }
 
-public record BusinessResult(bool Success, string Message, object Data = null)
+public record BusinessResult(bool Success, string Message, object? Data = null)
 {
     public TimeSpan ProcessingTime { get; init; }
 }
@@ -444,7 +444,7 @@ public record ProcessingRequest(string Type, object Data)
     public string RequestId { get; init; } = Guid.NewGuid().ToString();
 }
 
-public record RequestResult(bool Success, string Message, object Data = null)
+public record RequestResult(bool Success, string Message, object? Data = null)
 {
     public string RequestId { get; init; } = string.Empty;
     public DateTime ProcessedAt { get; init; } = DateTime.UtcNow;

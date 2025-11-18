@@ -215,11 +215,6 @@ public partial class SeparateInstanceCacheManager : IMultiCacheService, IMultiCa
     private readonly Guid _instanceId = Guid.NewGuid();
     [Inject] private readonly ILogger<SeparateInstanceCacheManager> _logger;
 
-    public SeparateInstanceCacheManager()
-    {
-        // This will be called for each separate instance
-    }
-
     public bool Exists(string key) => _cache.ContainsKey(key);
 
     public void Remove(string key) => _cache.TryRemove(key, out _);
@@ -252,12 +247,6 @@ public partial class SharedInstanceCacheManager : IMultiCacheService, IMultiCach
     private readonly ConcurrentDictionary<string, object> _cache = new();
     private readonly Guid _instanceId = Guid.NewGuid();
     [Inject] private readonly ILogger<SharedInstanceCacheManager> _logger;
-
-    public SharedInstanceCacheManager()
-    {
-        // This will be called only once since the instance is shared
-        _logger.LogInformation("Creating shared cache instance {InstanceId}", _instanceId);
-    }
 
     public bool Exists(string key) => _cache.ContainsKey(key);
 
@@ -566,7 +555,7 @@ public partial class MultiInterfaceDemonstrationService : IMultiInterfaceDemoSer
         _logger.LogInformation("=== Multi-Interface Registration Demonstration Complete ===");
     }
 
-    private async Task DemonstrateSharedInstances()
+    private Task DemonstrateSharedInstances()
     {
         _logger.LogInformation("--- Demonstrating Shared Instances ---");
 
@@ -577,18 +566,20 @@ public partial class MultiInterfaceDemonstrationService : IMultiInterfaceDemoSer
         var exists = cacheProvider.Exists("test");
 
         _logger.LogInformation("Shared instance test: Key exists = {Exists}", exists);
+        return Task.CompletedTask;
     }
 
-    private async Task DemonstrateSeparateInstances()
+    private Task DemonstrateSeparateInstances()
     {
         _logger.LogInformation("--- Demonstrating Separate Instances ---");
 
         // With separate instances, data won't be shared between interfaces
-        var separateCacheService = _serviceProvider.GetRequiredService<SeparateInstanceCacheManager>();
+        _serviceProvider.GetRequiredService<SeparateInstanceCacheManager>();
         _logger.LogInformation("Created separate cache instance for demonstration");
+        return Task.CompletedTask;
     }
 
-    private async Task DemonstrateRegistrationModes()
+    private Task DemonstrateRegistrationModes()
     {
         _logger.LogInformation("--- Demonstrating Registration Modes ---");
 
@@ -600,9 +591,10 @@ public partial class MultiInterfaceDemonstrationService : IMultiInterfaceDemoSer
         var interfacePayment = _serviceProvider.GetService<IPaymentService>();
         _logger.LogInformation("Exclusionary registration: Interface available = {Available}",
             interfacePayment != null);
+        return Task.CompletedTask;
     }
 
-    private async Task DemonstrateSkipRegistration()
+    private Task DemonstrateSkipRegistration()
     {
         _logger.LogInformation("--- Demonstrating Skip Registration ---");
 
@@ -611,6 +603,7 @@ public partial class MultiInterfaceDemonstrationService : IMultiInterfaceDemoSer
 
         _logger.LogInformation("Skip registration test: IDataService = {DataService}, IDataLogger = {DataLogger}",
             dataService != null, dataLogger != null);
+        return Task.CompletedTask;
     }
 
     private async Task DemonstrateRepositoryPattern()

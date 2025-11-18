@@ -101,7 +101,6 @@ public partial class DatabaseContextService : IDatabaseContextService
 {
     [Inject] private readonly IConfiguration _configuration;
 
-    private readonly string _connectionString;
     [Inject] private readonly ILogger<DatabaseContextService> _logger;
 
     public async Task<T?> FindByIdAsync<T>(int id) where T : class

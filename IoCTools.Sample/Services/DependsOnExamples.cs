@@ -390,14 +390,14 @@ public partial class MultiGenericRepositoryService
     [Inject] private readonly IDependsOnGenericRepository<Order> _orderRepository;
     [Inject] private readonly IDependsOnGenericRepository<DependsOnUser> _userRepository;
 
-    public async Task<string> GenerateUserOrderReportAsync(int userId)
+    public Task<string> GenerateUserOrderReportAsync(int userId)
     {
         _logger.LogInformation("Generating report for user {UserId}", userId);
 
         // Note: The exact field names depend on the generator's disambiguation logic
         // This example shows the intended usage pattern
 
-        return $"Report for user {userId}";
+        return Task.FromResult($"Report for user {userId}");
     }
 }
 

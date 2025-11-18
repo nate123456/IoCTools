@@ -15,10 +15,10 @@
         <PackageId>IoCTools.Generator</PackageId>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <IncludeBuildOutput>false</IncludeBuildOutput>
-        <Version>1.1.0</Version>
-        <PackageVersion>1.1.0</PackageVersion>
-        <AssemblyVersion>1.1.0.0</AssemblyVersion>
-        <FileVersion>1.1.0.0</FileVersion>
+        <Version>1.2.0</Version>
+        <PackageVersion>1.2.0</PackageVersion>
+        <AssemblyVersion>1.2.0.0</AssemblyVersion>
+        <FileVersion>1.2.0.0</FileVersion>
         <Title>IoC Tools Generator Package</Title>
         <Description>Advanced .NET source generator that automates dependency injection configuration and service registration. Features comprehensive diagnostic validation, inheritance support, and zero-runtime overhead.</Description>
         <Copyright>MIT</Copyright>
@@ -27,7 +27,7 @@
         <RepositoryType>git</RepositoryType>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <PackageReleaseNotes>v1.1.0: Adds redundant registration diagnostics (IOC032-IOC038), null-safe generator test infrastructure, Inject-vs-DependsOn guidance, and refreshed documentation.</PackageReleaseNotes>
+        <PackageReleaseNotes>v1.2.0: Ships the redundant-registration analyzer suite (IOC032-IOC040), Inject-vs-DependsOn guidance, null-safe generator infrastructure, and sample updates that keep source-generated apps warning-free.</PackageReleaseNotes>
     </PropertyGroup>
 
     <ItemGroup>

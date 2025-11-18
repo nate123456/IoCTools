@@ -395,7 +395,11 @@ public partial class SharedStateService : ISharedCacheService, ISharedStatsServi
         _logger.LogInformation("Cached {Key} in shared instance {Id}", key, _instanceId);
     }
 
-    public T GetItem<T>(string key) => _cache.ContainsKey(key) ? (T)_cache[key] : default;
+    public T GetItem<T>(string key)
+    {
+        if (_cache.TryGetValue(key, out var value)) return (T)value;
+        return default!;
+    }
 
     public bool IsHealthy() => _isHealthy;
     public void ReportHealth(bool healthy) => _isHealthy = healthy;
@@ -429,7 +433,7 @@ public interface IDbDataService
 [RegisterAs<IDbTransactionService, IDbDataService>(InstanceSharing.Shared)]
 public class ApplicationDbContext : IDbTransactionService, IDbDataService
 {
-    public Task<T> ExecuteQueryAsync<T>(string sql) => Task.FromResult(default(T));
+    public Task<T> ExecuteQueryAsync<T>(string sql) => Task.FromResult(default(T)!);
 
     public Task<int> ExecuteCommandAsync(string sql) => Task.FromResult(0);
     // NOTE: No [Scoped] attribute - DbContext lifetime managed by EF Core
