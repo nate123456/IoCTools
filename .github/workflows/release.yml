@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-test-pack:
-    runs-on: ubuntu-latest
+    runs-on: sansiquay-general
 
     steps:
       - name: Checkout
@@ -64,7 +64,7 @@ jobs:
           path: artifacts/*.nupkg
 
   publish:
-    runs-on: ubuntu-latest
+    runs-on: sansiquay-general
     needs: build-test-pack
 
     steps:

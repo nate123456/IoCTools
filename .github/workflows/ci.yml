@@ -40,7 +40,7 @@ env:
 jobs:
   tests:
     name: tests
-    runs-on: ubuntu-latest
+    runs-on: sansiquay-general
     timeout-minutes: 20
 
     steps:
