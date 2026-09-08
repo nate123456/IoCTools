@@ -853,7 +853,12 @@ Diagnostics related to service registration patterns and attributes.
 
 **Cause:** A service is manually registered but the implementation lacks IoCTools attributes.
 
-**Fix:** Add `[Scoped]`/`[Singleton]`/`[Transient]` (and `[RegisterAs]`) to the implementation instead of manual registration.
+**Fix:** Add `[Scoped]`/`[Singleton]`/`[Transient]` to the implementation, with `[RegisterAs]` as needed to preserve the service mapping.
+Replace the manual registration with the generated `Add<SanitizedAssemblyName>RegisteredServices(...)` extension call before you build the service provider.
+Use the extension from the implementation assembly, and pass configuration if its generated signature requires it.
+Attributes alone do not register services. Without the extension call, the code can compile while `GetRequiredService<T>()` throws `InvalidOperationException`.
+
+See the [complete migration example](migration.md#ioc086-complete-migration) for the namespace, method name, and call order.
 
 **Related:** [IOC090](#ioc090) (typeof() without attributes)
 

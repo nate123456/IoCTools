@@ -215,6 +215,8 @@ builder.Services.AddYourAssemblyRegisteredServices(configuration);
 
 ### Step 3: Remove manual registrations
 
+Call the generated extension before you build the service provider. Attributes alone do not add services to `IServiceCollection`.
+
 Delete lines like:
 ```csharp
 // DELETE these
@@ -229,6 +231,34 @@ Replace with:
 // ADD this
 builder.Services.AddYourAssemblyRegisteredServices(configuration);
 ```
+
+#### IOC086 complete migration
+
+For an assembly named `Migration.Probe`, replace `services.AddSingleton<Probe>()` with the following code:
+
+```csharp
+using IoCTools.Abstractions.Annotations;
+using Microsoft.Extensions.DependencyInjection;
+using Migration.Probe.Extensions.Generated;
+
+var services = new ServiceCollection();
+services.AddMigrationProbeRegisteredServices();
+using var provider = services.BuildServiceProvider();
+var first = provider.GetRequiredService<Probe>();
+var second = provider.GetRequiredService<Probe>();
+System.Diagnostics.Debug.Assert(ReferenceEquals(first, second));
+
+[Singleton]
+public sealed class Probe { }
+```
+
+The generator uses the implementation assembly name, not the class namespace.
+It replaces hyphens and spaces with underscores for the generated namespace, then adds `.Extensions.Generated`.
+For the method name, it also removes periods, then adds the `Add` prefix and `RegisteredServices` suffix.
+Pass configuration when the generated signature requires it. Check the generated output for referenced assemblies whose generation settings you cannot inspect.
+
+If you omit `AddMigrationProbeRegisteredServices()`, this example still compiles, but `GetRequiredService<Probe>()` throws `InvalidOperationException`.
+Preserve interface mappings with `[RegisterAs]` as needed. Call each required implementation assembly's generated extension before you build the provider.
 
 ### Step 4: Handle configuration
 
