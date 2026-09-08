@@ -31,5 +31,7 @@ public static class Program
         diagnostics.Should().ContainSingle()
             .Which.Severity.Should().Be(DiagnosticSeverity.Warning);
         diagnostics[0].GetMessage().Should().Contain("Service");
+        diagnostics[0].GetMessage().Should().Contain("call the generated AddTestAssemblyRegisteredServices(...) extension");
+        diagnostics[0].GetMessage().Should().Contain("before building the service provider");
     }
 }

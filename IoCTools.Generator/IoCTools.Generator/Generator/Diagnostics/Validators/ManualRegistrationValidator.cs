@@ -398,7 +398,13 @@ internal static class ManualRegistrationValidator
                             invocation.GetLocation(),
                             isTypeOfRegistration && isOpenGenericTypeOfRegistration
                                 ? new object[] { serviceTypeName }
-                                : new object[] { serviceTypeName, lifetime, implTypeName });
+                                : new object[]
+                                {
+                                    serviceTypeName, lifetime, implTypeName,
+                                    SymbolEqualityComparer.Default.Equals(implNamed.ContainingAssembly, compilation.Assembly)
+                                        ? "Add" + implNamed.ContainingAssembly.Name.Replace("-", "_").Replace(" ", "_").Replace(".", "") + "RegisteredServices(...)"
+                                        : "registration method for implementation assembly '" + implNamed.ContainingAssembly.Name + "'"
+                                });
                         context.ReportDiagnostic(diag);
                     }
                     continue;

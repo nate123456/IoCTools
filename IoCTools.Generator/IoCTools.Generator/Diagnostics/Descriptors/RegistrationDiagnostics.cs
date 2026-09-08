@@ -235,7 +235,7 @@ internal static partial class DiagnosticDescriptors
     public static readonly DiagnosticDescriptor ManualRegistrationCouldUseAttributes = new(
         "IOC086",
         "Manual registration could use IoCTools attributes",
-        "'{0}' is registered manually as {1} but the implementation '{2}' lacks IoCTools lifetime attributes. Consider adding [Scoped]/[Singleton]/[Transient] (and [RegisterAs]) instead of manual registration.",
+        "'{0}' is registered manually as {1} but the implementation '{2}' lacks IoCTools lifetime attributes. To migrate, add [Scoped]/[Singleton]/[Transient] (and [RegisterAs] as needed), replace the manual registration, and call the generated {3} extension before building the service provider. Attributes alone do not register services.",
         "IoCTools.Registration",
         DiagnosticSeverity.Warning,
         true,
